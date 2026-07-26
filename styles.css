@@ -978,7 +978,19 @@ body.quick-entry .wizard-card{min-height:auto}
   display:inline-flex;align-items:center;font-size:.74rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#2a1208;
   background:linear-gradient(180deg,#f8d297,#ff9a57 70%,#da4e28);border:1px solid rgba(255,189,126,.45)
 }
-.member-card .card-action.edit-primary svg{width:16px;height:16px;fill:currentColor}
+.member-card .card-action.code-action{
+  min-height:42px;padding:0 10px;width:auto;border-radius:12px;
+  display:inline-flex;align-items:center;justify-content:center;
+  font-size:.72rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--gold);border-color:rgba(240,186,114,.35);background:rgba(240,186,114,.08)
+}
+.member-card .card-action.code-action.generate{
+  color:#2a1208;background:linear-gradient(180deg,#ffe3a5,#ff9b6f);border-color:rgba(255,189,126,.5)
+}
+.drawer-code-actions{
+  display:flex;flex-wrap:wrap;gap:8px;margin:0 0 10px;padding:0 2px
+}
+.drawer-code-actions .btn{min-height:40px}
 button.field-tap,button.inline-field-tap,button.member-name.field-tap{
   appearance:none;-webkit-appearance:none;border:0;background:transparent;color:inherit;
   font:inherit;letter-spacing:inherit;text-align:inherit;cursor:pointer;padding:0;margin:0
