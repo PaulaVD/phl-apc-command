@@ -403,11 +403,32 @@
     nextStep();
   }
 
+  function syncMobileLofiHost(isMobile) {
+    const player = document.getElementById("lofiPlayer");
+    const slot = document.getElementById("teLofiSlot");
+    const topMain = document.querySelector(".topbar-main");
+    if (!player || !slot || !topMain) return;
+    if (isMobile) {
+      if (player.parentElement !== slot) {
+        slot.appendChild(player);
+        slot.removeAttribute("aria-hidden");
+      }
+      return;
+    }
+    if (player.parentElement !== topMain) {
+      const actions = topMain.querySelector(".top-actions");
+      if (actions) topMain.insertBefore(player, actions);
+      else topMain.appendChild(player);
+    }
+    slot.setAttribute("aria-hidden", "true");
+  }
+
   function initMobileTabs() {
     const mq = window.matchMedia(MOBILE_MQ);
     const apply = () => {
       const isMobile = mq.matches;
       document.documentElement.classList.toggle("is-mobile-shell", isMobile);
+      syncMobileLofiHost(isMobile);
       if (!isMobile) {
         document.body.classList.remove("mobile-tab-times", "mobile-tab-push", "mobile-tab-preview");
         const hint = document.getElementById("mobileTabHint");

@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Teko:wght@500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=119" />
+  <link rel="stylesheet" href="styles.css?v=120" />
 </head>
 <body class="mobile-tab-times">
   <a class="skip-link" href="#operatorConsole">Skip to form</a>
@@ -96,11 +96,9 @@
   <main class="shell">
     <nav class="mobile-shell-tabs" id="mobileShellTabs" aria-label="Mobile views" role="tablist">
       <button type="button" class="mobile-shell-tab is-active" id="mobileTabTimes" data-mobile-tab="times" role="tab" aria-selected="true" aria-controls="timesEventsPanel">
-        <span class="mobile-shell-tab-kicker">Main</span>
         <strong>Times / Events</strong>
       </button>
       <button type="button" class="mobile-shell-tab" id="mobileTabPush" data-mobile-tab="push" role="tab" aria-selected="false" aria-controls="operatorConsole">
-        <span class="mobile-shell-tab-kicker">Submit</span>
         <strong>Push Data</strong>
       </button>
     </nav>
@@ -114,10 +112,11 @@
           <div>
             <span class="eyebrow"><span></span>Dark War schedule</span>
             <h2>Times &amp; events</h2>
-            <p>Server clock, local conversion, and common event windows.</p>
+            <p>Server &amp; local clocks, event conversion, and common windows.</p>
           </div>
         </div>
         <div class="times-events-body">
+          <div class="te-lofi-slot" id="teLofiSlot" aria-hidden="true"></div>
           <div class="times-events-clocks" aria-label="Server and local time">
             <div class="te-clock te-server">
               <span class="time-block-kicker">Server</span>
@@ -587,6 +586,6 @@
   <script src="serverClock.js?v=34"></script>
   <script src="rallyRoles.js?v=28"></script>
   <script src="rallyMatchmaking.js?v=27"></script>
-  <script src="app.js?v=119" defer></script>
+  <script src="app.js?v=120" defer></script>
 </body>
 </html>
