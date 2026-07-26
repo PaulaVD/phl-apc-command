@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Teko:wght@500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=100" />
+  <link rel="stylesheet" href="styles.css?v=110" />
 </head>
 <body class="mobile-tab-times">
   <a class="skip-link" href="#operatorConsole">Skip to form</a>
@@ -85,6 +85,7 @@
       <button class="icon-btn active" id="sfxBtn" title="Toggle sound effects" aria-label="Toggle sound effects">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3.23v17.54a1 1 0 0 1-1.64.77L7.56 17H4a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2h3.56l4.8-4.54A1 1 0 0 1 14 3.23Zm3.54 4.05a1 1 0 0 1 1.41 0 6.98 6.98 0 0 1 0 9.9 1 1 0 1 1-1.41-1.42 4.98 4.98 0 0 0 0-7.06 1 1 0 0 1 0-1.42Zm-2.83 2.83a1 1 0 0 1 1.41 0 2.98 2.98 0 0 1 0 4.22 1 1 0 1 1-1.41-1.42.98.98 0 0 0 0-1.38 1 1 0 0 1 0-1.42Z"/></svg>
       </button>
+      <button class="btn btn-member" id="memberAccessBtn" type="button"><span class="lock-dot member-dot"></span><span id="memberAccessLabel"><span class="member-label-full">My profile</span><span class="member-label-short">Profile</span></span></button>
       <button class="btn btn-admin" id="adminAccessBtn"><span class="lock-dot"></span><span id="adminAccessLabel"><span class="admin-label-full">Admin access</span><span class="admin-label-short">Admin</span></span></button>
     </div>
 
@@ -246,9 +247,22 @@
         <svg viewBox="0 0 24 24"><path d="M17 9h-1V7a4 4 0 1 0-8 0v2H7a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2Zm-3 0h-4V7a2 2 0 1 1 4 0Z"/></svg>
       </div>
       <div>
-        <strong>PH-L private analytics</strong>
-        <span>Every submit is saved to the shared Phoenix Legacy cloud roster. <strong>Save your Personal Code</strong> to overwrite your entry later. Without it, updates land as <code>Name-updt</code> for admin review. Tip: paste <code>Name i5 820/760/710/655 450000</code>.</span>
+        <strong>PH-L private roster</strong>
+        <span>Alliance stats and other members stay hidden. Submit your APC CP below, then use <strong>My profile</strong> with your Personal Code to view and edit only your own record. Without a code, updates land as <code>Name-updt</code> for R4–R5 review. Tip: paste <code>Name i5 820/760/710/655 450000</code>.</span>
       </div>
+    </section>
+
+    <section class="member-profile-panel member-only" id="memberProfilePanel" data-mobile-pane="push" hidden>
+      <div class="panel-head compact">
+        <div>
+          <span class="eyebrow"><span></span>R1–R3 · personal view</span>
+          <h2 id="memberProfileTitle">Your APC profile</h2>
+          <p id="memberProfileSub">Only your record is loaded. Tap a field to edit with your Personal Code.</p>
+        </div>
+        <button type="button" class="btn btn-ghost" id="memberLogoutBtn">Lock profile</button>
+      </div>
+      <div class="result-text" id="memberProfileResult">Not unlocked</div>
+      <div class="roster-list" id="memberProfileList"></div>
     </section>
 
     <section class="summary-strip admin-only" id="summaryStrip">
@@ -463,8 +477,8 @@
         <div class="lock-cube"><span></span></div>
       </div>
       <span class="eyebrow"><span></span>Restricted PH-L access</span>
-      <h2 id="adminModalTitle">Admin authentication</h2>
-      <p>Enter your personal PH-L admin access code to view the roster, rankings, readiness data and exports.</p>
+      <h2 id="adminModalTitle">Leadership authentication</h2>
+      <p>R4–R5 officers: enter your PH-L admin access code for the full roster, rankings, history and exports.</p>
       <label class="admin-code-field">
         <span>Admin access code</span>
         <input id="adminCodeInput" type="password" autocomplete="current-password" placeholder="Enter access code">
@@ -474,7 +488,26 @@
         <button class="btn btn-primary" id="adminLoginBtn">Unlock dashboard</button>
         <button class="btn btn-ghost" id="adminCancelBtn">Cancel</button>
       </div>
-      <small class="admin-security-note">Admin access is remembered only for the current browser session.</small>
+      <small class="admin-security-note">Leadership access is remembered only for the current browser session.</small>
+    </section>
+  </div>
+
+  <div class="admin-modal" id="memberModal" aria-hidden="true">
+    <div class="admin-modal-backdrop" data-modal-close="member"></div>
+    <section class="admin-modal-card confirm-modal-card" role="dialog" aria-modal="true" aria-labelledby="memberModalTitle">
+      <span class="eyebrow"><span></span>R1–R3 · personal unlock</span>
+      <h2 id="memberModalTitle">Unlock my profile</h2>
+      <p>Enter your Personal Code to load only your APC record. Alliance stats and other members stay hidden.</p>
+      <label class="admin-code-field">
+        <span>Personal Code</span>
+        <input id="memberCodeInput" type="text" maxlength="16" autocomplete="off" spellcheck="false" placeholder="e.g. PHL-AB12CD">
+      </label>
+      <div class="admin-error" id="memberError" aria-live="polite"></div>
+      <div class="admin-modal-actions">
+        <button class="btn btn-primary" id="memberLoginBtn" type="button">Unlock profile</button>
+        <button class="btn btn-ghost" id="memberCancelBtn" type="button">Cancel</button>
+      </div>
+      <small class="admin-security-note">Member session is stored for this browser tab only. Codes are never logged.</small>
     </section>
   </div>
 
@@ -547,10 +580,10 @@
 
   <div class="toast-region" id="toastRegion" aria-live="polite"></div>
 
-  <script src="config.js?v=50"></script>
+  <script src="config.js?v=60"></script>
   <script src="serverClock.js?v=34"></script>
   <script src="rallyRoles.js?v=28"></script>
   <script src="rallyMatchmaking.js?v=27"></script>
-  <script src="app.js?v=90" defer></script>
+  <script src="app.js?v=110" defer></script>
 </body>
 </html>

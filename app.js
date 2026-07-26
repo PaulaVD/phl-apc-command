@@ -4,7 +4,8 @@
 
   const STORAGE_KEY = "phl_apex_console_v7";
   const PREFS_KEY = "phl_prefs_v1";
-  const ADMIN_SESSION_KEY = "phl_admin_session_v2";
+  const ADMIN_SESSION_KEY = "phl_admin_session_v3";
+  const MEMBER_SESSION_KEY = "phl_member_session_v1";
   const OUTBOX_KEY = "phl_cloud_outbox_v1";
   const HISTORY_KEY = "phl_roster_history_v1";
   const PERSONAL_CODE_PREF_KEY = "phl_my_personal_codes_v1";
@@ -48,6 +49,8 @@
   let sfxEnabled = true;
   let adminSession = loadAdminSession();
   let isAdmin = Boolean(adminSession);
+  let memberSession = isAdmin ? null : loadMemberSession();
+  let isMember = Boolean(memberSession) && !isAdmin;
   let audioUnlocked = false;
   let pendingDeletedIds = new Set();
   let cloudSyncTimer = 0;
@@ -173,6 +176,19 @@
     adminLoginBtn: document.getElementById("adminLoginBtn"),
     adminCancelBtn: document.getElementById("adminCancelBtn"),
     adminError: document.getElementById("adminError"),
+    memberAccessBtn: document.getElementById("memberAccessBtn"),
+    memberAccessLabel: document.getElementById("memberAccessLabel"),
+    memberModal: document.getElementById("memberModal"),
+    memberCodeInput: document.getElementById("memberCodeInput"),
+    memberLoginBtn: document.getElementById("memberLoginBtn"),
+    memberCancelBtn: document.getElementById("memberCancelBtn"),
+    memberError: document.getElementById("memberError"),
+    memberProfilePanel: document.getElementById("memberProfilePanel"),
+    memberProfileTitle: document.getElementById("memberProfileTitle"),
+    memberProfileSub: document.getElementById("memberProfileSub"),
+    memberProfileResult: document.getElementById("memberProfileResult"),
+    memberProfileList: document.getElementById("memberProfileList"),
+    memberLogoutBtn: document.getElementById("memberLogoutBtn"),
     adminCommsPanel: document.getElementById("adminCommsPanel"),
     adminOnlineCount: document.getElementById("adminOnlineCount"),
     adminOnlineList: document.getElementById("adminOnlineList"),
@@ -281,9 +297,10 @@
 
   function init() {
     el.levelFilter.innerHTML = `<option value="all">All levels</option>${LEVEL_OPTIONS}`;
+    enforceLocalRosterScope();
     bindEvents();
     initLofiPlayer();
-    applyAdminMode();
+    applyAccessMode();
     applyEntryMode();
     initMobileTabs();
     enhanceSelects(document.querySelector(".toolbar"));
@@ -298,7 +315,11 @@
     }
     if (isCloudConfigured()) {
       flushCloudOutbox()
-        .then(() => pullCloudRoster({ silent: true }))
+        .then(() => {
+          if (isAdmin) return pullCloudRoster({ silent: true });
+          if (isMember) return pullMemberSelf({ silent: true });
+          return Promise.resolve();
+        })
         .then(() => startCloudSyncLoop())
         .catch(() => startCloudSyncLoop());
     }
@@ -342,6 +363,10 @@
     el.adminAccessBtn.addEventListener("click", handleAdminAccess);
     el.adminLoginBtn.addEventListener("click", attemptAdminLogin);
     el.adminCancelBtn.addEventListener("click", () => closeModal("admin"));
+    el.memberAccessBtn?.addEventListener("click", handleMemberAccess);
+    el.memberLoginBtn?.addEventListener("click", attemptMemberLogin);
+    el.memberCancelBtn?.addEventListener("click", () => closeModal("member"));
+    el.memberLogoutBtn?.addEventListener("click", () => logoutMemberSession());
     el.adminChatForm?.addEventListener("submit", onAdminChatSubmit);
     document.querySelectorAll("[data-modal-close]").forEach(node => {
       node.addEventListener("click", () => closeModal(node.dataset.modalClose));
@@ -350,6 +375,7 @@
     el.deleteCancelBtn.addEventListener("click", () => closeModal("delete"));
     el.scanToggleBtn?.addEventListener("click", toggleScanPanel);
     el.adminCodeInput.addEventListener("keydown", event => { if (event.key === "Enter") attemptAdminLogin(); });
+    el.memberCodeInput?.addEventListener("keydown", event => { if (event.key === "Enter") attemptMemberLogin(); });
     el.memberDrawerSave?.addEventListener("click", saveMemberDrawer);
     el.memberDrawerCancel?.addEventListener("click", onMemberDrawerCancel);
     el.personalCodeCopyBtn?.addEventListener("click", copyRevealedPersonalCode);
@@ -374,6 +400,7 @@
       closeAllUiSelects();
       if (el.memberDrawer?.classList.contains("open")) closeMemberDrawer();
       else if (el.personalCodeModal?.classList.contains("open")) closeModal("personalCode");
+      else if (el.memberModal?.classList.contains("open")) closeModal("member");
       else if (el.deleteModal.classList.contains("open")) closeModal("delete");
       else if (el.syncModal?.classList.contains("open")) closeModal("sync");
       else if (el.adminModal.classList.contains("open")) closeModal("admin");
@@ -526,8 +553,13 @@
       renderRanking();
       renderRefList(true);
       if (adminView === "history") renderHistory();
+      clearMemberProfileUi();
+    } else if (isMember) {
+      clearAdminViews();
+      renderMemberProfile();
     } else {
       clearAdminViews();
+      clearMemberProfileUi();
     }
     syncLiveRallyClassification({ skipScan: true });
   }
@@ -1297,7 +1329,21 @@
     }
 
     const enteredCode = normalizePersonalCode(state.personalCode);
-    const codeMatch = enteredCode ? findMemberByPersonalCode(enteredCode) : null;
+    let codeMatch = enteredCode ? findMemberByPersonalCode(enteredCode) : null;
+    if (enteredCode && !codeMatch && !editingId && !isAdmin) {
+      try {
+        codeMatch = await fetchMemberByPersonalCode(enteredCode);
+        if (codeMatch) {
+          const idx = roster.findIndex(m => m.id === codeMatch.id);
+          if (idx >= 0) roster[idx] = codeMatch;
+          else roster = isMember ? [codeMatch] : [codeMatch, ...roster.filter(m => m.id !== codeMatch.id)].slice(0, 1);
+        }
+      } catch {
+        toast("Could not verify Personal Code with the cloud roster.", "error");
+        playSfx("error");
+        return;
+      }
+    }
     if (enteredCode && !codeMatch && !editingId) {
       toast("Personal Code not found. Check the code or leave it blank to create a review entry.", "error");
       playSfx("error");
@@ -1392,14 +1438,30 @@
       note: needsReview ? "Submitted without Personal Code" : (revealCode ? "Personal Code assigned" : "")
     });
     queueCloudOutbox(member);
+    if (!isAdmin && member.personalCode && (actionLabel === "code-overwrite" || actionLabel === "create" || actionLabel === "claim-legacy")) {
+      memberSession = {
+        personalCode: normalizePersonalCode(member.personalCode),
+        memberId: member.id,
+        name: member.name,
+        rank: member.rank,
+        roleTier: "R1-R3"
+      };
+      isMember = true;
+      sessionStorage.setItem(MEMBER_SESSION_KEY, JSON.stringify(memberSession));
+      roster = [member];
+      applyAccessMode();
+    }
     renderAll();
     setSavingUi(true);
 
     try {
-      // Pull latest shared roster, then push so every device sees this submit
-      await pullCloudRoster({ silent: true });
-      member = upsertMember(member);
-      saveRoster();
+      // Leadership refreshes full roster first; members/public only push scoped submit
+      if (isAdmin) {
+        await pullCloudRoster({ silent: true });
+        member = upsertMember(member);
+        saveRoster();
+        queueCloudOutbox(member);
+      }
       const synced = await pushCloudRosterWithRetry({ silent: true });
       if (revealCode || actionLabel === "claim-legacy" || actionLabel === "needs-review") {
         pendingPersonalCodeReveal = member.personalCode;
@@ -1407,6 +1469,7 @@
       }
       if (synced) {
         clearCloudOutboxMember(member.id);
+        if (isMember) await pullMemberSelf({ silent: true });
         const reviewNote = needsReview ? " Flagged for admin review." : "";
         toast(
           actionLabel === "code-overwrite" || actionLabel === "admin-update" || actionLabel === "claim-legacy"
@@ -1488,12 +1551,21 @@
   }
 
   function openMemberDrawer(id, field = null) {
-    if (!isAdmin) {
-      openAdminModal();
-      return;
-    }
     const member = roster.find(item => item.id === id);
     if (!member || !el.memberDrawer || !el.memberDrawerBody) return;
+
+    const canEdit =
+      isAdmin ||
+      (isMember &&
+        memberSession &&
+        (member.id === memberSession.memberId ||
+          normalizePersonalCode(member.personalCode) === normalizePersonalCode(memberSession.personalCode)));
+
+    if (!canEdit) {
+      if (!isAdmin && !isMember) openMemberModal();
+      else if (!isAdmin) openAdminModal();
+      return;
+    }
 
     const sameMemberOpen = el.memberDrawer.classList.contains("open") && drawerMemberId === id;
     drawerMemberId = member.id;
@@ -1564,12 +1636,12 @@
           <button type="button" class="drawer-field-row" data-edit-field="plaza" data-id="${member.id}">
             <span>Rally Plaza</span><strong>${formatTroops(member.rallyCapacity || 0)}</strong>
           </button>
-          <button type="button" class="drawer-field-row" data-edit-field="personalCode" data-id="${member.id}">
+          ${isAdmin ? `<button type="button" class="drawer-field-row" data-edit-field="personalCode" data-id="${member.id}">
             <span>Personal Code</span><strong>${escapeHtml(member.personalCode || "—")}</strong>
           </button>
           <button type="button" class="drawer-field-row" data-edit-field="needsReview" data-id="${member.id}">
             <span>Needs review (-updt)</span><strong>${memberNeedsReview(member) ? "Yes" : "No"}</strong>
-          </button>
+          </button>` : `<div class="drawer-field-row is-static"><span>Personal Code</span><strong>${escapeHtml(member.personalCode || "—")}</strong></div>`}
           ${apcRows}
         </div>`;
       return;
@@ -1645,14 +1717,25 @@
     drawerMemberId = null;
     drawerField = null;
     drawerFromOverview = false;
-    if (!el.adminModal?.classList.contains("open") && !el.deleteModal?.classList.contains("open") && !el.syncModal?.classList.contains("open") && !el.personalCodeModal?.classList.contains("open")) {
+    if (!el.adminModal?.classList.contains("open") && !el.deleteModal?.classList.contains("open") && !el.syncModal?.classList.contains("open") && !el.personalCodeModal?.classList.contains("open") && !el.memberModal?.classList.contains("open")) {
       document.body.classList.remove("modal-open");
     }
     if (lastFocusedElement?.focus) lastFocusedElement.focus();
   }
 
   async function saveMemberDrawer() {
-    if (!isAdmin || !drawerMemberId || !drawerField) return;
+    const canEdit =
+      isAdmin ||
+      (isMember &&
+        memberSession &&
+        drawerMemberId &&
+        (drawerMemberId === memberSession.memberId ||
+          roster.some(
+            m =>
+              m.id === drawerMemberId &&
+              normalizePersonalCode(m.personalCode) === normalizePersonalCode(memberSession.personalCode)
+          )));
+    if (!canEdit || !drawerMemberId || !drawerField) return;
     const previous = roster.find(m => m.id === drawerMemberId);
     if (!previous) {
       closeMemberDrawer();
@@ -1751,11 +1834,22 @@
       action: "field-edit",
       memberId: member.id,
       memberName: member.name,
-      actor: adminSession?.name || "admin",
+      actor: isAdmin ? (adminSession?.name || "admin") : "member",
       fields,
       note: `Edited ${editedLabel}`
     });
     queueCloudOutbox(member);
+
+    if (isMember && memberSession) {
+      memberSession = {
+        ...memberSession,
+        memberId: member.id,
+        name: member.name,
+        rank: member.rank,
+        personalCode: normalizePersonalCode(member.personalCode || memberSession.personalCode)
+      };
+      sessionStorage.setItem(MEMBER_SESSION_KEY, JSON.stringify(memberSession));
+    }
 
     if (drawerFromOverview) {
       drawerField = null;
@@ -2086,7 +2180,7 @@
               <span class="tag ${gap.met ? "gap-ok" : "gap-bad"}">${formatGap(gap)}</span>
               ${stale ? '<span class="tag stale">Stale</span>' : ""}
               ${review ? '<span class="tag needs-review">Needs review</span>' : ""}
-              ${member.personalCode ? `<button type="button" class="tag personal-code field-tap" data-edit-field="personalCode" data-id="${member.id}" title="Edit Personal Code">${escapeHtml(member.personalCode)}</button>` : ""}
+              ${isAdmin && member.personalCode ? `<button type="button" class="tag personal-code field-tap" data-edit-field="personalCode" data-id="${member.id}" title="Edit Personal Code">${escapeHtml(member.personalCode)}</button>` : (member.personalCode ? `<span class="tag personal-code">${escapeHtml(member.personalCode)}</span>` : "")}
             </div>
             <button type="button" class="member-name field-tap" data-edit-field="name" data-id="${member.id}" title="Edit name">${escapeHtml(member.name)}</button>
             <div class="member-sub">${escapeHtml(getRallyGateReason(member))} · <button type="button" class="inline-field-tap" data-edit-field="plaza" data-id="${member.id}" title="Edit Plaza">Plaza ${formatTroops(member.rallyCapacity || 0)}</button> · Updated ${timeAgo(member.updated)}</div>
@@ -2107,10 +2201,10 @@
               Fields
             </button>
             ${member.personalCode ? `<button class="card-action" type="button" data-action="copy-code" data-code="${escapeHtml(member.personalCode)}" title="Copy Personal Code">Code</button>` : ""}
-            ${review ? `<button class="card-action" type="button" data-action="clear-review" data-id="${member.id}" title="Mark reviewed">OK</button>` : ""}
-            <button class="card-action delete" type="button" data-action="delete" data-id="${member.id}" title="Delete">
+            ${isAdmin && review ? `<button class="card-action" type="button" data-action="clear-review" data-id="${member.id}" title="Mark reviewed">OK</button>` : ""}
+            ${isAdmin ? `<button class="card-action delete" type="button" data-action="delete" data-id="${member.id}" title="Delete">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 7h12l-1 14H7L7 7Zm3-4h6l1 2h4v2H4V5h4l1-2Z"/></svg>
-            </button>
+            </button>` : ""}
           </div>
         </article>`;
     }).join("");
@@ -2577,8 +2671,9 @@
     playSfx("success");
   }
 
-  function applyAdminMode() {
+  function applyAccessMode() {
     document.body.classList.toggle("admin-mode", isAdmin);
+    document.body.classList.toggle("member-mode", isMember && !isAdmin);
     const who = adminSession?.name ? ` · ${adminSession.name}` : "";
     if (el.adminAccessLabel) {
       const full = isAdmin ? `Exit admin${who}` : "Admin access";
@@ -2590,17 +2685,57 @@
       if (shortEl) shortEl.textContent = short;
     }
     el.adminAccessBtn.setAttribute("aria-pressed", String(isAdmin));
+    if (el.memberAccessLabel) {
+      const mName = memberSession?.name ? ` · ${memberSession.name}` : "";
+      const full = isMember ? `Lock profile${mName}` : "My profile";
+      const short = isMember ? `Lock${mName}` : "Profile";
+      el.memberAccessLabel.innerHTML = `<span class="member-label-full"></span><span class="member-label-short"></span>`;
+      const fullEl = el.memberAccessLabel.querySelector(".member-label-full");
+      const shortEl = el.memberAccessLabel.querySelector(".member-label-short");
+      if (fullEl) fullEl.textContent = full;
+      if (shortEl) shortEl.textContent = short;
+    }
+    el.memberAccessBtn?.setAttribute("aria-pressed", String(isMember));
+    if (el.memberProfilePanel) {
+      if (isMember && !isAdmin) el.memberProfilePanel.removeAttribute("hidden");
+      else el.memberProfilePanel.setAttribute("hidden", "");
+    }
     if (!isAdmin) {
       clearAdminViews();
       clearAdminCommsUi();
-    } else {
-      // keep shared sync loop running for everyone; admin just sees roster UI
     }
+    if (!isMember) clearMemberProfileUi();
+  }
+
+  function applyAdminMode() {
+    applyAccessMode();
+  }
+
+  function handleMemberAccess() {
+    if (isAdmin) {
+      toast("Exit leadership mode to unlock a personal profile.", "error");
+      return;
+    }
+    if (isMember) {
+      logoutMemberSession();
+      return;
+    }
+    openMemberModal();
+  }
+
+  function openMemberModal() {
+    if (!el.memberModal) return;
+    if (el.memberError) el.memberError.textContent = "";
+    if (el.memberCodeInput) {
+      el.memberCodeInput.value = recallPersonalCodeHint() || memberSession?.personalCode || "";
+    }
+    openModal("member", el.memberCodeInput);
+    playSfx("transition");
   }
 
   function handleAdminAccess() {
     if (isAdmin) {
-      void logoutAdminSession({ toastMessage: "Admin session closed." });
+      void logoutAdminSession({ toastMessage: "Leadership session closed." });
       return;
     }
     openAdminModal();
@@ -2620,7 +2755,9 @@
         ? el.syncModal
         : name === "personalCode"
           ? el.personalCodeModal
-          : el.adminModal;
+          : name === "member"
+            ? el.memberModal
+            : el.adminModal;
     if (!modal) return;
     lastFocusedElement = document.activeElement;
     modal.classList.add("open");
@@ -2636,7 +2773,9 @@
         ? el.syncModal
         : name === "personalCode"
           ? el.personalCodeModal
-          : el.adminModal;
+          : name === "member"
+            ? el.memberModal
+            : el.adminModal;
     if (!modal) return;
     modal.classList.remove("open");
     modal.setAttribute("aria-hidden", "true");
@@ -2645,11 +2784,13 @@
       && !el.deleteModal.classList.contains("open")
       && !el.syncModal?.classList.contains("open")
       && !el.personalCodeModal?.classList.contains("open")
+      && !el.memberModal?.classList.contains("open")
       && !el.memberDrawer?.classList.contains("open")
     ) {
       document.body.classList.remove("modal-open");
     }
     if (name === "admin") el.adminError.textContent = "";
+    if (name === "member" && el.memberError) el.memberError.textContent = "";
     if (name === "delete") pendingDeleteId = null;
     if (name === "sync" && el.syncError) el.syncError.textContent = "";
     if (name === "personalCode") pendingPersonalCodeReveal = null;
@@ -2689,20 +2830,195 @@
       return;
     }
 
+    // Leadership session clears any personal member unlock
+    memberSession = null;
+    isMember = false;
+    sessionStorage.removeItem(MEMBER_SESSION_KEY);
+
     adminSession = {
       id: account.id,
       name: account.name,
-      sessionId: createAdminSessionId()
+      sessionId: createAdminSessionId(),
+      code
     };
     isAdmin = true;
     sessionStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(adminSession));
     closeModal("admin");
-    applyAdminMode();
+    applyAccessMode();
     await startAdminRealtime({ claim: true });
     await pullCloudRoster({ silent: true });
     renderAll();
-    toast(`Welcome, <strong>${escapeHtml(account.name)}</strong>. Shared roster synced.`, "success");
+    toast(`Welcome, <strong>${escapeHtml(account.name)}</strong>. Leadership roster synced.`, "success");
     playSfx("success");
+  }
+
+  async function attemptMemberLogin() {
+    const code = normalizePersonalCode(el.memberCodeInput?.value || "");
+    if (!code) {
+      if (el.memberError) el.memberError.textContent = "Enter your Personal Code.";
+      playSfx("error");
+      return;
+    }
+    if (!isCloudConfigured() || !usesNetlifyCloud()) {
+      if (el.memberError) el.memberError.textContent = "Cloud roster is not configured.";
+      playSfx("error");
+      return;
+    }
+
+    if (el.memberLoginBtn) el.memberLoginBtn.disabled = true;
+    try {
+      const response = await fetch(getConfig().cloudApiUrl, {
+        cache: "no-store",
+        headers: { "X-PHL-Personal-Code": code }
+      });
+      let data = null;
+      try { data = await response.json(); } catch { data = null; }
+      if (response.status === 404) {
+        if (el.memberError) el.memberError.textContent = "Personal Code not found.";
+        playSfx("error");
+        return;
+      }
+      if (!response.ok) {
+        if (el.memberError) el.memberError.textContent = data?.error || `Unlock failed (${response.status})`;
+        playSfx("error");
+        return;
+      }
+      const member = Array.isArray(data?.members) ? sanitizeMember(data.members[0]) : null;
+      if (!member) {
+        if (el.memberError) el.memberError.textContent = "No profile returned for that code.";
+        playSfx("error");
+        return;
+      }
+
+      memberSession = {
+        personalCode: normalizePersonalCode(member.personalCode || code),
+        memberId: member.id,
+        name: member.name,
+        rank: member.rank,
+        roleTier: "R1-R3"
+      };
+      isMember = true;
+      sessionStorage.setItem(MEMBER_SESSION_KEY, JSON.stringify(memberSession));
+      rememberPersonalCode(member.name, memberSession.personalCode);
+      roster = [member];
+      changeHistory = [];
+      saveRoster();
+      saveHistory();
+      closeModal("member");
+      applyAccessMode();
+      renderAll();
+      toast(`Unlocked <strong>${escapeHtml(member.name)}</strong> — personal view only.`, "success");
+      playSfx("success");
+    } catch {
+      if (el.memberError) el.memberError.textContent = "Could not reach the roster API.";
+      playSfx("error");
+    } finally {
+      if (el.memberLoginBtn) el.memberLoginBtn.disabled = false;
+    }
+  }
+
+  function logoutMemberSession({ toastMessage = "Personal profile locked.", playClick = true } = {}) {
+    memberSession = null;
+    isMember = false;
+    sessionStorage.removeItem(MEMBER_SESSION_KEY);
+    roster = [];
+    changeHistory = [];
+    saveRoster();
+    saveHistory();
+    applyAccessMode();
+    renderAll();
+    if (toastMessage) toast(toastMessage, "success");
+    if (playClick) playSfx("click");
+  }
+
+  function loadMemberSession() {
+    try {
+      const raw = sessionStorage.getItem(MEMBER_SESSION_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      const personalCode = normalizePersonalCode(parsed?.personalCode);
+      if (!personalCode || !parsed?.memberId) return null;
+      return {
+        personalCode,
+        memberId: String(parsed.memberId),
+        name: String(parsed.name || ""),
+        rank: RANKS.includes(parsed.rank) ? parsed.rank : "R1",
+        roleTier: "R1-R3"
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  function enforceLocalRosterScope() {
+    if (isAdmin) return;
+    if (isMember && memberSession) {
+      const code = normalizePersonalCode(memberSession.personalCode);
+      roster = roster
+        .map(sanitizeMember)
+        .filter(Boolean)
+        .filter(
+          m =>
+            m.id === memberSession.memberId ||
+            normalizePersonalCode(m.personalCode) === code
+        );
+      changeHistory = [];
+    } else {
+      roster = [];
+      changeHistory = [];
+    }
+    saveRoster();
+    saveHistory();
+  }
+
+  function clearMemberProfileUi() {
+    if (el.memberProfileList) el.memberProfileList.innerHTML = "";
+    if (el.memberProfileResult) el.memberProfileResult.textContent = "Not unlocked";
+  }
+
+  function renderMemberProfile() {
+    if (!el.memberProfileList || !isMember) return;
+    const member = roster.find(
+      m =>
+        m.id === memberSession?.memberId ||
+        normalizePersonalCode(m.personalCode) === normalizePersonalCode(memberSession?.personalCode)
+    );
+    if (!member) {
+      el.memberProfileList.innerHTML = `<div class="empty"><strong>Profile not loaded</strong><p>Re-enter your Personal Code to unlock.</p></div>`;
+      if (el.memberProfileResult) el.memberProfileResult.textContent = "0 profiles";
+      return;
+    }
+    if (el.memberProfileTitle) el.memberProfileTitle.textContent = member.name;
+    if (el.memberProfileSub) {
+      el.memberProfileSub.textContent = `${member.rank || "R1"} · Personal Code ${member.personalCode || "—"} · tap fields to edit`;
+    }
+    if (el.memberProfileResult) el.memberProfileResult.textContent = "1 profile · private";
+
+    // Reuse admin card markup into the member list (single record)
+    const previousList = el.rosterList;
+    const previousResult = el.resultText;
+    el.rosterList = el.memberProfileList;
+    el.resultText = el.memberProfileResult || previousResult;
+    const savedFilter = {
+      search: el.searchInput?.value,
+      level: el.levelFilter?.value,
+      rank: el.rankFilter?.value,
+      status: el.statusFilter?.value,
+      sort: el.sortSelect?.value
+    };
+    if (el.searchInput) el.searchInput.value = "";
+    if (el.levelFilter) el.levelFilter.value = "all";
+    if (el.rankFilter) el.rankFilter.value = "all";
+    if (el.statusFilter) el.statusFilter.value = "all";
+    if (el.sortSelect) el.sortSelect.value = "updated-desc";
+    renderRoster();
+    el.rosterList = previousList;
+    el.resultText = previousResult;
+    if (el.searchInput) el.searchInput.value = savedFilter.search || "";
+    if (el.levelFilter) el.levelFilter.value = savedFilter.level || "all";
+    if (el.rankFilter) el.rankFilter.value = savedFilter.rank || "all";
+    if (el.statusFilter) el.statusFilter.value = savedFilter.status || "all";
+    if (el.sortSelect) el.sortSelect.value = savedFilter.sort || "total-desc";
   }
 
   function getAdminAccounts() {
@@ -2721,11 +3037,16 @@
       const raw = sessionStorage.getItem(ADMIN_SESSION_KEY);
       if (!raw) return null;
       const parsed = JSON.parse(raw);
-      if (!parsed?.id || !parsed?.name) return null;
+      if (!parsed?.id || !parsed?.name || !parsed?.code) return null;
       const stillValid = getAdminAccounts().some(admin => admin.id === parsed.id);
       if (!stillValid) return null;
       const sessionId = parsed.sessionId ? String(parsed.sessionId) : createAdminSessionId();
-      const session = { id: parsed.id, name: parsed.name, sessionId };
+      const session = {
+        id: parsed.id,
+        name: parsed.name,
+        sessionId,
+        code: String(parsed.code)
+      };
       if (!parsed.sessionId) {
         sessionStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(session));
       }
@@ -2754,11 +3075,12 @@
   }
 
   function adminRealtimePayload(extra = {}) {
-    if (!adminSession?.id || !adminSession?.name || !adminSession?.sessionId) return null;
+    if (!adminSession?.id || !adminSession?.name || !adminSession?.sessionId || !adminSession?.code) return null;
     return {
       adminId: adminSession.id,
       adminName: adminSession.name,
       sessionId: adminSession.sessionId,
+      adminCode: adminSession.code,
       ...extra
     };
   }
@@ -2945,13 +3267,13 @@
     isAdmin = false;
     adminSession = null;
     sessionStorage.removeItem(ADMIN_SESSION_KEY);
-    applyAdminMode();
+    applyAccessMode();
     renderAll();
     toast("Your admin session was taken over on another device.", "error");
     playSfx("error");
   }
 
-  async function logoutAdminSession({ toastMessage = "Admin session closed.", playClick = true } = {}) {
+  async function logoutAdminSession({ toastMessage = "Leadership session closed.", playClick = true } = {}) {
     stopAdminRealtimePolling();
     const base = getAdminRealtimeUrl();
     const body = adminRealtimePayload();
@@ -2970,7 +3292,12 @@
     isAdmin = false;
     adminSession = null;
     sessionStorage.removeItem(ADMIN_SESSION_KEY);
-    applyAdminMode();
+    // Drop leadership-loaded roster from memory
+    roster = [];
+    changeHistory = [];
+    saveRoster();
+    saveHistory();
+    applyAccessMode();
     renderAll();
     toast(toastMessage, "success");
     if (playClick) playSfx("click");
@@ -3817,6 +4144,64 @@
     };
   }
 
+  function getRosterAuthHeaders(extra = {}) {
+    const headers = { ...extra };
+    const inlineCode = normalizePersonalCode(headers.personalCode || "");
+    delete headers.personalCode;
+    if (isAdmin && adminSession?.id && adminSession?.code) {
+      headers["X-PHL-Admin-Id"] = adminSession.id;
+      headers["X-PHL-Admin-Code"] = adminSession.code;
+      if (adminSession.sessionId) headers["X-PHL-Admin-Session"] = adminSession.sessionId;
+    } else if (memberSession?.personalCode) {
+      headers["X-PHL-Personal-Code"] = normalizePersonalCode(memberSession.personalCode);
+    } else if (inlineCode) {
+      headers["X-PHL-Personal-Code"] = inlineCode;
+    }
+    return headers;
+  }
+
+  async function fetchMemberByPersonalCode(code) {
+    const normalized = normalizePersonalCode(code);
+    if (!normalized || !isCloudConfigured() || !usesNetlifyCloud()) return null;
+    const response = await fetch(getConfig().cloudApiUrl, {
+      cache: "no-store",
+      headers: { "X-PHL-Personal-Code": normalized }
+    });
+    if (response.status === 404) return null;
+    if (!response.ok) throw new Error(`Lookup failed (${response.status})`);
+    const data = await response.json();
+    const member = Array.isArray(data?.members) ? sanitizeMember(data.members[0]) : null;
+    return member;
+  }
+
+  async function pullMemberSelf({ silent = false } = {}) {
+    if (!memberSession?.personalCode) return false;
+    try {
+      const member = await fetchMemberByPersonalCode(memberSession.personalCode);
+      if (!member) {
+        if (!silent) toast("Personal Code no longer found.", "error");
+        logoutMemberSession({ toastMessage: "", playClick: false });
+        return false;
+      }
+      memberSession = {
+        ...memberSession,
+        memberId: member.id,
+        name: member.name,
+        rank: member.rank,
+        personalCode: normalizePersonalCode(member.personalCode || memberSession.personalCode)
+      };
+      sessionStorage.setItem(MEMBER_SESSION_KEY, JSON.stringify(memberSession));
+      roster = [member];
+      changeHistory = [];
+      saveRoster();
+      saveHistory();
+      renderAll();
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   function getCloudUrl() {
     const cfg = getConfig();
     return `${cfg.supabaseUrl.replace(/\/$/, "")}/rest/v1/phl_roster?alliance_id=eq.${encodeURIComponent(getAllianceId())}`;
@@ -3857,14 +4242,28 @@
       }
       return false;
     }
+    if (!isAdmin) {
+      if (isMember) return pullMemberSelf({ silent });
+      if (!silent) {
+        if (el.syncError) el.syncError.textContent = "Leadership login required to pull the full roster.";
+        playSfx("error");
+      }
+      return false;
+    }
     try {
       let remoteMembers = [];
       let remoteHistory = [];
       let remoteUpdatedAt = null;
       if (usesNetlifyCloud()) {
-        const response = await fetch(getConfig().cloudApiUrl, { cache: "no-store" });
+        const response = await fetch(getConfig().cloudApiUrl, {
+          cache: "no-store",
+          headers: getRosterAuthHeaders()
+        });
         if (!response.ok) throw new Error(`Pull failed (${response.status})`);
         const data = await response.json();
+        if (data?.scope && data.scope !== "leadership") {
+          throw new Error("Leadership credentials rejected by API");
+        }
         remoteMembers = Array.isArray(data.members) ? data.members : [];
         remoteHistory = Array.isArray(data.history) ? data.history : [];
         remoteUpdatedAt = data.updated_at || null;
@@ -3937,34 +4336,97 @@
       return false;
     }
     try {
-      const members = roster.filter(member => !member.isDemo);
-      const deletedIds = [...pendingDeletedIds];
+      const deletedIds = isAdmin ? [...pendingDeletedIds] : [];
       if (usesNetlifyCloud()) {
+        let members;
+        let authHeaders;
+        let historyPayload = [];
+
+        if (isAdmin) {
+          members = roster.filter(member => !member.isDemo);
+          authHeaders = getRosterAuthHeaders({ "Content-Type": "application/json" });
+          historyPayload = changeHistory;
+        } else {
+          const pending = readCloudOutbox();
+          members = pending.length
+            ? pending
+            : roster.filter(m => !m.isDemo).slice(0, 5);
+          if (!members.length) return true;
+          const code =
+            normalizePersonalCode(memberSession?.personalCode) ||
+            normalizePersonalCode(members[0]?.personalCode) ||
+            "";
+          authHeaders = getRosterAuthHeaders({
+            "Content-Type": "application/json",
+            ...(code ? { personalCode: code } : {})
+          });
+        }
+
         const response = await fetch(getConfig().cloudApiUrl, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: authHeaders,
           body: JSON.stringify({
             alliance_id: getAllianceId(),
             members,
-            history: changeHistory,
+            history: historyPayload,
             deleted_ids: deletedIds,
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
+            ...(authHeaders["X-PHL-Personal-Code"]
+              ? { personalCode: authHeaders["X-PHL-Personal-Code"] }
+              : {})
           })
         });
-        if (!response.ok) throw new Error(`Push failed (${response.status})`);
+        if (!response.ok) {
+          let errMsg = `Push failed (${response.status})`;
+          try {
+            const errBody = await response.json();
+            if (errBody?.error) errMsg = errBody.error;
+          } catch { /* ignore */ }
+          throw new Error(errMsg);
+        }
         const data = await response.json();
         if (Array.isArray(data.members)) {
-          const demos = roster.filter(member => member.isDemo);
-          // Keep any local non-demo rows that might not be in the response yet
-          roster = [...mergeRosterLists(members, data.members), ...demos];
-          for (const id of deletedIds) {
-            if (!roster.some(member => member.id === id)) pendingDeletedIds.delete(id);
-          }
-          if (Array.isArray(data.history)) {
-            changeHistory = mergeHistoryLists(changeHistory, data.history);
+          if (isAdmin) {
+            const demos = roster.filter(member => member.isDemo);
+            roster = [...mergeRosterLists(members, data.members), ...demos];
+            for (const id of deletedIds) {
+              if (!roster.some(member => member.id === id)) pendingDeletedIds.delete(id);
+            }
+            if (Array.isArray(data.history)) {
+              changeHistory = mergeHistoryLists(changeHistory, data.history);
+              saveHistory();
+            }
+            lastCloudFingerprint = rosterFingerprint(data.members, data.updated_at);
+          } else {
+            // Keep only accepted self/submit rows — never absorb a full roster
+            const accepted = data.members.map(sanitizeMember).filter(Boolean);
+            if (isMember && memberSession) {
+              const mine =
+                accepted.find(
+                  m =>
+                    normalizePersonalCode(m.personalCode) ===
+                      normalizePersonalCode(memberSession.personalCode) ||
+                    m.id === memberSession.memberId
+                ) || accepted[0];
+              if (mine) {
+                roster = [mine];
+                memberSession = {
+                  ...memberSession,
+                  memberId: mine.id,
+                  name: mine.name,
+                  rank: mine.rank,
+                  personalCode: normalizePersonalCode(mine.personalCode || memberSession.personalCode)
+                };
+                sessionStorage.setItem(MEMBER_SESSION_KEY, JSON.stringify(memberSession));
+              }
+            } else if (accepted.length) {
+              // Anonymous submit: do not retain alliance data locally
+              const last = accepted[accepted.length - 1];
+              roster = last ? [last] : [];
+            }
+            changeHistory = [];
             saveHistory();
           }
-          lastCloudFingerprint = rosterFingerprint(data.members, data.updated_at);
           saveRoster();
           renderAll();
         }
@@ -3972,7 +4434,7 @@
         const cfg = getConfig();
         const payload = {
           alliance_id: getAllianceId(),
-          members,
+          members: roster.filter(member => !member.isDemo),
           updated_at: new Date().toISOString()
         };
         const response = await fetch(`${cfg.supabaseUrl.replace(/\/$/, "")}/rest/v1/phl_roster`, {
@@ -4062,9 +4524,11 @@
   async function flushCloudOutbox() {
     if (!isCloudConfigured()) return false;
     const pending = readCloudOutbox();
-    if (!pending.length && !pendingDeletedIds.size) return true;
-    for (const member of pending) upsertMember(member);
-    saveRoster();
+    if (!pending.length && !(isAdmin && pendingDeletedIds.size)) return true;
+    if (isAdmin) {
+      for (const member of pending) upsertMember(member);
+      saveRoster();
+    }
     const ok = await pushCloudRosterWithRetry({ silent: true });
     if (ok) writeCloudOutbox([]);
     return ok;
@@ -4084,7 +4548,11 @@
     cloudSyncTimer = window.setInterval(() => {
       if (document.hidden) return;
       flushCloudOutbox()
-        .then(() => (isAdmin ? pullCloudRoster({ silent: true }) : Promise.resolve()))
+        .then(() => {
+          if (isAdmin) return pullCloudRoster({ silent: true });
+          if (isMember) return pullMemberSelf({ silent: true });
+          return Promise.resolve();
+        })
         .catch(() => {});
     }, 12000);
     window.addEventListener("focus", onSharedWindowFocus);
@@ -4102,7 +4570,11 @@
 
   function onSharedWindowFocus() {
     flushCloudOutbox()
-      .then(() => (isAdmin ? pullCloudRoster({ silent: true }) : Promise.resolve()))
+      .then(() => {
+        if (isAdmin) return pullCloudRoster({ silent: true });
+        if (isMember) return pullMemberSelf({ silent: true });
+        return Promise.resolve();
+      })
       .catch(() => {});
   }
 

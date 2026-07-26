@@ -631,6 +631,15 @@ body.admin-mode .admin-comms-panel{display:block}
 /* Admin-only privacy layer */
 .admin-only{display:none!important}
 body.admin-mode .admin-only{display:grid!important}
+.member-only{display:none!important}
+body.member-mode .member-only{display:grid!important}
+body.member-mode #memberProfilePanel{display:grid!important;gap:12px;margin:0 0 18px;padding:16px 18px;border:1px solid rgba(240,186,114,.18);border-radius:16px;background:linear-gradient(180deg,rgba(42,18,14,.72),rgba(18,8,6,.88))}
+body.member-mode #memberProfilePanel[hidden]{display:none!important}
+body.admin-mode .btn-member{display:none!important}
+body.member-mode .btn-member{border-color:rgba(240,186,114,.35);color:var(--accent,#f0ba72);background:linear-gradient(180deg,rgba(240,186,114,.14),rgba(240,186,114,.04))}
+body.member-mode .member-dot{background:linear-gradient(180deg,#ffe3a5,#f0ba72);box-shadow:0 0 14px rgba(240,186,114,.35)}
+.btn-member{border-color:rgba(240,186,114,.22);color:var(--text,#f6e8d8);background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.015))}
+.member-dot{background:linear-gradient(180deg,#c4a574,#8a6a3e)}
 /* Header action cluster must beat blanket .admin-only { display:grid } */
 body.admin-mode .top-actions-admin{
   display:flex!important;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:8px

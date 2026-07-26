@@ -1,12 +1,18 @@
 import { getStore } from "@netlify/blobs";
+import {
+  AUTH_CORS_HEADERS,
+  normalizePersonalCode,
+  resolveCallerAuth
+} from "./_auth.mjs";
 
 const STORE_NAME = "phl-roster";
 const KEY = "alliance-phl";
 const HISTORY_CAP = 300;
+const PERSONAL_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "Content-Type",
+  "Access-Control-Allow-Headers": AUTH_CORS_HEADERS,
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS"
 };
 
@@ -25,12 +31,11 @@ function normalizeMembers(list) {
   return list
     .filter(item => item && typeof item === "object" && String(item.name || "").trim())
     .map(item => {
-      const personalCode = String(item.personalCode || "")
-        .trim()
-        .toUpperCase()
-        .replace(/[^A-Z0-9-]/g, "")
-        .slice(0, 16);
-      const needsReview = Boolean(item.needsReview) || /\]-updt$/i.test(String(item.name || "")) || /-updt$/i.test(String(item.name || ""));
+      const personalCode = normalizePersonalCode(item.personalCode);
+      const needsReview =
+        Boolean(item.needsReview) ||
+        /\]-updt$/i.test(String(item.name || "")) ||
+        /-updt$/i.test(String(item.name || ""));
       return {
         ...item,
         id: String(item.id || ""),
@@ -108,7 +113,6 @@ function mergeMembers(existing, incoming) {
   for (const member of normalizeMembers(incoming)) {
     const prev = map.get(member.id);
     if (!prev || Number(member.updated || 0) >= Number(prev.updated || 0)) {
-      // Preserve personalCode if incoming omits it but previous had one
       const merged = { ...member };
       if (!merged.personalCode && prev?.personalCode) merged.personalCode = prev.personalCode;
       map.set(member.id, merged);
@@ -122,7 +126,6 @@ function mergeMembers(existing, incoming) {
       byName.set(key, member);
     }
   }
-  // Keep personalCode uniqueness — newer wins
   const byCode = new Map();
   const withoutCode = [];
   for (const member of byName.values()) {
@@ -136,7 +139,9 @@ function mergeMembers(existing, incoming) {
       byCode.set(code, member);
     }
   }
-  return [...byCode.values(), ...withoutCode].sort((a, b) => Number(b.updated || 0) - Number(a.updated || 0));
+  return [...byCode.values(), ...withoutCode].sort(
+    (a, b) => Number(b.updated || 0) - Number(a.updated || 0)
+  );
 }
 
 function applyTombstones(members, tombstones) {
@@ -144,7 +149,6 @@ function applyTombstones(members, tombstones) {
   return normalizeMembers(members).filter(member => {
     const deletedAt = stones[member.id];
     if (!deletedAt) return true;
-    // Resurrect only if member was updated after the delete
     return Number(member.updated || 0) > deletedAt;
   });
 }
@@ -174,6 +178,183 @@ async function readRoster(store) {
   }
 }
 
+function findByPersonalCode(members, code) {
+  const normalized = normalizePersonalCode(code);
+  if (!normalized) return null;
+  return (
+    normalizeMembers(members).find(
+      m => normalizePersonalCode(m.personalCode) === normalized
+    ) || null
+  );
+}
+
+function findByName(members, name, excludeId = null) {
+  const key = String(name || "").trim().toLowerCase();
+  if (!key) return null;
+  return (
+    normalizeMembers(members).find(
+      m => m.name.toLowerCase() === key && m.id !== excludeId
+    ) || null
+  );
+}
+
+function generatePersonalCode(existingMembers) {
+  const used = new Set(
+    normalizeMembers(existingMembers).map(m => normalizePersonalCode(m.personalCode)).filter(Boolean)
+  );
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    let code = "PHL-";
+    for (let i = 0; i < 6; i += 1) {
+      code += PERSONAL_CODE_CHARS[Math.floor(Math.random() * PERSONAL_CODE_CHARS.length)];
+    }
+    if (!used.has(code)) return code;
+  }
+  return `PHL-${Date.now().toString(36).toUpperCase().slice(-6)}`;
+}
+
+function makeUpdateReviewName(baseName) {
+  const clean = String(baseName || "member")
+    .trim()
+    .replace(/\[|\]/g, "")
+    .replace(/-updt\d*$/i, "")
+    .replace(/\s+/g, "")
+    .slice(0, 24);
+  return `${clean || "member"}-updt`.slice(0, 30);
+}
+
+function cryptoId() {
+  if (globalThis.crypto?.randomUUID) return crypto.randomUUID();
+  return `m-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function selfPayload(data, member) {
+  return {
+    alliance_id: "phl",
+    scope: "self",
+    role: "member",
+    tier: "R1-R3",
+    members: member ? [member] : [],
+    history: [],
+    tombstones: {},
+    updated_at: data.updated_at || null
+  };
+}
+
+function publicPayload(data) {
+  return {
+    alliance_id: "phl",
+    scope: "public",
+    role: "public",
+    tier: "anonymous",
+    members: [],
+    history: [],
+    tombstones: {},
+    updated_at: data.updated_at || null
+  };
+}
+
+function leadershipPayload(data) {
+  return {
+    alliance_id: "phl",
+    scope: "leadership",
+    role: "leadership",
+    tier: "R4-R5",
+    members: data.members,
+    history: data.history,
+    tombstones: data.tombstones,
+    updated_at: data.updated_at || null
+  };
+}
+
+/**
+ * Apply a single non-admin submit against the existing roster.
+ * Returns { member, historyEvent } or { error, status }.
+ */
+function applyMemberSubmit(existingMembers, incomingRaw, forcedCode = "") {
+  const incomingList = normalizeMembers([incomingRaw]);
+  if (!incomingList.length) return { error: "Invalid member payload", status: 400 };
+  const incoming = incomingList[0];
+  const enteredCode = normalizePersonalCode(forcedCode || incoming.personalCode);
+  const byCode = enteredCode ? findByPersonalCode(existingMembers, enteredCode) : null;
+
+  if (enteredCode && !byCode) {
+    return { error: "Personal Code not found", status: 404 };
+  }
+
+  let target;
+  let action = "create";
+  let note = "";
+
+  if (byCode) {
+    // Authenticated overwrite of own record only
+    target = {
+      ...incoming,
+      id: byCode.id,
+      personalCode: byCode.personalCode,
+      needsReview: false,
+      name: String(incoming.name || byCode.name).trim().slice(0, 30),
+      updated: Number(incoming.updated) || Date.now()
+    };
+    action = "code-overwrite";
+  } else {
+    const existingSameName = findByName(existingMembers, incoming.name);
+    if (existingSameName?.personalCode) {
+      const code = generatePersonalCode(existingMembers);
+      target = {
+        ...incoming,
+        id: cryptoId(),
+        name: makeUpdateReviewName(incoming.name),
+        personalCode: code,
+        needsReview: true,
+        updated: Number(incoming.updated) || Date.now()
+      };
+      action = "needs-review";
+      note = "Submitted without Personal Code";
+    } else if (existingSameName && !existingSameName.personalCode) {
+      const code = generatePersonalCode(existingMembers);
+      target = {
+        ...incoming,
+        id: existingSameName.id,
+        personalCode: code,
+        needsReview: false,
+        name: String(incoming.name || existingSameName.name).trim().slice(0, 30),
+        updated: Number(incoming.updated) || Date.now()
+      };
+      action = "claim-legacy";
+      note = "Personal Code assigned";
+    } else {
+      // New member — reject if id collides with a coded record
+      const byId = existingMembers.find(m => m.id === incoming.id);
+      if (byId?.personalCode) {
+        return { error: "Cannot overwrite protected member without Personal Code", status: 403 };
+      }
+      const code = normalizePersonalCode(incoming.personalCode) || generatePersonalCode(existingMembers);
+      target = {
+        ...incoming,
+        id: byId?.id || incoming.id || cryptoId(),
+        personalCode: code,
+        needsReview: Boolean(incoming.needsReview),
+        updated: Number(incoming.updated) || Date.now()
+      };
+      action = byId ? "update" : "create";
+      note = byId ? "" : "Personal Code assigned";
+    }
+  }
+
+  const historyEvent = {
+    id: cryptoId(),
+    at: Date.now(),
+    action,
+    memberId: target.id,
+    memberName: target.name,
+    actor: "member",
+    fields: [],
+    note
+  };
+
+  return { member: target, historyEvent };
+}
+
 export default async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("", { status: 204, headers: cors });
@@ -183,8 +364,21 @@ export default async (req) => {
     const store = getRosterStore();
 
     if (req.method === "GET") {
+      const auth = await resolveCallerAuth(req);
       const data = await readRoster(store);
-      return json(200, data);
+
+      if (auth.role === "leadership") {
+        return json(200, leadershipPayload(data));
+      }
+
+      if (auth.role === "member") {
+        const member = findByPersonalCode(data.members, auth.personalCode);
+        if (!member) return json(404, { error: "Personal Code not found", scope: "self" });
+        return json(200, selfPayload(data, member));
+      }
+
+      // Anonymous: no roster, no history, no aggregates
+      return json(200, publicPayload(data));
     }
 
     if (req.method === "POST") {
@@ -195,16 +389,90 @@ export default async (req) => {
         return json(400, { error: "Invalid JSON body" });
       }
 
+      const auth = await resolveCallerAuth(req, body);
       const existingRaw = await store.get(KEY, { type: "text" });
       let existing = { members: [], history: [], tombstones: {} };
       if (existingRaw) {
-        try { existing = JSON.parse(existingRaw); } catch { /* ignore */ }
+        try {
+          existing = JSON.parse(existingRaw);
+        } catch {
+          /* ignore */
+        }
       }
 
-      const tombstones = mergeTombstones(existing.tombstones, body.tombstones, body.deleted_ids);
-      const merged = mergeMembers(existing.members, body.members);
-      const members = applyTombstones(merged, tombstones);
-      const history = mergeHistory(existing.history, body.history);
+      const existingLive = applyTombstones(existing.members, existing.tombstones);
+
+      // —— Leadership: full merge ——
+      if (auth.role === "leadership") {
+        const tombstones = mergeTombstones(existing.tombstones, body.tombstones, body.deleted_ids);
+        const merged = mergeMembers(existing.members, body.members);
+        const members = applyTombstones(merged, tombstones);
+        const history = mergeHistory(existing.history, body.history);
+        const payload = {
+          alliance_id: "phl",
+          members,
+          history,
+          tombstones,
+          updated_at: new Date().toISOString()
+        };
+        await store.set(KEY, JSON.stringify(payload), {
+          metadata: { alliance: "phl" }
+        });
+        const saved = await readRoster(store);
+        return json(200, leadershipPayload(saved));
+      }
+
+      // —— Member / public: scoped submit only (never full roster merge) ——
+      const incoming = normalizeMembers(body.members);
+      if (!incoming.length) {
+        return json(400, { error: "No member payload to submit" });
+      }
+
+      // Cap abuse: non-admin may only submit a few records per request
+      const batch = incoming.slice(0, 5);
+      let working = [...existingLive];
+      const accepted = [];
+      const newHistory = [];
+
+      for (const item of batch) {
+        const forcedCode =
+          auth.role === "member"
+            ? auth.personalCode
+            : normalizePersonalCode(item.personalCode || body.personalCode || "");
+
+        // Member session may only touch their own coded record (or create -updt via blank path is blocked)
+        if (auth.role === "member") {
+          const owned = findByPersonalCode(working, auth.personalCode);
+          if (!owned) return json(404, { error: "Personal Code not found" });
+          // Force overwrite path for owned member only
+          const result = applyMemberSubmit(working, { ...item, personalCode: auth.personalCode }, auth.personalCode);
+          if (result.error) return json(result.status || 400, { error: result.error });
+          working = mergeMembers(working, [result.member]);
+          accepted.push(result.member);
+          if (result.historyEvent) newHistory.push(result.historyEvent);
+          continue;
+        }
+
+        const result = applyMemberSubmit(working, item, forcedCode);
+        if (result.error) {
+          // Skip invalid rows in multi-submit rather than failing the whole public push of mixed local state
+          if (batch.length === 1) return json(result.status || 400, { error: result.error });
+          continue;
+        }
+        working = mergeMembers(working, [result.member]);
+        accepted.push(result.member);
+        if (result.historyEvent) newHistory.push(result.historyEvent);
+      }
+
+      if (!accepted.length) {
+        return json(400, { error: "No members accepted" });
+      }
+
+      // Preserve tombstones; non-admin cannot delete
+      const tombstones = normalizeTombstones(existing.tombstones);
+      const members = applyTombstones(working, tombstones);
+      // Non-admin: only append server-authored history (ignore client spoofed events)
+      const history = mergeHistory(existing.history, newHistory);
       const payload = {
         alliance_id: "phl",
         members,
@@ -215,8 +483,17 @@ export default async (req) => {
       await store.set(KEY, JSON.stringify(payload), {
         metadata: { alliance: "phl" }
       });
-      const saved = await readRoster(store);
-      return json(200, saved);
+
+      return json(200, {
+        alliance_id: "phl",
+        scope: auth.role === "member" ? "self" : "submit",
+        role: auth.role,
+        tier: auth.tier,
+        members: accepted,
+        history: [],
+        tombstones: {},
+        updated_at: payload.updated_at
+      });
     }
 
     return json(405, { error: "Method not allowed" });

@@ -1,4 +1,5 @@
 import { getStore } from "@netlify/blobs";
+import { AUTH_CORS_HEADERS, resolveCallerAuth, verifyAdminCredentials } from "./_auth.mjs";
 
 const STORE = "phl-admin-realtime";
 const PRESENCE_KEY = "presence";
@@ -8,7 +9,7 @@ const MAX_CHAT = 200;
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "Content-Type",
+  "Access-Control-Allow-Headers": AUTH_CORS_HEADERS,
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS"
 };
 
@@ -66,20 +67,23 @@ export default async (req) => {
     const url = new URL(req.url);
     const action = (url.searchParams.get("action") || "").toLowerCase();
 
-    if (req.method === "GET" && (action === "presence" || action === "state" || !action)) {
+    // Presence / chat reads require leadership credentials (no public officer list)
+    if (req.method === "GET" && (action === "presence" || action === "state" || action === "chat" || !action)) {
+      const auth = await resolveCallerAuth(req);
+      if (auth.role !== "leadership") {
+        return json(401, { error: "Leadership credentials required", online: [], messages: [] });
+      }
       const presence = prunePresence(await readJson(store, PRESENCE_KEY, {}));
       const chat = await readJson(store, CHAT_KEY, { messages: [] });
+      if (action === "chat") {
+        return json(200, {
+          messages: Array.isArray(chat.messages) ? chat.messages.slice(-MAX_CHAT) : []
+        });
+      }
       return json(200, {
         online: onlineList(presence),
         messages: Array.isArray(chat.messages) ? chat.messages.slice(-MAX_CHAT) : [],
         serverTime: Date.now()
-      });
-    }
-
-    if (req.method === "GET" && action === "chat") {
-      const chat = await readJson(store, CHAT_KEY, { messages: [] });
-      return json(200, {
-        messages: Array.isArray(chat.messages) ? chat.messages.slice(-MAX_CHAT) : []
       });
     }
 
@@ -97,8 +101,14 @@ export default async (req) => {
     const adminId = String(body.adminId || "").trim().toLowerCase();
     const adminName = String(body.adminName || "").trim().slice(0, 40);
     const sessionId = String(body.sessionId || "").trim();
+    const adminCode = String(body.adminCode || "");
     if (!adminId || !adminName || !sessionId) {
       return json(400, { error: "adminId, adminName and sessionId are required" });
+    }
+
+    const verified = await verifyAdminCredentials(adminId, adminCode);
+    if (!verified || verified.id !== adminId) {
+      return json(401, { error: "Invalid admin credentials" });
     }
 
     const now = Date.now();
@@ -108,7 +118,7 @@ export default async (req) => {
     if (action === "claim") {
       presence[adminId] = {
         id: adminId,
-        name: adminName,
+        name: verified.name || adminName,
         sessionId,
         lastSeen: now
       };
@@ -134,7 +144,7 @@ export default async (req) => {
     if (action === "heartbeat" || action === "presence") {
       presence[adminId] = {
         id: adminId,
-        name: adminName,
+        name: verified.name || adminName,
         sessionId,
         lastSeen: now
       };
@@ -155,7 +165,7 @@ export default async (req) => {
 
       presence[adminId] = {
         id: adminId,
-        name: adminName,
+        name: verified.name || adminName,
         sessionId,
         lastSeen: now
       };
@@ -166,7 +176,7 @@ export default async (req) => {
       messages.push({
         id: `${now}-${Math.random().toString(36).slice(2, 8)}`,
         adminId,
-        adminName,
+        adminName: verified.name || adminName,
         text,
         at: now
       });

@@ -23,4 +23,4 @@
   [headers.values]
     Access-Control-Allow-Origin = "*"
     Access-Control-Allow-Methods = "GET, POST, OPTIONS"
-    Access-Control-Allow-Headers = "Content-Type"
+    Access-Control-Allow-Headers = "Content-Type, X-PHL-Admin-Id, X-PHL-Admin-Code, X-PHL-Personal-Code, X-PHL-Admin-Session"
