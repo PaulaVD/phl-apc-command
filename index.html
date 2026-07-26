@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Teko:wght@500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=131" />
+  <link rel="stylesheet" href="styles.css?v=132" />
 </head>
 <body class="mobile-tab-times">
   <a class="skip-link" href="#operatorConsole">Skip to form</a>
@@ -141,10 +141,21 @@
             </div>
             <small class="time-block-meta" id="teConvertedMeta">Detecting timezone…</small>
           </div>
-          <div class="te-schedule" id="teScheduleList">
-            <div class="te-event"><b>15:00</b><span>Prime window · check Discord</span></div>
-            <div class="te-event"><b>20:00</b><span>Evening ops · server time</span></div>
-            <div class="te-event"><b>12:00</b><span>Midday rally check</span></div>
+          <div class="te-schedule" id="teScheduleList" aria-live="polite">
+            <p class="te-empty" id="teScheduleEmpty">No events scheduled.</p>
+          </div>
+          <div class="te-admin-schedule admin-only" id="teAdminSchedule">
+            <span class="time-block-kicker">Schedule event</span>
+            <form class="te-event-form" id="teEventForm">
+              <input class="input" id="teEventTime" type="time" value="15:00" step="60" required aria-label="Server time">
+              <input class="input" id="teEventTitle" type="text" maxlength="80" placeholder="Title" required aria-label="Event title">
+              <input class="input" id="teEventNote" type="text" maxlength="120" placeholder="Note (optional)" aria-label="Optional note">
+              <div class="te-event-form-actions">
+                <button class="btn btn-primary" id="teEventSaveBtn" type="submit">Add event</button>
+                <button class="btn btn-ghost" id="teEventCancelBtn" type="button" hidden>Cancel</button>
+              </div>
+            </form>
+            <p class="te-admin-hint">Times are server time (UTC-3).</p>
           </div>
         </div>
       </section>
@@ -561,10 +572,10 @@
 
   <div class="toast-region" id="toastRegion" aria-live="polite"></div>
 
-  <script src="config.js?v=60"></script>
+  <script src="config.js?v=61"></script>
   <script src="serverClock.js?v=34"></script>
   <script src="rallyRoles.js?v=28"></script>
   <script src="rallyMatchmaking.js?v=27"></script>
-  <script src="app.js?v=131" defer></script>
+  <script src="app.js?v=132" defer></script>
 </body>
 </html>

@@ -3,6 +3,7 @@
 window.PHL_CONFIG = {
   cloudApiUrl: "https://transcendent-kitsune-43421d.netlify.app/api/roster",
   adminRealtimeUrl: "https://transcendent-kitsune-43421d.netlify.app/api/admin-realtime",
+  eventsApiUrl: "https://transcendent-kitsune-43421d.netlify.app/api/events",
   supabaseUrl: "",
   supabaseAnonKey: "",
   allianceId: "phl",

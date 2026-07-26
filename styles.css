@@ -1209,15 +1209,32 @@ button.row-val.field-tap small{font-size:.62em;color:var(--soft)}
 }
 .te-convert-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
 .te-schedule{display:grid;gap:8px}
+.te-empty{
+  margin:0;padding:14px 16px;border-radius:14px;border:1px dashed rgba(255,189,126,.28);
+  background:rgba(0,0,0,.12);color:var(--muted);font-size:.9rem;line-height:1.35;text-align:center
+}
 .te-event{
   display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;
   border:1px solid var(--line);background:rgba(0,0,0,.18)
 }
 .te-event b{
   font-family:var(--font-display);font-size:1.2rem;color:var(--gold);
-  letter-spacing:.04em;min-width:3.2rem
+  letter-spacing:.04em;min-width:3.2rem;flex:0 0 auto
 }
-.te-event span{color:var(--muted);font-size:.88rem;line-height:1.3}
+.te-event-body{display:grid;gap:2px;min-width:0;flex:1 1 auto}
+.te-event-body span{color:var(--muted);font-size:.88rem;line-height:1.3}
+.te-event-body em{color:var(--soft);font-style:normal;font-size:.78rem;line-height:1.25}
+.te-event-actions{display:flex;gap:6px;flex:0 0 auto;margin-left:auto}
+.te-event-actions .btn{min-height:36px;padding:0 10px;font-size:.72rem;letter-spacing:.06em}
+.te-admin-schedule{
+  display:none;gap:10px;padding:14px;border-radius:16px;border:1px solid var(--line);
+  background:rgba(255,255,255,.03)
+}
+body.admin-mode .te-admin-schedule.admin-only{display:grid!important}
+.te-event-form{display:grid;gap:8px}
+.te-event-form-actions{display:flex;flex-wrap:wrap;gap:8px}
+.te-event-form-actions .btn{flex:1 1 auto;min-width:110px}
+.te-admin-hint{margin:0;color:var(--soft);font-size:.78rem;line-height:1.3}
 
 /* Phone / tablet shell: ≤900px — real two-panel cut */
 @media (max-width:900px){

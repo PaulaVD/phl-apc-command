@@ -73,6 +73,9 @@
   let drawerField = null; // null = overview; else single field key
   let drawerFromOverview = false;
   let pendingPersonalCodeReveal = null;
+  let scheduledEvents = [];
+  let editingEventId = null;
+  let eventsBusy = false;
   const kpiTweens = new WeakMap();
 
   const state = {
@@ -233,6 +236,15 @@
     teOffsetSelect: document.getElementById("teOffsetSelect"),
     teConvertedTime: document.getElementById("teConvertedTime"),
     teConvertedMeta: document.getElementById("teConvertedMeta"),
+    teScheduleList: document.getElementById("teScheduleList"),
+    teScheduleEmpty: document.getElementById("teScheduleEmpty"),
+    teAdminSchedule: document.getElementById("teAdminSchedule"),
+    teEventForm: document.getElementById("teEventForm"),
+    teEventTime: document.getElementById("teEventTime"),
+    teEventTitle: document.getElementById("teEventTitle"),
+    teEventNote: document.getElementById("teEventNote"),
+    teEventSaveBtn: document.getElementById("teEventSaveBtn"),
+    teEventCancelBtn: document.getElementById("teEventCancelBtn"),
     memberDrawer: document.getElementById("memberDrawer"),
     memberDrawerBody: document.getElementById("memberDrawerBody"),
     memberDrawerTitle: document.getElementById("memberDrawerTitle"),
@@ -302,6 +314,7 @@
     enhanceSelects(document.getElementById("rallyCriteriaBox"));
     initServerClockPanel();
     renderAll();
+    pullScheduledEvents({ silent: true });
     probeAudioAssets();
     if (!reducedMotion) startParticles();
     enableTilt(document.querySelector(".scan-panel[data-tilt]"));
@@ -364,6 +377,8 @@
     el.historyRefreshBtn?.addEventListener("click", () => {
       pullCloudRoster({ silent: false }).then(() => renderHistory());
     });
+    el.teEventForm?.addEventListener("submit", onScheduledEventSubmit);
+    el.teEventCancelBtn?.addEventListener("click", resetScheduledEventForm);
     document.querySelectorAll("[data-admin-view]").forEach(btn => {
       btn.addEventListener("click", () => setAdminView(btn.dataset.adminView));
     });
@@ -605,6 +620,7 @@
       clearMemberProfileUi();
     }
     syncLiveRallyClassification({ skipScan: true });
+    renderScheduledEvents();
   }
 
   function initServerClockPanel() {
@@ -670,6 +686,189 @@
       enhanceSelects(el.timesEventsPanel);
     } catch (error) {
       console.warn("Times/events clock failed:", error);
+    }
+  }
+
+  function getEventsApiUrl() {
+    return getConfig().eventsApiUrl || "";
+  }
+
+  function normalizeScheduledEvent(item) {
+    if (!item || typeof item !== "object") return null;
+    const id = String(item.id || "").trim();
+    const time = String(item.time || "").trim();
+    const title = String(item.title || item.label || "").trim();
+    if (!id || !/^\d{2}:\d{2}$/.test(time) || !title) return null;
+    return {
+      id,
+      time,
+      title: title.slice(0, 80),
+      note: String(item.note || "").trim().slice(0, 120),
+      updated: Number(item.updated) || 0,
+      createdBy: String(item.createdBy || "").trim()
+    };
+  }
+
+  function sortScheduledEvents(list) {
+    return [...(list || [])].sort((a, b) => {
+      const byTime = String(a.time).localeCompare(String(b.time));
+      if (byTime) return byTime;
+      return String(a.title).localeCompare(String(b.title));
+    });
+  }
+
+  function renderScheduledEvents() {
+    if (!el.teScheduleList) return;
+    const list = sortScheduledEvents(scheduledEvents);
+    if (!list.length) {
+      el.teScheduleList.innerHTML = `<p class="te-empty" id="teScheduleEmpty">No events scheduled.</p>`;
+      el.teScheduleEmpty = document.getElementById("teScheduleEmpty");
+      return;
+    }
+    el.teScheduleList.innerHTML = list.map(event => {
+      const note = event.note
+        ? `<em>${escapeHtml(event.note)}</em>`
+        : "";
+      const actions = isAdmin
+        ? `<div class="te-event-actions">
+            <button class="btn btn-ghost" type="button" data-action="edit-event" data-id="${escapeHtml(event.id)}">Edit</button>
+            <button class="btn btn-ghost" type="button" data-action="delete-event" data-id="${escapeHtml(event.id)}">Delete</button>
+          </div>`
+        : "";
+      return `<div class="te-event">
+        <b>${escapeHtml(event.time)}</b>
+        <div class="te-event-body">
+          <span>${escapeHtml(event.title)}</span>
+          ${note}
+        </div>
+        ${actions}
+      </div>`;
+    }).join("");
+  }
+
+  function resetScheduledEventForm() {
+    editingEventId = null;
+    if (el.teEventTime) el.teEventTime.value = "15:00";
+    if (el.teEventTitle) el.teEventTitle.value = "";
+    if (el.teEventNote) el.teEventNote.value = "";
+    if (el.teEventSaveBtn) el.teEventSaveBtn.textContent = "Add event";
+    if (el.teEventCancelBtn) el.teEventCancelBtn.hidden = true;
+  }
+
+  function beginEditScheduledEvent(id) {
+    if (!isAdmin) return;
+    const event = scheduledEvents.find(item => item.id === id);
+    if (!event) return;
+    editingEventId = event.id;
+    if (el.teEventTime) el.teEventTime.value = event.time;
+    if (el.teEventTitle) el.teEventTitle.value = event.title;
+    if (el.teEventNote) el.teEventNote.value = event.note || "";
+    if (el.teEventSaveBtn) el.teEventSaveBtn.textContent = "Save event";
+    if (el.teEventCancelBtn) el.teEventCancelBtn.hidden = false;
+    el.teAdminSchedule?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    el.teEventTitle?.focus();
+    playSfx("click");
+  }
+
+  async function pullScheduledEvents({ silent = true } = {}) {
+    const url = getEventsApiUrl();
+    if (!url) {
+      scheduledEvents = [];
+      renderScheduledEvents();
+      return false;
+    }
+    try {
+      const response = await fetch(url, { cache: "no-store" });
+      if (!response.ok) throw new Error(`Events fetch failed (${response.status})`);
+      const data = await response.json();
+      scheduledEvents = sortScheduledEvents(
+        (Array.isArray(data?.events) ? data.events : [])
+          .map(normalizeScheduledEvent)
+          .filter(Boolean)
+      );
+      renderScheduledEvents();
+      return true;
+    } catch (error) {
+      if (!silent) toast(error?.message || "Could not load events.", "error");
+      return false;
+    }
+  }
+
+  async function postScheduledEvent(payload) {
+    const url = getEventsApiUrl();
+    if (!url) throw new Error("Events API not configured");
+    if (!isAdmin || !adminSession?.id || !adminSession?.code) {
+      throw new Error("Admin session required");
+    }
+    const response = await fetch(url, {
+      method: "POST",
+      cache: "no-store",
+      headers: getRosterAuthHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(payload)
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data?.error || `Events save failed (${response.status})`);
+    }
+    scheduledEvents = sortScheduledEvents(
+      (Array.isArray(data?.events) ? data.events : [])
+        .map(normalizeScheduledEvent)
+        .filter(Boolean)
+    );
+    renderScheduledEvents();
+    return data;
+  }
+
+  async function onScheduledEventSubmit(event) {
+    event.preventDefault();
+    if (!isAdmin || eventsBusy) return;
+    const time = String(el.teEventTime?.value || "").trim();
+    const title = String(el.teEventTitle?.value || "").trim();
+    const note = String(el.teEventNote?.value || "").trim();
+    if (!time || !title) {
+      toast("Time and title are required.", "error");
+      playSfx("error");
+      return;
+    }
+    eventsBusy = true;
+    if (el.teEventSaveBtn) el.teEventSaveBtn.disabled = true;
+    const wasEdit = Boolean(editingEventId);
+    try {
+      await postScheduledEvent({
+        action: "upsert",
+        event: {
+          id: editingEventId || undefined,
+          time,
+          title,
+          note
+        }
+      });
+      resetScheduledEventForm();
+      toast(wasEdit ? "Event updated." : "Event scheduled.", "success");
+      playSfx("success");
+    } catch (error) {
+      toast(error?.message || "Could not save event.", "error");
+      playSfx("error");
+    } finally {
+      eventsBusy = false;
+      if (el.teEventSaveBtn) el.teEventSaveBtn.disabled = false;
+    }
+  }
+
+  async function deleteScheduledEvent(id) {
+    if (!isAdmin || !id || eventsBusy) return;
+    if (!window.confirm("Delete this scheduled event?")) return;
+    eventsBusy = true;
+    try {
+      await postScheduledEvent({ action: "delete", id });
+      if (editingEventId === id) resetScheduledEventForm();
+      toast("Event deleted.", "success");
+      playSfx("success");
+    } catch (error) {
+      toast(error?.message || "Could not delete event.", "error");
+      playSfx("error");
+    } finally {
+      eventsBusy = false;
     }
   }
 
@@ -1011,6 +1210,14 @@
     }
 
     const action = event.target.closest("[data-action]");
+    if (action?.dataset.action === "edit-event") {
+      beginEditScheduledEvent(action.dataset.id);
+      return;
+    }
+    if (action?.dataset.action === "delete-event") {
+      void deleteScheduledEvent(action.dataset.id);
+      return;
+    }
     if (action?.dataset.action === "edit") {
       openMemberDrawer(action.dataset.id, null);
       return;
@@ -2794,6 +3001,7 @@
     applyAccessMode();
     await startAdminRealtime({ claim: true });
     await pullCloudRoster({ silent: true });
+    await pullScheduledEvents({ silent: true });
     renderAll();
     toast(`Welcome, <strong>${escapeHtml(account.name)}</strong>.`, "success");
     playSfx("success");
