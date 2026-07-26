@@ -75,17 +75,6 @@
   let pendingPersonalCodeReveal = null;
   const kpiTweens = new WeakMap();
 
-  const demoRoster = [
-    // RL sample — KittyKlawzz
-    buildMember("KittyKlawzz", "I5", "R4", [820, 760, 710, 655], ["Shooter", "Fighter", "Rider", "Mixed"], 450_000),
-    // RL sample — Fisherman5
-    buildMember("Fisherman5", "I5", "R4", [744, 698, 640, 612], ["Rider", "Rider", "Shooter", "Mixed"], 410_000),
-    // RJ fillers (admin demo only)
-    buildMember("Tea", "I4", "R4", [605, 562, 510, 480], ["Fighter", "Shooter", "Mixed", "Rider"], 320_000),
-    buildMember("Tiger", "I4", "R3", [578, 540, 496, 452], ["Fighter", "Mixed", "Shooter", "Rider"], 280_000),
-    buildMember("Bella", "I3", "R2", [460, 420, 395, 360], ["Shooter", "Shooter", "Fighter", "Mixed"], 200_000)
-  ];
-
   const state = {
     name: "",
     level: prefs.lastLevel && BANDS[prefs.lastLevel] ? prefs.lastLevel : "WT30",
@@ -119,10 +108,6 @@
     primaryBtn: document.getElementById("primaryBtn"),
     backBtn: document.getElementById("backBtn"),
     resetBtn: document.getElementById("resetBtn"),
-    demoBtn: document.getElementById("demoBtn"),
-    exportBtn: document.getElementById("exportBtn"),
-    copyDiscordBtn: document.getElementById("copyDiscordBtn"),
-    syncBtn: document.getElementById("syncBtn"),
     searchInput: document.getElementById("searchInput"),
     levelFilter: document.getElementById("levelFilter"),
     rankFilter: document.getElementById("rankFilter"),
@@ -333,10 +318,6 @@
     el.primaryBtn.addEventListener("click", () => nextStep());
     el.backBtn.addEventListener("click", prevStep);
     el.resetBtn.addEventListener("click", () => resetForm(true));
-    el.demoBtn.addEventListener("click", loadDemo);
-    el.exportBtn.addEventListener("click", exportCSV);
-    el.copyDiscordBtn?.addEventListener("click", copyDiscordReport);
-    el.syncBtn?.addEventListener("click", openSyncModal);
     el.syncCloseBtn?.addEventListener("click", () => closeModal("sync"));
     el.syncPullBtn?.addEventListener("click", () => pullCloudRoster({ silent: false }));
     el.syncPushBtn?.addEventListener("click", () => pushCloudRosterWithRetry({ silent: false }));
@@ -1056,16 +1037,6 @@
       renderWizard(true);
       renderNonDestructive();
       playSfx("transition");
-      return;
-    }
-    if (emptyAction?.dataset.emptyAction === "demo") {
-      if (!isAdmin) {
-        openAdminModal();
-        toast("Demo roster is admin-only.", "error");
-        playSfx("error");
-        return;
-      }
-      loadDemo();
       return;
     }
   }
@@ -2185,11 +2156,10 @@
         <div class="empty">
           <strong>${isAdmin ? "No roster signals found" : "Leadership roster locked"}</strong>
           <p>${isAdmin
-            ? "Create a member with Push Data, or load the admin demo (KittyKlawzz · Fisherman5)."
+            ? "Create a member with Push Data to start the alliance roster."
             : "Unlock with <strong>Admin access</strong> (R4–R5) to see the full alliance roster. Members use <strong>My profile</strong> with their Personal Code."}</p>
           <div class="empty-actions">
             <button class="btn btn-primary" data-empty-action="start">Start guided entry</button>
-            ${isAdmin ? `<button class="btn btn-ghost" data-empty-action="demo">Load demo data</button>` : ""}
           </div>
         </div>`;
       return;
@@ -2623,91 +2593,6 @@
         </div>
         <div class="reference-note">PH-L internal planning scale only. It is not a state-wide ranking or official game benchmark.</div>
       </div>`;
-  }
-
-  function loadDemo() {
-    if (!isAdmin) {
-      openAdminModal();
-      toast("Demo roster is admin-only.", "error");
-      playSfx("error");
-      return;
-    }
-    if (roster.length && !window.confirm("Replace current roster with admin demo data (KittyKlawzz · Fisherman5)?")) return;
-
-    roster = demoRoster.map(item => ({
-      ...item,
-      id: cryptoId(),
-      isDemo: true,
-      rallyCapacity: Number(item.rallyCapacity || 0),
-      updated: Date.now() - Math.floor(Math.random() * 5000000)
-    }));
-    saveRoster();
-    // Clear in-progress form so draft entry does not pollute RL/RJ counts.
-    resetForm(false);
-    renderAll();
-
-    const leaders = roster.filter(member => getMemberRallyRole(member).assigned_role === "RL");
-    const joiners = roster.filter(member => getMemberRallyRole(member).assigned_role === "RJ");
-    const gate = getAllianceRallyThresholds();
-    toast(
-      `Admin demo loaded (${escapeHtml(formatThresholdSummary(gate))}): <strong>${leaders.length} RL</strong> · <strong>${joiners.length} RJ</strong> · KittyKlawzz · Fisherman5.`,
-      "success"
-    );
-    playSfx("success");
-  }
-
-  function exportCSV() {
-    if (!isAdmin) {
-      openAdminModal();
-      return;
-    }
-    if (!roster.length) {
-      toast("There is no roster data to export yet.", "error");
-      playSfx("error");
-      return;
-    }
-
-    const headers = ["Player", "Level", "PH-L Rank", "Plaza Capacity", "Rally Role", "Specialty", "Personal Code", "Needs Review"];
-    for (let i = 1; i <= APC_COUNT; i += 1) headers.push(`APC ${i} CP (M)`, `APC ${i} Faction`);
-    headers.push("Total CP (M)", "Balance (%)", "Status", "Updated");
-
-    const rows = [headers];
-    roster.forEach(member => {
-      const rally = getMemberRallyRole(member);
-      const row = [
-        member.name,
-        formatLevel(member.level),
-        member.rank,
-        member.rallyCapacity || 0,
-        rally.assigned_role,
-        rally.specialty_faction,
-        member.personalCode || "",
-        memberNeedsReview(member) ? "yes" : "no"
-      ];
-      member.apcs.forEach(apc => {
-        row.push(apc.cp, apc.faction);
-      });
-      row.push(
-        getTotal(member),
-        Number(getBalance(member.apcs).toFixed(1)),
-        STATUS[getStatusKey(member.level, getMain(member))].label,
-        new Date(member.updated).toISOString()
-      );
-      rows.push(row);
-    });
-
-    const csv = "\uFEFF" + rows.map(row => row.map(csvEscape).join(",")).join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `phl-apc-roster-${new Date().toISOString().slice(0, 10)}.csv`;
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    URL.revokeObjectURL(url);
-    toast("CSV exported successfully.", "success");
-    playSfx("success");
   }
 
   function applyAccessMode() {
@@ -3992,11 +3877,6 @@
     }
   }
 
-  function csvEscape(value) {
-    const text = String(value ?? "");
-    return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
-  }
-
   function cryptoId() {
     if (globalThis.crypto?.randomUUID) return crypto.randomUUID().slice(0, 12);
     return Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
@@ -4028,69 +3908,6 @@
     if (gapInfo.met) return `+${formatNumber(Math.abs(gapInfo.gap))}M`;
     if (!Number(gapInfo.target)) return "—";
     return `-${formatNumber(Math.max(0, gapInfo.gap))}M`;
-  }
-
-  function copyDiscordReport() {
-    if (!isAdmin) {
-      openAdminModal();
-      return;
-    }
-    if (!roster.length) {
-      toast("No roster data to copy yet.", "error");
-      playSfx("error");
-      return;
-    }
-
-    const lines = [
-      "**PH-L APC roster** (Dark War Survival)",
-      `Updated: ${new Date().toLocaleString()}`,
-      ""
-    ];
-
-    [...roster].sort((a, b) => getTotal(b) - getTotal(a)).forEach((member, index) => {
-      const gap = getFrontlineGap(member.level, getMain(member));
-      const rally = getMemberRallyRole(member);
-      const cps = member.apcs.map(apc => `${formatNumber(apc.cp)}`).join("/");
-      lines.push(
-        `${index + 1}. **${member.name}** · ${formatLevel(member.level)} · ${member.rank} · ${rally.assigned_role}/${rally.specialty_faction} · plaza ${formatTroops(member.rallyCapacity || 0)} · ${cps}M · ${STATUS[getStatusKey(member.level, getMain(member))].label} · gap ${formatGap(gap)}`
-      );
-    });
-
-    const leaders = roster.filter(member => getMemberRallyRole(member).assigned_role === "RL");
-    const joiners = roster.filter(member => getMemberRallyRole(member).assigned_role === "RJ");
-    lines.push("", `RL (${leaders.length}): ${leaders.map(m => m.name).join(", ") || "—"}`);
-    lines.push(`RJ (${joiners.length}): ${joiners.map(m => m.name).join(", ") || "—"}`);
-
-    const below = roster.filter(member => !getFrontlineGap(member.level, getMain(member)).met);
-    if (below.length) {
-      lines.push("", `Below frontline (${below.length}): ${below.map(m => m.name).join(", ")}`);
-    }
-
-    navigator.clipboard.writeText(lines.join("\n")).then(() => {
-      toast("Discord roster copied.", "success");
-      playSfx("success");
-    }).catch(() => {
-      toast("Clipboard blocked. Copy manually from export.", "error");
-      playSfx("error");
-    });
-  }
-
-  function openSyncModal() {
-    if (!isAdmin) {
-      openAdminModal();
-      return;
-    }
-    const configured = isCloudConfigured();
-    if (el.syncStatusText) {
-      el.syncStatusText.innerHTML = configured
-        ? `Shared cloud roster is live. Every member submit syncs for all admins. Use Pull to refresh, Push to force-upload this device.`
-        : `Cloud not configured. Use JSON export/import, or set <code>cloudApiUrl</code> in <code>config.js</code>.`;
-    }
-    if (el.syncError) el.syncError.textContent = "";
-    el.syncPullBtn.disabled = !configured;
-    el.syncPushBtn.disabled = !configured;
-    openModal("sync", el.syncCloseBtn);
-    playSfx("transition");
   }
 
   function getConfig() {
@@ -4795,21 +4612,6 @@
       toast("Could not save locally. Browser storage may be full or blocked.", "error");
       playSfx("error");
     }
-  }
-
-  function buildMember(name, level, rank, powers, factions, rallyCapacity = 0) {
-    return {
-      id: cryptoId(),
-      name,
-      level,
-      rank,
-      rallyCapacity: Math.max(0, Math.floor(Number(rallyCapacity || 0))),
-      updated: Date.now(),
-      apcs: Array.from({ length: APC_COUNT }, (_, i) => ({
-        cp: Number(powers[i] || 0),
-        faction: factions[i] || "Fighter"
-      }))
-    };
   }
 
   /** Normalize CP to absolute game units.
