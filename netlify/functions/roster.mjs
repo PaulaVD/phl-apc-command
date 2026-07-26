@@ -269,24 +269,55 @@ function leadershipPayload(data) {
 /**
  * Apply a single non-admin submit against the existing roster.
  * Returns { member, historyEvent } or { error, status }.
+ *
+ * forcedCode = authenticated member session code (must already exist).
+ * incoming.personalCode without forcedCode may be:
+ *   - an existing code → overwrite
+ *   - a brand-new client-generated code → first registration (create)
+ *   - blank → server generates a code
  */
 function applyMemberSubmit(existingMembers, incomingRaw, forcedCode = "") {
   const incomingList = normalizeMembers([incomingRaw]);
   if (!incomingList.length) return { error: "Invalid member payload", status: 400 };
   const incoming = incomingList[0];
-  const enteredCode = normalizePersonalCode(forcedCode || incoming.personalCode);
-  const byCode = enteredCode ? findByPersonalCode(existingMembers, enteredCode) : null;
+  const authCode = normalizePersonalCode(forcedCode);
+  const proposedCode = normalizePersonalCode(incoming.personalCode);
 
-  if (enteredCode && !byCode) {
-    return { error: "Personal Code not found", status: 404 };
+  // Session-bound Personal Code must already exist on the roster
+  if (authCode) {
+    const owned = findByPersonalCode(existingMembers, authCode);
+    if (!owned) return { error: "Personal Code not found", status: 404 };
+    const target = {
+      ...incoming,
+      id: owned.id,
+      personalCode: owned.personalCode,
+      needsReview: false,
+      name: String(incoming.name || owned.name).trim().slice(0, 30),
+      updated: Number(incoming.updated) || Date.now()
+    };
+    return {
+      member: target,
+      historyEvent: {
+        id: cryptoId(),
+        at: Date.now(),
+        action: "code-overwrite",
+        memberId: target.id,
+        memberName: target.name,
+        actor: "member",
+        fields: [],
+        note: "Overwrite with Personal Code"
+      }
+    };
   }
+
+  // Public / form code: existing code overwrites; unknown code is a first-time registration
+  const byCode = proposedCode ? findByPersonalCode(existingMembers, proposedCode) : null;
 
   let target;
   let action = "create";
   let note = "";
 
   if (byCode) {
-    // Authenticated overwrite of own record only
     target = {
       ...incoming,
       id: byCode.id,
@@ -296,10 +327,13 @@ function applyMemberSubmit(existingMembers, incomingRaw, forcedCode = "") {
       updated: Number(incoming.updated) || Date.now()
     };
     action = "code-overwrite";
+    note = "Overwrite with Personal Code";
   } else {
     const existingSameName = findByName(existingMembers, incoming.name);
     if (existingSameName?.personalCode) {
-      const code = generatePersonalCode(existingMembers);
+      const code = proposedCode && !findByPersonalCode(existingMembers, proposedCode)
+        ? proposedCode
+        : generatePersonalCode(existingMembers);
       target = {
         ...incoming,
         id: cryptoId(),
@@ -309,9 +343,12 @@ function applyMemberSubmit(existingMembers, incomingRaw, forcedCode = "") {
         updated: Number(incoming.updated) || Date.now()
       };
       action = "needs-review";
-      note = "Submitted without Personal Code";
+      note = "Submitted without matching Personal Code";
     } else if (existingSameName && !existingSameName.personalCode) {
-      const code = generatePersonalCode(existingMembers);
+      const code = proposedCode || generatePersonalCode(existingMembers);
+      if (proposedCode && findByPersonalCode(existingMembers, proposedCode)) {
+        return { error: "Personal Code already in use", status: 409 };
+      }
       target = {
         ...incoming,
         id: existingSameName.id,
@@ -323,12 +360,14 @@ function applyMemberSubmit(existingMembers, incomingRaw, forcedCode = "") {
       action = "claim-legacy";
       note = "Personal Code assigned";
     } else {
-      // New member — reject if id collides with a coded record
       const byId = existingMembers.find(m => m.id === incoming.id);
       if (byId?.personalCode) {
         return { error: "Cannot overwrite protected member without Personal Code", status: 403 };
       }
-      const code = normalizePersonalCode(incoming.personalCode) || generatePersonalCode(existingMembers);
+      if (proposedCode && findByPersonalCode(existingMembers, proposedCode)) {
+        return { error: "Personal Code already in use", status: 409 };
+      }
+      const code = proposedCode || generatePersonalCode(existingMembers);
       target = {
         ...incoming,
         id: byId?.id || incoming.id || cryptoId(),
@@ -337,7 +376,7 @@ function applyMemberSubmit(existingMembers, incomingRaw, forcedCode = "") {
         updated: Number(incoming.updated) || Date.now()
       };
       action = byId ? "update" : "create";
-      note = byId ? "" : "Personal Code assigned";
+      note = byId ? "Updated without Personal Code auth" : "Personal Code assigned";
     }
   }
 
@@ -348,7 +387,9 @@ function applyMemberSubmit(existingMembers, incomingRaw, forcedCode = "") {
     memberId: target.id,
     memberName: target.name,
     actor: "member",
-    fields: [],
+    fields: action === "create" || action === "claim-legacy"
+      ? [{ field: "personalCode", from: "", to: String(target.personalCode || "") }]
+      : [],
     note
   };
 
@@ -435,17 +476,24 @@ export default async (req) => {
       const newHistory = [];
 
       for (const item of batch) {
-        const forcedCode =
-          auth.role === "member"
-            ? auth.personalCode
-            : normalizePersonalCode(item.personalCode || body.personalCode || "");
-
-        // Member session may only touch their own coded record (or create -updt via blank path is blocked)
+        // Member session: overwrite own record. If the code is brand-new (first submit
+        // raced ahead of unlock), fall through to public create with that proposed code.
         if (auth.role === "member") {
           const owned = findByPersonalCode(working, auth.personalCode);
-          if (!owned) return json(404, { error: "Personal Code not found" });
-          // Force overwrite path for owned member only
-          const result = applyMemberSubmit(working, { ...item, personalCode: auth.personalCode }, auth.personalCode);
+          if (owned) {
+            const result = applyMemberSubmit(working, { ...item, personalCode: auth.personalCode }, auth.personalCode);
+            if (result.error) return json(result.status || 400, { error: result.error });
+            working = mergeMembers(working, [result.member]);
+            accepted.push(result.member);
+            if (result.historyEvent) newHistory.push(result.historyEvent);
+            continue;
+          }
+          // Unknown session code → first registration using that code (not a hard 404)
+          const result = applyMemberSubmit(
+            working,
+            { ...item, personalCode: auth.personalCode || item.personalCode },
+            ""
+          );
           if (result.error) return json(result.status || 400, { error: result.error });
           working = mergeMembers(working, [result.member]);
           accepted.push(result.member);
@@ -453,7 +501,7 @@ export default async (req) => {
           continue;
         }
 
-        const result = applyMemberSubmit(working, item, forcedCode);
+        const result = applyMemberSubmit(working, item, "");
         if (result.error) {
           // Skip invalid rows in multi-submit rather than failing the whole public push of mixed local state
           if (batch.length === 1) return json(result.status || 400, { error: result.error });

@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Teko:wght@500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=110" />
+  <link rel="stylesheet" href="styles.css?v=111" />
 </head>
 <body class="mobile-tab-times">
   <a class="skip-link" href="#operatorConsole">Skip to form</a>
@@ -247,15 +247,18 @@
         <svg viewBox="0 0 24 24"><path d="M17 9h-1V7a4 4 0 1 0-8 0v2H7a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2Zm-3 0h-4V7a2 2 0 1 1 4 0Z"/></svg>
       </div>
       <div>
-        <strong>PH-L private roster</strong>
-        <span>Alliance stats and other members stay hidden. Submit your APC CP below, then use <strong>My profile</strong> with your Personal Code to view and edit only your own record. Without a code, updates land as <code>Name-updt</code> for R4–R5 review. Tip: paste <code>Name i5 820/760/710/655 450000</code>.</span>
+        <strong>How Personal Code works</strong>
+        <span><strong>1)</strong> Open <strong>Push Data</strong> and submit your APC CP with Personal Code blank.
+          <strong>2)</strong> A popup shows your new code — copy &amp; save it.
+          <strong>3)</strong> Later, enter that code under Push Data to overwrite, or use <strong>My profile</strong> to unlock only your record.
+          Tip ES: la primera vez deja el código vacío; el sistema lo genera. Tip: paste <code>Name i5 820/760/710/655 450000</code>.</span>
       </div>
     </section>
 
     <section class="member-profile-panel member-only" id="memberProfilePanel" data-mobile-pane="push" hidden>
       <div class="panel-head compact">
         <div>
-          <span class="eyebrow"><span></span>R1–R3 · personal view</span>
+          <span class="eyebrow"><span></span>R1–R3 · personal view (not leadership)</span>
           <h2 id="memberProfileTitle">Your APC profile</h2>
           <p id="memberProfileSub">Only your record is loaded. Tap a field to edit with your Personal Code.</p>
         </div>
@@ -288,13 +291,16 @@
       <section class="panel roster-panel">
         <div class="panel-head">
           <div>
-            <span class="eyebrow"><span></span>PH-L alliance registry</span>
+          <span class="eyebrow"><span></span>PH-L alliance registry · R4–R5</span>
             <h2>Member power roster</h2>
-            <p>Track, compare and export combat power for PH-L members only.</p>
+            <p>Full alliance view. Switch to <strong>History</strong> for recent creates and edits.</p>
           </div>
-          <div class="admin-view-tabs" role="tablist" aria-label="Admin registry views">
-            <button type="button" class="admin-view-tab is-active" data-admin-view="roster" role="tab" aria-selected="true">Roster</button>
-            <button type="button" class="admin-view-tab" data-admin-view="history" role="tab" aria-selected="false">History</button>
+          <div class="admin-view-switcher">
+            <span class="admin-view-switcher-label">View</span>
+            <div class="admin-view-tabs" role="tablist" aria-label="Admin registry views">
+              <button type="button" class="admin-view-tab is-active" data-admin-view="roster" role="tab" aria-selected="true">Roster</button>
+              <button type="button" class="admin-view-tab" data-admin-view="history" role="tab" aria-selected="false">History</button>
+            </div>
           </div>
         </div>
 
@@ -497,7 +503,8 @@
     <section class="admin-modal-card confirm-modal-card" role="dialog" aria-modal="true" aria-labelledby="memberModalTitle">
       <span class="eyebrow"><span></span>R1–R3 · personal unlock</span>
       <h2 id="memberModalTitle">Unlock my profile</h2>
-      <p>Enter your Personal Code to load only your APC record. Alliance stats and other members stay hidden.</p>
+      <p>Got your Personal Code after the first Push Data submit? Enter it here to load only your APC record. Alliance stats stay hidden.</p>
+      <p class="member-modal-hint">No code yet? Close this, open <strong>Push Data</strong>, leave Personal Code blank, submit once — then save the popup code.</p>
       <label class="admin-code-field">
         <span>Personal Code</span>
         <input id="memberCodeInput" type="text" maxlength="16" autocomplete="off" spellcheck="false" placeholder="e.g. PHL-AB12CD">
@@ -569,8 +576,9 @@
     <section class="admin-modal-card confirm-modal-card" role="dialog" aria-modal="true" aria-labelledby="personalCodeModalTitle">
       <span class="eyebrow"><span></span>Save this code</span>
       <h2 id="personalCodeModalTitle">Your Personal Code</h2>
-      <p>Save this code. Enter it next time under Push Data to overwrite your roster entry directly. Without it, new submits create a <code>Name-updt</code> review entry.</p>
+      <p><strong>Copy and save this code now.</strong> You need it to overwrite your entry under Push Data and to unlock <strong>My profile</strong>. Without it, later submits create a <code>Name-updt</code> review entry for R4–R5.</p>
       <div class="personal-code-reveal" id="personalCodeReveal">————</div>
+      <p class="personal-code-modal-tip">Tip ES: guarda este código — es tu llave personal.</p>
       <div class="admin-modal-actions">
         <button class="btn btn-primary" id="personalCodeCopyBtn" type="button">Copy code</button>
         <button class="btn btn-ghost" id="personalCodeCloseBtn" type="button" data-modal-close="personalCode">Got it</button>
@@ -578,12 +586,14 @@
     </section>
   </div>
 
+  <div class="session-banner" id="sessionBanner" hidden role="status"></div>
+
   <div class="toast-region" id="toastRegion" aria-live="polite"></div>
 
   <script src="config.js?v=60"></script>
   <script src="serverClock.js?v=34"></script>
   <script src="rallyRoles.js?v=28"></script>
   <script src="rallyMatchmaking.js?v=27"></script>
-  <script src="app.js?v=110" defer></script>
+  <script src="app.js?v=111" defer></script>
 </body>
 </html>

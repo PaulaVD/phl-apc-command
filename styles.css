@@ -940,6 +940,10 @@ body.quick-entry .wizard-card{min-height:auto}
 .mobile-tab-hint{display:none}
 .times-events-panel{display:none}
 .admin-view-tabs{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.admin-view-switcher{display:grid;gap:6px;justify-items:end;flex:0 0 auto}
+.admin-view-switcher-label{
+  font-size:.68rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--gold)
+}
 .admin-view-tab{
   min-height:40px;padding:0 14px;border-radius:12px;border:1px solid var(--line);
   background:rgba(255,255,255,.03);color:var(--muted);font-family:var(--font);
@@ -1067,7 +1071,24 @@ button.row-val.field-tap small{font-size:.62em;color:var(--soft)}
   font-family:var(--font-display);font-size:clamp(1.8rem,6vw,2.4rem);letter-spacing:.18em;
   text-align:center;color:var(--gold);font-weight:700
 }
-.field.personal-code-field small{display:block;margin-top:6px;color:var(--soft);font-size:.78rem;line-height:1.35}
+.field.personal-code-field small,
+.field.personal-code-field .personal-code-help{
+  display:block;margin-top:6px;color:var(--soft);font-size:.78rem;line-height:1.45
+}
+.personal-code-modal-tip,.member-modal-hint{
+  margin:10px 0 0;color:var(--muted);font-size:.84rem;line-height:1.45
+}
+.session-banner{
+  position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;
+  padding:10px 16px;border-bottom:1px solid rgba(255,155,111,.35);
+  background:linear-gradient(90deg,rgba(80,18,12,.96),rgba(40,10,8,.94));
+  color:var(--text);font-size:.88rem;line-height:1.4;text-align:center
+}
+.session-banner[hidden]{display:none!important}
+.session-banner .session-banner-action{min-height:34px;padding:0 12px}
+.session-banner .session-banner-dismiss{
+  width:34px;height:34px;border-radius:10px;font-size:1.2rem;line-height:1;color:var(--muted)
+}
 
 /* Times & events panel (mobile preview) */
 .times-events-body{display:grid;gap:16px;padding:14px 16px 18px}

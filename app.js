@@ -5,6 +5,7 @@
   const STORAGE_KEY = "phl_apex_console_v7";
   const PREFS_KEY = "phl_prefs_v1";
   const ADMIN_SESSION_KEY = "phl_admin_session_v3";
+  const LEGACY_ADMIN_SESSION_KEYS = ["phl_admin_session_v1", "phl_admin_session_v2"];
   const MEMBER_SESSION_KEY = "phl_member_session_v1";
   const OUTBOX_KEY = "phl_cloud_outbox_v1";
   const HISTORY_KEY = "phl_roster_history_v1";
@@ -256,7 +257,8 @@
     adminHistoryPane: document.getElementById("adminHistoryPane"),
     historyList: document.getElementById("historyList"),
     historyResultText: document.getElementById("historyResultText"),
-    historyRefreshBtn: document.getElementById("historyRefreshBtn")
+    historyRefreshBtn: document.getElementById("historyRefreshBtn"),
+    sessionBanner: document.getElementById("sessionBanner")
   };
 
   const audio = {};
@@ -303,6 +305,7 @@
     applyAccessMode();
     applyEntryMode();
     initMobileTabs();
+    maybeWarnStaleSessions();
     enhanceSelects(document.querySelector(".toolbar"));
     enhanceSelects(document.getElementById("rallyCriteriaBox"));
     initServerClockPanel();
@@ -486,6 +489,48 @@
     if (!silent) playSfx("click");
   }
 
+  function setSessionBanner(message, { actionLabel = "Admin access", onAction = null } = {}) {
+    if (!el.sessionBanner) return;
+    if (!message) {
+      el.sessionBanner.hidden = true;
+      el.sessionBanner.innerHTML = "";
+      return;
+    }
+    el.sessionBanner.hidden = false;
+    el.sessionBanner.innerHTML = `
+      <span>${message}</span>
+      ${onAction ? `<button type="button" class="btn btn-ghost session-banner-action" id="sessionBannerAction">${escapeHtml(actionLabel)}</button>` : ""}
+      <button type="button" class="icon-btn session-banner-dismiss" id="sessionBannerDismiss" aria-label="Dismiss">×</button>`;
+    el.sessionBanner.querySelector("#sessionBannerDismiss")?.addEventListener("click", () => setSessionBanner(""));
+    if (onAction) {
+      el.sessionBanner.querySelector("#sessionBannerAction")?.addEventListener("click", () => {
+        setSessionBanner("");
+        onAction();
+      });
+    }
+  }
+
+  function maybeWarnStaleSessions() {
+    let hadLegacy = false;
+    for (const key of LEGACY_ADMIN_SESSION_KEYS) {
+      try {
+        if (sessionStorage.getItem(key)) {
+          sessionStorage.removeItem(key);
+          hadLegacy = true;
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+    if (hadLegacy && !isAdmin) {
+      setSessionBanner(
+        "Your previous admin session is no longer valid after the access update. Sign in again with <strong>Admin access</strong>.",
+        { actionLabel: "Admin access", onAction: () => openAdminModal() }
+      );
+      toast("Admin session expired — please log in again.", "error");
+    }
+  }
+
   function setAdminView(view) {
     adminView = view === "history" ? "history" : "roster";
     document.querySelectorAll("[data-admin-view]").forEach(btn => {
@@ -649,8 +694,8 @@
     if (el.entryTitle) el.entryTitle.textContent = quick ? "Push Data · Quick" : "Push Data";
     if (el.entrySubtitle) {
       el.entrySubtitle.textContent = quick
-        ? "Submit APC CP here. Enter your Personal Code to overwrite — or leave blank to register / flag Name-updt."
-        : "Register or overwrite APC CP. Save your Personal Code to update later without creating a review entry.";
+        ? "First time? Leave Personal Code blank — we generate one after you submit. Returning? Enter your code to overwrite."
+        : "First submit generates your Personal Code. Enter that code later to overwrite without creating a Name-updt review entry.";
     }
     if (el.wizardCardHead) el.wizardCardHead.hidden = quick;
     if (el.wizardRail) el.wizardRail.hidden = quick;
@@ -735,9 +780,14 @@
         <div class="field"><label for="memberRankInput">PH-L rank</label><select id="memberRankInput">${rankOptionsHtml(state.rank)}</select></div>
         <div class="field"><label for="rallyCapacityInput">Rally Plaza capacity</label><input class="input" id="rallyCapacityInput" type="number" min="0" step="1000" inputmode="numeric" placeholder="Troops, e.g. 400000" value="${state.rallyCapacity || ""}"></div>
         <div class="field personal-code-field" style="grid-column:1/-1">
-          <label for="personalCodeInput">Personal Code (optional — overwrite)</label>
-          <input class="input" id="personalCodeInput" type="text" maxlength="16" autocomplete="off" spellcheck="false" placeholder="e.g. PHL-AB12CD" value="${escapeHtml(state.personalCode)}">
-          <small>${remembered ? `Last code on this device: <strong>${escapeHtml(remembered)}</strong>. ` : ""}Enter your code to overwrite your roster entry. Leave blank to register (or create a <code>Name-updt</code> review entry).</small>
+          <label for="personalCodeInput">Personal Code</label>
+          <input class="input" id="personalCodeInput" type="text" maxlength="16" autocomplete="off" spellcheck="false" placeholder="Leave blank on first submit" value="${escapeHtml(state.personalCode)}">
+          <small class="personal-code-help">
+            <strong>First time:</strong> leave blank → we generate your code and show a “Save this code” popup.<br>
+            <strong>Returning:</strong> enter your code to overwrite your entry.
+            ${remembered ? ` Last on this device: <strong>${escapeHtml(remembered)}</strong>.` : ""}
+            Tip: ES — la primera vez deja el campo vacío; después usa el código para actualizar.
+          </small>
         </div>
       </div>
       <div class="helper-grid">
@@ -786,9 +836,12 @@
           <div class="field"><label for="memberRankInput">PH-L rank</label><select id="memberRankInput">${rankOptionsHtml(state.rank)}</select></div>
           <div class="field"><label for="rallyCapacityInput">Rally Plaza capacity</label><input class="input" id="rallyCapacityInput" type="number" min="0" step="1000" inputmode="numeric" placeholder="Troops, e.g. 400000" value="${state.rallyCapacity || ""}"></div>
           <div class="field personal-code-field" style="grid-column:1/-1">
-            <label for="personalCodeInput">Personal Code (optional — overwrite)</label>
-            <input class="input" id="personalCodeInput" type="text" maxlength="16" autocomplete="off" spellcheck="false" placeholder="e.g. PHL-AB12CD" value="${escapeHtml(state.personalCode)}">
-            <small>Enter your code to overwrite. Leave blank to register or create a <code>Name-updt</code> review entry.</small>
+            <label for="personalCodeInput">Personal Code</label>
+            <input class="input" id="personalCodeInput" type="text" maxlength="16" autocomplete="off" spellcheck="false" placeholder="Leave blank on first submit" value="${escapeHtml(state.personalCode)}">
+            <small class="personal-code-help">
+              <strong>First time:</strong> leave blank → code is generated after submit (big “Save this code” modal).<br>
+              <strong>Returning:</strong> enter your code to overwrite. Without it, a <code>Name-updt</code> review entry is created.
+            </small>
           </div>
         </div>
         <div class="quick-apc-grid">
@@ -904,7 +957,7 @@
             <div class="summary-line"><span>Player</span><b>${escapeHtml(state.name || "Unnamed")}</b></div>
             <div class="summary-line"><span>Watchtower</span><b>${formatLevel(state.level)}</b></div>
             <div class="summary-line"><span>PH-L rank</span><b>${state.rank}</b></div>
-            <div class="summary-line"><span>Personal Code</span><b>${state.personalCode ? escapeHtml(state.personalCode) : "Will assign / review"}</b></div>
+            <div class="summary-line"><span>Personal Code</span><b>${state.personalCode ? escapeHtml(state.personalCode) : "Generated on first submit — save the popup"}</b></div>
             <div class="summary-line"><span>Main frontline target</span><b>${band.frontline}M</b></div>
             <div class="summary-line"><span>Main gap</span><b>${formatGap(mainGap)}</b></div>
           </div>
@@ -1438,19 +1491,12 @@
       note: needsReview ? "Submitted without Personal Code" : (revealCode ? "Personal Code assigned" : "")
     });
     queueCloudOutbox(member);
-    if (!isAdmin && member.personalCode && (actionLabel === "code-overwrite" || actionLabel === "create" || actionLabel === "claim-legacy")) {
-      memberSession = {
-        personalCode: normalizePersonalCode(member.personalCode),
-        memberId: member.id,
-        name: member.name,
-        rank: member.rank,
-        roleTier: "R1-R3"
-      };
-      isMember = true;
-      sessionStorage.setItem(MEMBER_SESSION_KEY, JSON.stringify(memberSession));
-      roster = [member];
-      applyAccessMode();
-    }
+    // Do NOT unlock member session before cloud push — a brand-new Personal Code is not
+    // valid auth yet and would 404. Unlock after a successful create/claim sync instead.
+    const shouldUnlockAfterSync =
+      !isAdmin &&
+      Boolean(member.personalCode) &&
+      (actionLabel === "code-overwrite" || actionLabel === "create" || actionLabel === "claim-legacy");
     renderAll();
     setSavingUi(true);
 
@@ -1463,22 +1509,52 @@
         queueCloudOutbox(member);
       }
       const synced = await pushCloudRosterWithRetry({ silent: true });
-      if (revealCode || actionLabel === "claim-legacy" || actionLabel === "needs-review") {
-        pendingPersonalCodeReveal = member.personalCode;
-        openPersonalCodeModal(member.personalCode);
-      }
       if (synced) {
         clearCloudOutboxMember(member.id);
-        if (isMember) await pullMemberSelf({ silent: true });
+        // Prefer cloud-accepted row (authoritative Personal Code)
+        const accepted =
+          roster.find(m => m.id === member.id) ||
+          roster.find(m => normalizePersonalCode(m.personalCode) === normalizePersonalCode(member.personalCode)) ||
+          member;
+        member = accepted;
+        if (shouldUnlockAfterSync && member.personalCode) {
+          memberSession = {
+            personalCode: normalizePersonalCode(member.personalCode),
+            memberId: member.id,
+            name: member.name,
+            rank: member.rank,
+            roleTier: "R1-R3"
+          };
+          isMember = true;
+          sessionStorage.setItem(MEMBER_SESSION_KEY, JSON.stringify(memberSession));
+          rememberPersonalCode(member.name, member.personalCode);
+          roster = [member];
+          applyAccessMode();
+          await pullMemberSelf({ silent: true });
+          const refreshed = roster[0];
+          if (refreshed) member = refreshed;
+        }
+        if (revealCode || actionLabel === "claim-legacy" || actionLabel === "needs-review") {
+          pendingPersonalCodeReveal = member.personalCode;
+          openPersonalCodeModal(member.personalCode);
+        }
         const reviewNote = needsReview ? " Flagged for admin review." : "";
+        const codeNote =
+          revealCode && member.personalCode
+            ? ` Your Personal Code is <strong>${escapeHtml(member.personalCode)}</strong> — save it.`
+            : "";
         toast(
           actionLabel === "code-overwrite" || actionLabel === "admin-update" || actionLabel === "claim-legacy"
-            ? `<strong>${escapeHtml(member.name)}</strong> updated in the shared cloud roster.${reviewNote}`
-            : `<strong>${escapeHtml(member.name)}</strong> saved to the shared cloud roster.${reviewNote}`,
+            ? `<strong>${escapeHtml(member.name)}</strong> updated in the shared cloud roster.${reviewNote}${codeNote}`
+            : `<strong>${escapeHtml(member.name)}</strong> saved to the shared cloud roster.${reviewNote}${codeNote}`,
           "success"
         );
         playSfx("success");
       } else {
+        if (revealCode || actionLabel === "claim-legacy" || actionLabel === "needs-review") {
+          pendingPersonalCodeReveal = member.personalCode;
+          openPersonalCodeModal(member.personalCode);
+        }
         toast(
           `<strong>${escapeHtml(member.name)}</strong> kept on this device. Cloud sync failed — will retry automatically.`,
           "error"
@@ -2150,8 +2226,10 @@
     if (!filtered.length) {
       el.rosterList.innerHTML = `
         <div class="empty">
-          <strong>No roster signals found</strong>
-          <p>Create a member with the guided flow, or load the admin demo (KittyKlawzz · Fisherman5).</p>
+          <strong>${isAdmin ? "No roster signals found" : "Leadership roster locked"}</strong>
+          <p>${isAdmin
+            ? "Create a member with Push Data, or load the admin demo (KittyKlawzz · Fisherman5)."
+            : "Unlock with <strong>Admin access</strong> (R4–R5) to see the full alliance roster. Members use <strong>My profile</strong> with their Personal Code."}</p>
           <div class="empty-actions">
             <button class="btn btn-primary" data-empty-action="start">Start guided entry</button>
             ${isAdmin ? `<button class="btn btn-ghost" data-empty-action="demo">Load demo data</button>` : ""}
@@ -2844,6 +2922,7 @@
     isAdmin = true;
     sessionStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(adminSession));
     closeModal("admin");
+    setSessionBanner("");
     applyAccessMode();
     await startAdminRealtime({ claim: true });
     await pullCloudRoster({ silent: true });
@@ -3267,8 +3346,16 @@
     isAdmin = false;
     adminSession = null;
     sessionStorage.removeItem(ADMIN_SESSION_KEY);
+    roster = [];
+    changeHistory = [];
+    saveRoster();
+    saveHistory();
     applyAccessMode();
     renderAll();
+    setSessionBanner(
+      "Your admin session was taken over on another device. Sign in again if needed.",
+      { actionLabel: "Admin access", onAction: () => openAdminModal() }
+    );
     toast("Your admin session was taken over on another device.", "error");
     playSfx("error");
   }
@@ -3330,7 +3417,7 @@
     if (el.kpiRj) animateKpi(el.kpiRj, 0, { decimals: 0, duration: 280 });
     animateGauge(0);
     animateKpi(el.readinessValue, 0, { suffix: "%", decimals: 0, duration: 280 });
-    el.readinessCopy.textContent = "Admin authentication required.";
+    el.readinessCopy.textContent = "Unlock Admin access (R4–R5) for alliance stats. Members: use My profile with your Personal Code.";
     el.summaryStrip.classList.add("is-empty");
     lastRenderedLevel = null;
   }
@@ -4319,8 +4406,20 @@
       }
       return true;
     } catch (error) {
+      const msg = error?.message || "Pull failed.";
+      if (/credentials rejected|401|403/i.test(msg) && isAdmin) {
+        await logoutAdminSession({
+          toastMessage: "Admin session invalid — please log in again.",
+          playClick: false
+        });
+        setSessionBanner(
+          "Leadership credentials were rejected. Sign in again with <strong>Admin access</strong>.",
+          { actionLabel: "Admin access", onAction: () => openAdminModal() }
+        );
+        return false;
+      }
       if (!silent) {
-        if (el.syncError) el.syncError.textContent = error.message || "Pull failed.";
+        if (el.syncError) el.syncError.textContent = msg;
         playSfx("error");
       }
       return false;
@@ -4352,13 +4451,12 @@
             ? pending
             : roster.filter(m => !m.isDemo).slice(0, 5);
           if (!members.length) return true;
-          const code =
-            normalizePersonalCode(memberSession?.personalCode) ||
-            normalizePersonalCode(members[0]?.personalCode) ||
-            "";
+          // Only send Personal Code as AUTH when the member session is unlocked.
+          // Brand-new codes on first submit must go as public payload fields, not session proof.
+          const sessionCode = normalizePersonalCode(memberSession?.personalCode) || "";
           authHeaders = getRosterAuthHeaders({
             "Content-Type": "application/json",
-            ...(code ? { personalCode: code } : {})
+            ...(sessionCode ? { personalCode: sessionCode } : {})
           });
         }
 
@@ -4370,10 +4468,7 @@
             members,
             history: historyPayload,
             deleted_ids: deletedIds,
-            updated_at: new Date().toISOString(),
-            ...(authHeaders["X-PHL-Personal-Code"]
-              ? { personalCode: authHeaders["X-PHL-Personal-Code"] }
-              : {})
+            updated_at: new Date().toISOString()
           })
         });
         if (!response.ok) {
@@ -4761,7 +4856,7 @@
     const list = changeHistory;
     if (el.historyResultText) el.historyResultText.textContent = `${list.length} event${list.length === 1 ? "" : "s"}`;
     if (!list.length) {
-      el.historyList.innerHTML = `<div class="empty"><strong>No history yet</strong><p>Member creates, overwrites, and admin edits will appear here.</p></div>`;
+      el.historyList.innerHTML = `<div class="empty"><strong>No changes yet</strong><p>Edits will appear here — member creates, Personal Code overwrites, and admin field edits.</p></div>`;
       return;
     }
     el.historyList.innerHTML = list.map(event => {

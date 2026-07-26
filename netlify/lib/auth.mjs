@@ -70,7 +70,9 @@ export async function resolveCallerAuth(req, body = null) {
   const personalCode = normalizePersonalCode(
     readHeader(req, "X-PHL-Personal-Code") ||
     url.searchParams.get("personalCode") ||
-    String(body?.personalCode || body?.auth?.personalCode || "")
+    // Nested auth only — never treat payload.members[].personalCode / top-level
+    // personalCode on create bodies as session proof (those are often brand-new codes).
+    String(body?.auth?.personalCode || "")
   );
 
   const admin = await verifyAdminCredentials(adminId, adminCode);
