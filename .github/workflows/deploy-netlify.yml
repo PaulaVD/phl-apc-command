@@ -20,7 +20,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Deploy to Netlify
+      - name: Deploy draft to Netlify
+        id: deploy
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
@@ -29,4 +30,29 @@ jobs:
             echo "Missing NETLIFY_AUTH_TOKEN or NETLIFY_SITE_ID secrets" >&2
             exit 1
           fi
-          npx --yes netlify-cli deploy --dir=. --prod --site "$NETLIFY_SITE_ID" --auth "$NETLIFY_AUTH_TOKEN" --message "GitHub Actions ${GITHUB_SHA}"
+          # Production createSiteDeploy can be blocked when Netlify free credits are exhausted.
+          # Draft deploy + restore still publishes to the same public URL.
+          OUT=$(npx --yes netlify-cli deploy --dir=. --json --site "$NETLIFY_SITE_ID" --auth "$NETLIFY_AUTH_TOKEN" --message "GitHub Actions ${GITHUB_SHA}")
+          echo "$OUT" | tee deploy-result.json
+          DEPLOY_ID=$(python3 -c 'import json; print(json.load(open("deploy-result.json"))["deploy_id"])')
+          echo "deploy_id=$DEPLOY_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Publish draft to production URL
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+          DEPLOY_ID: ${{ steps.deploy.outputs.deploy_id }}
+        run: |
+          CODE=$(curl -sS -o /tmp/restore.json -w '%{http_code}' \
+            -X POST "https://api.netlify.com/api/v1/sites/${NETLIFY_SITE_ID}/deploys/${DEPLOY_ID}/restore" \
+            -H "Authorization: Bearer ${NETLIFY_AUTH_TOKEN}")
+          echo "restore_http=$CODE"
+          cat /tmp/restore.json | head -c 500; echo
+          test "$CODE" = "200"
+          python3 - <<'PY'
+          import json
+          d=json.load(open("/tmp/restore.json"))
+          print("published_at", d.get("published_at"))
+          print("ssl_url", d.get("ssl_url"))
+          assert d.get("ssl_url","").startswith("https://transcendent-kitsune-43421d.netlify.app")
+          PY

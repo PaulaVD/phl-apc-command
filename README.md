@@ -10,17 +10,21 @@ That Netlify URL is the public app link (do not change it). Cloud roster and adm
 
 ## Source of truth
 
-This GitHub repo is the source of truth for the code. Edit here, push to `main`, and the live Netlify site updates.
+This GitHub repo (`PaulaVD/phl-apc-command`) is the source of truth. Edit here, push to `main`, and the live Netlify site updates.
 
 ## How deploy works
 
-Pushes to `main` trigger a GitHub Action that deploys to the existing Netlify site (`ea9f0eb9-e894-4d21-8665-08be77d8b6d3`) using `NETLIFY_AUTH_TOKEN` and `NETLIFY_SITE_ID` repository secrets. The public URL stays the same.
+Pushes to `main` run the **Deploy to Netlify** GitHub Action. It uploads a draft deploy, then publishes it to the same site URL using `NETLIFY_AUTH_TOKEN` and `NETLIFY_SITE_ID` repository secrets.
 
-Manual deploy (optional):
+Manual deploy (optional, same account as Netlify CLI login):
 
 ```bash
-npx --yes netlify-cli deploy --dir=. --prod
+npx --yes netlify-cli deploy --dir=.
+# then publish that draft from the Netlify UI, or:
+# POST /api/v1/sites/$SITE_ID/deploys/$DEPLOY_ID/restore
 ```
+
+If Netlify reports “Account credit usage exceeded”, new **production** creates may be blocked until credits reset; draft + restore still updates the live URL.
 
 ## Features
 
