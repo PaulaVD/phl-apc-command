@@ -12,6 +12,8 @@
   const PERSONAL_CODE_PREF_KEY = "phl_my_personal_codes_v1";
   const ADMIN_HEARTBEAT_MS = 10_000;
   const APC_COUNT = 4;
+  /** APC1–APC3 required on submit; APC4 may be left at 0. */
+  const REQUIRED_APC_COUNT = 3;
   const STALE_MS = 7 * 24 * 60 * 60 * 1000;
   const HISTORY_CAP = 300;
   const MOBILE_MQ = "(max-width: 900px)";
@@ -46,7 +48,6 @@
   let prefs = loadPrefs();
   let editingId = null;
   let currentStep = 0;
-  let entryMode = prefs.entryMode === "quick" ? "quick" : "guided";
   let sfxEnabled = true;
   let adminSession = loadAdminSession();
   let isAdmin = Boolean(adminSession);
@@ -99,7 +100,7 @@
     { key: "apc1", title: "APC 1 setup", hint: "Configure your main APC CP, faction and Rally Plaza capacity.", railTitle: "APC 1", railHint: "Main + Plaza", icon: "A1" },
     { key: "apc2", title: "APC 2 setup", hint: "Add the second APC and keep your loadout balanced.", railTitle: "APC 2", railHint: "Second APC", icon: "A2" },
     { key: "apc3", title: "APC 3 setup", hint: "Set the third APC power and faction focus.", railTitle: "APC 3", railHint: "Third APC", icon: "A3" },
-    { key: "apc4", title: "APC 4 setup", hint: "Complete the fourth APC or leave it lower if unused.", railTitle: "APC 4", railHint: "Fourth APC", icon: "A4" },
+    { key: "apc4", title: "APC 4 setup (optional)", hint: "Add a fourth APC if you have one, or leave CP at 0 and continue.", railTitle: "APC 4", railHint: "Optional", icon: "A4" },
     { key: "review", title: "Review & save", hint: "Check the summary and save the member into the roster.", railTitle: "Review", railHint: "Finalize", icon: "06" }
   ];
 
@@ -115,8 +116,6 @@
     entrySubtitle: document.getElementById("entrySubtitle"),
     wizardShell: document.getElementById("wizardShell"),
     wizardCardHead: document.getElementById("wizardCardHead"),
-    guidedModeBtn: document.getElementById("guidedModeBtn"),
-    quickModeBtn: document.getElementById("quickModeBtn"),
     primaryBtn: document.getElementById("primaryBtn"),
     backBtn: document.getElementById("backBtn"),
     resetBtn: document.getElementById("resetBtn"),
@@ -303,7 +302,6 @@
     bindEvents();
     initLofiPlayer();
     applyAccessMode();
-    applyEntryMode();
     initMobileTabs();
     maybeWarnStaleSessions();
     enhanceSelects(document.querySelector(".toolbar"));
@@ -332,10 +330,7 @@
   }
 
   function bindEvents() {
-    el.primaryBtn.addEventListener("click", () => {
-      if (entryMode === "quick") saveCurrentMember();
-      else nextStep();
-    });
+    el.primaryBtn.addEventListener("click", () => nextStep());
     el.backBtn.addEventListener("click", prevStep);
     el.resetBtn.addEventListener("click", () => resetForm(true));
     el.demoBtn.addEventListener("click", loadDemo);
@@ -347,8 +342,6 @@
     el.syncPushBtn?.addEventListener("click", () => pushCloudRosterWithRetry({ silent: false }));
     el.exportJsonBtn?.addEventListener("click", exportJsonRoster);
     el.importJsonInput?.addEventListener("change", importJsonRoster);
-    el.guidedModeBtn?.addEventListener("click", () => setEntryMode("guided"));
-    el.quickModeBtn?.addEventListener("click", () => setEntryMode("quick"));
     el.searchInput.addEventListener("input", scheduleRosterRender);
     el.levelFilter.addEventListener("change", renderRoster);
     el.rankFilter?.addEventListener("change", renderRoster);
@@ -426,8 +419,7 @@
     if (tag !== "INPUT" && tag !== "SELECT") return;
 
     event.preventDefault();
-    if (entryMode === "quick") saveCurrentMember();
-    else nextStep();
+    nextStep();
   }
 
   function initMobileTabs() {
@@ -675,48 +667,7 @@
     }
   }
 
-  function setEntryMode(mode) {
-    entryMode = mode === "quick" ? "quick" : "guided";
-    prefs.entryMode = entryMode;
-    savePrefs();
-    applyEntryMode();
-    wizardRailDirty = true;
-    renderWizard(true);
-    renderScan();
-    playSfx("click");
-  }
-
-  function applyEntryMode() {
-    const quick = entryMode === "quick";
-    document.body.classList.toggle("quick-entry", quick);
-    el.guidedModeBtn?.classList.toggle("active", !quick);
-    el.quickModeBtn?.classList.toggle("active", quick);
-    if (el.entryTitle) el.entryTitle.textContent = quick ? "Push Data · Quick" : "Push Data";
-    if (el.entrySubtitle) {
-      el.entrySubtitle.textContent = quick
-        ? "First time? Leave Personal Code blank — we generate one after you submit. Returning? Enter your code to overwrite."
-        : "First submit generates your Personal Code. Enter that code later to overwrite without creating a Name-updt review entry.";
-    }
-    if (el.wizardCardHead) el.wizardCardHead.hidden = quick;
-    if (el.wizardRail) el.wizardRail.hidden = quick;
-    if (el.stepPill) el.stepPill.hidden = quick;
-    if (el.backBtn) {
-      el.backBtn.hidden = quick;
-      if (!quick) {
-        el.backBtn.disabled = currentStep === 0;
-        el.backBtn.style.opacity = currentStep === 0 ? ".55" : "1";
-      }
-    }
-  }
-
   function renderWizard(forceRail = false) {
-    if (entryMode === "quick") {
-      renderQuickSubmit();
-      enhanceSelects(el.wizardContent);
-      updateWizardMeta();
-      return;
-    }
-
     const meta = stepMeta[currentStep];
     updateWizardMeta(meta);
 
@@ -743,15 +694,6 @@
   }
 
   function updateWizardMeta(meta = stepMeta[currentStep]) {
-    if (entryMode === "quick") {
-      el.primaryBtn.textContent = editingId
-        ? (isAdmin ? "Update roster" : "Update submission")
-        : (isAdmin ? "Save to roster" : "Submit APC CP");
-      el.backBtn.disabled = true;
-      el.backBtn.style.opacity = ".55";
-      return;
-    }
-
     const stepNumber = currentStep + 1;
     el.stepPill.textContent = `Step ${stepNumber} / ${stepMeta.length}`;
     el.wizardLabel.textContent = `Step ${stepNumber}`;
@@ -818,97 +760,29 @@
       </div>`;
   }
 
-  function renderQuickSubmit() {
-    const band = BANDS[state.level];
-    const mainGap = getFrontlineGap(state.level, state.apcs[0].cp);
-    const role = classifyCurrentState();
-    el.wizardContent.innerHTML = `
-      <div class="quick-submit">
-        <label class="field paste-field">
-          <span>Paste from chat / Garage notes</span>
-          <textarea class="input paste-input" id="pasteInput" rows="2" placeholder="Example: PlayerOne i5 820/760/710/655 450000"></textarea>
-          <button class="btn btn-ghost paste-apply" type="button" id="pasteApplyBtn">Parse paste</button>
-        </label>
-        <div class="field-grid">
-          <div class="field"><label for="memberNameInput">Player name</label><input class="input" id="memberNameInput" type="text" maxlength="30" autocomplete="nickname" placeholder="Example: PlayerOne" value="${escapeHtml(state.name)}"></div>
-          <div class="field"><label for="memberLevelInput">Watchtower</label><select id="memberLevelInput">${levelOptionsHtml(state.level)}</select></div>
-          <div class="field"><label for="memberRankInput">PH-L rank</label><select id="memberRankInput">${rankOptionsHtml(state.rank)}</select></div>
-          <div class="field"><label for="rallyCapacityInput">Rally Plaza capacity</label><input class="input" id="rallyCapacityInput" type="number" min="0" step="1000" inputmode="numeric" placeholder="Troops, e.g. 400000" value="${state.rallyCapacity || ""}"></div>
-          <div class="field personal-code-field" style="grid-column:1/-1">
-            <label for="personalCodeInput">Personal Code</label>
-            <input class="input" id="personalCodeInput" type="text" maxlength="16" autocomplete="off" spellcheck="false" placeholder="Leave blank on first submit" value="${escapeHtml(state.personalCode)}">
-            <small class="personal-code-help">
-              <strong>First time:</strong> leave blank → code is generated after submit (big “Save this code” modal).<br>
-              <strong>Returning:</strong> enter your code to overwrite. Without it, a <code>Name-updt</code> review entry is created.
-            </small>
-          </div>
-        </div>
-        <div class="quick-apc-grid">
-          ${state.apcs.map((apc, index) => {
-            const gap = index === 0 ? getFrontlineGap(state.level, apc.cp) : null;
-            return `
-              <div class="quick-apc-card">
-                <div class="quick-apc-head">
-                  <strong>APC ${index + 1}${index === 0 ? " · Main" : ""}</strong>
-                  ${gap ? `<span class="gap-chip ${gap.met ? "met" : "short"}">${formatGap(gap)}</span>` : `<span class="gap-chip">${apc.faction}</span>`}
-                </div>
-                <div class="faction-row compact">
-                  ${FACTIONS.map(f => `<button class="seg-btn ${apc.faction === f ? "active" : ""}" type="button" data-apc-index="${index}" data-faction="${f}">${f}</button>`).join("")}
-                </div>
-                <div class="value-wrap">
-                  <input class="cp-input" id="cpInput${index}" data-apc-index="${index}" type="number" min="0" max="${getMaxForLevel(state.level)}" step="1" value="${apc.cp}" aria-label="APC ${index + 1} CP">
-                  <b>M CP</b>
-                </div>
-              </div>`;
-          }).join("")}
-        </div>
-        <div class="helper-grid">
-          <div class="helper-card">
-            <span>PH-L benchmarks · ${formatLevel(state.level)}</span>
-            <div class="benchmark-values">
-              <div class="benchmark-card"><strong>${band.operational}M</strong><small>Operational</small></div>
-              <div class="benchmark-card"><strong>${band.frontline}M</strong><small>Frontline</small></div>
-              <div class="benchmark-card"><strong>${band.apex}M</strong><small>Apex</small></div>
-            </div>
-          </div>
-          <div class="helper-card">
-            <span>Main APC readiness</span>
-            <div class="summary-stack">
-              <div class="summary-line"><span>Status</span><b>${getBandLabel(state.level, state.apcs[0].cp)}</b></div>
-              <div class="summary-line"><span>Frontline target</span><b>${band.frontline}M</b></div>
-              <div class="summary-line"><span>Gap</span><b data-quick-main-gap class="${mainGap.met ? "gap-met" : "gap-short"}">${formatGap(mainGap)}</b></div>
-              <div class="summary-line"><span>Plaza</span><b data-live-plaza>${state.rallyCapacity ? formatTroops(state.rallyCapacity) : "—"}</b></div>
-              <div class="summary-line"><span>Rally role</span><b data-live-rally-role class="${role.assigned_role === "RL" ? "gap-met" : "gap-short"}">${role.assigned_role === "RL" ? "Rally Leader" : "Rally Joiner"}</b></div>
-              <div class="summary-line"><span>Role gate</span><b data-live-rally-reason>${escapeHtml(getRallyGateReasonFromState())}</b></div>
-              <div class="summary-line"><span>Total APC CP</span><b>${formatNumber(getTotalFromState())}M</b></div>
-            </div>
-          </div>
-        </div>
-      </div>`;
-  }
-
   function renderApcStep(index) {
     const apc = state.apcs[index];
     const max = getMaxForLevel(state.level);
     const gap = getFrontlineGap(state.level, apc.cp);
     const band = BANDS[state.level];
     const role = classifyCurrentState();
+    const optional = index >= REQUIRED_APC_COUNT;
     el.wizardContent.innerHTML = `
       <div class="apc-focus">
         <div class="apc-preview" data-tilt>
           <div class="mini-grid"></div>
-          <div class="floating-id">APC ${index + 1}</div>
+          <div class="floating-id">APC ${index + 1}${optional ? " · Optional" : ""}</div>
           <img class="game-asset" src="${ASSETS.apc}" alt="APC ${index + 1} preview" width="240" height="180" decoding="async">
         </div>
         <div class="apc-editor">
-          <div class="field"><span>Faction focus</span></div>
+          <div class="field"><span>Faction focus${optional ? " <em class=\"optional-tag\">optional</em>" : ""}</span></div>
           <div class="faction-row">
             ${FACTIONS.map(f => `<button class="seg-btn ${apc.faction === f ? "active" : ""}" type="button" data-apc-index="${index}" data-faction="${f}">${f}</button>`).join("")}
           </div>
           <div class="cp-control">
             <button class="mini-btn" type="button" data-apc-index="${index}" data-step="-10">-10</button>
             <div class="value-wrap">
-              <input class="cp-input" id="cpInput${index}" data-apc-index="${index}" type="number" min="0" max="${max}" step="1" value="${apc.cp}">
+              <input class="cp-input" id="cpInput${index}" data-apc-index="${index}" type="number" min="0" max="${max}" step="1" value="${apc.cp}" aria-label="APC ${index + 1} CP${optional ? " (optional)" : ""}">
               <b>M CP</b>
             </div>
             <button class="mini-btn" type="button" data-apc-index="${index}" data-step="10">+10</button>
@@ -918,6 +792,7 @@
             ${PRESETS.map(value => `<button class="preset${value > max ? " is-disabled" : ""}${apc.cp === value ? " is-active" : ""}" type="button" data-apc-index="${index}" data-preset="${value}" ${value > max ? "disabled" : ""}>${value}M</button>`).join("")}
             <button class="preset" type="button" data-apc-index="${index}" data-preset="${band.frontline}">Frontline ${band.frontline}M</button>
             <button class="preset" type="button" data-apc-index="${index}" data-preset="${band.apex}">Apex ${band.apex}M</button>
+            ${optional ? `<button class="preset" type="button" data-apc-index="${index}" data-preset="0">Skip / empty</button>` : ""}
           </div>
           ${index === 0 ? `
           <div class="plaza-block">
@@ -944,7 +819,8 @@
   function renderReviewStep() {
     const band = BANDS[state.level];
     const total = getTotalFromState();
-    const average = total / APC_COUNT;
+    const activeCount = getActiveApcCount(state.apcs);
+    const average = total / activeCount;
     const mainStatus = STATUS[getStatusKey(state.level, state.apcs[0].cp)];
     const mainGap = getFrontlineGap(state.level, state.apcs[0].cp);
     const role = classifyCurrentState();
@@ -970,16 +846,20 @@
           <div class="summary-stack">
             ${state.apcs.map((apc, i) => {
               const gap = i === 0 ? getFrontlineGap(state.level, apc.cp) : null;
+              const optional = i >= REQUIRED_APC_COUNT;
+              const cpLabel = Number(apc.cp) > 0
+                ? `${formatNumber(apc.cp)}M <small>entered</small>`
+                : (optional ? "Empty <small>optional</small>" : `${formatNumber(apc.cp)}M <small>entered</small>`);
               return `<div class="summary-line apc-review-line">
-                <span>APC ${i + 1} · ${apc.faction}</span>
+                <span>APC ${i + 1}${optional ? " · Optional" : ""} · ${apc.faction}</span>
                 <b class="apc-review-values">
-                  <em class="apc-cp">${formatNumber(apc.cp)}M <small>entered</small></em>
+                  <em class="apc-cp">${cpLabel}</em>
                   ${gap ? `<em class="apc-gap ${gap.met ? "gap-met" : "gap-short"}">${formatGap(gap)} <small>vs frontline</small></em>` : ""}
                 </b>
               </div>`;
             }).join("")}
             <div class="summary-line"><span>Total APC CP</span><b>${formatNumber(total)}M</b></div>
-            <div class="summary-line"><span>Average APC</span><b>${formatNumber(average)}M</b></div>
+            <div class="summary-line"><span>Average APC</span><b>${formatNumber(average)}M <small>of ${activeCount}</small></b></div>
             <div class="summary-line"><span>Plaza</span><b data-live-plaza>${state.rallyCapacity ? formatTroops(state.rallyCapacity) : "—"}</b></div>
             <div class="summary-line"><span>Rally role</span><b data-live-rally-role class="${role.assigned_role === "RL" ? "gap-met" : "gap-short"}">${role.assigned_role === "RL" ? "Rally Leader" : "Rally Joiner"}</b></div>
             <div class="summary-line"><span>Status</span><b style="color:${mainStatus.color}">${mainStatus.label}</b></div>
@@ -1098,10 +978,6 @@
       });
       const factionStat = el.wizardContent.querySelector('[data-apc-stat="faction"]');
       if (factionStat) factionStat.textContent = state.apcs[idx].faction;
-      if (entryMode === "quick" && idx > 0) {
-        const chips = el.wizardContent.querySelectorAll(".gap-chip");
-        if (chips[idx]) chips[idx].textContent = state.apcs[idx].faction;
-      }
       syncLiveRallyClassification();
       playSfx("click");
       return;
@@ -1192,10 +1068,6 @@
       loadDemo();
       return;
     }
-
-    if (event.target.id === "pasteApplyBtn" || event.target.closest("#pasteApplyBtn")) {
-      applyPasteInput();
-    }
   }
 
   function applyApcDelta(index, delta) {
@@ -1240,23 +1112,6 @@
     }
     el.orbitValues[index].textContent = `${formatNumber(apc.cp)}M`;
     el.orbitFactions[index].textContent = apc.faction;
-
-    if (entryMode === "quick") {
-      const chips = el.wizardContent.querySelectorAll(".gap-chip");
-      if (index === 0 && chips[0]) {
-        chips[0].textContent = formatGap(gap);
-        chips[0].classList.toggle("met", gap.met);
-        chips[0].classList.toggle("short", !gap.met);
-      } else if (chips[index]) {
-        chips[index].textContent = apc.faction;
-      }
-      const mainGap = el.wizardContent.querySelector("[data-quick-main-gap]");
-      if (mainGap && index === 0) {
-        mainGap.textContent = formatGap(gap);
-        mainGap.classList.toggle("gap-met", gap.met);
-        mainGap.classList.toggle("gap-short", !gap.met);
-      }
-    }
   }
 
   function renderNonDestructive(options = {}) {
@@ -1324,6 +1179,19 @@
         document.getElementById("memberNameInput")?.focus();
       });
       return false;
+    }
+
+    const meta = stepMeta[stepIndex];
+    if (meta?.key?.startsWith("apc")) {
+      const idx = Number(meta.key.slice(3)) - 1;
+      if (idx >= 0 && idx < REQUIRED_APC_COUNT && !(Number(state.apcs[idx]?.cp) > 0)) {
+        toast(`Enter APC ${idx + 1} CP before continuing.`, "error");
+        playSfx("error");
+        window.requestAnimationFrame(() => {
+          document.getElementById(`cpInput${idx}`)?.focus();
+        });
+        return false;
+      }
     }
     return true;
   }
@@ -1435,10 +1303,19 @@
       playSfx("error");
       return;
     }
-    if (!state.apcs.some(apc => apc.cp > 0)) {
-      toast("Add at least one APC power value.", "error");
-      playSfx("error");
-      return;
+    for (let i = 0; i < REQUIRED_APC_COUNT; i += 1) {
+      if (!(Number(state.apcs[i]?.cp) > 0)) {
+        toast(`APC ${i + 1} is required. APC 4 is optional.`, "error");
+        playSfx("error");
+        currentStep = i + 1;
+        wizardRailDirty = true;
+        renderWizard(true);
+        renderNonDestructive();
+        window.requestAnimationFrame(() => {
+          document.getElementById(`cpInput${i}`)?.focus();
+        });
+        return;
+      }
     }
     if (!Number(state.rallyCapacity) && !window.confirm(
       "Rally Plaza capacity is empty. Save anyway? RL/RJ classification needs Plaza troops with APC1."
@@ -1687,7 +1564,8 @@
     const apcMatch = /^apc(\d)\.(cp|faction)$/.exec(field);
     if (apcMatch) {
       const n = Number(apcMatch[1]) + 1;
-      return apcMatch[2] === "cp" ? `APC ${n} CP` : `APC ${n} faction`;
+      const optional = n > REQUIRED_APC_COUNT ? " (optional)" : "";
+      return apcMatch[2] === "cp" ? `APC ${n} CP${optional}` : `APC ${n} faction${optional}`;
     }
     return field;
   }
@@ -1755,8 +1633,8 @@
         const apc = member.apcs?.[i] || { cp: 0, faction: "Fighter" };
         return `
           <button type="button" class="drawer-field-row" data-edit-field="apc${i}.cp" data-id="${member.id}">
-            <span>APC ${i + 1}${i === 0 ? " · Main" : ""} CP</span>
-            <strong>${formatNumber(apc.cp)}M</strong>
+            <span>APC ${i + 1}${i === 0 ? " · Main" : i >= REQUIRED_APC_COUNT ? " · Optional" : ""} CP</span>
+            <strong>${Number(apc.cp) > 0 ? `${formatNumber(apc.cp)}M` : (i >= REQUIRED_APC_COUNT ? "Empty" : `${formatNumber(apc.cp)}M`)}</strong>
           </button>
           <button type="button" class="drawer-field-row" data-edit-field="apc${i}.faction" data-id="${member.id}">
             <span>APC ${i + 1} faction</span>
@@ -2114,7 +1992,7 @@
     el.statusTag.style.color = status.color;
     animateKpi(el.scanMain, main, { suffix: "M", duration: 360 });
     animateKpi(el.scanTotal, total, { suffix: "M", duration: 360 });
-    animateKpi(el.scanAverage, total / APC_COUNT, { suffix: "M", duration: 360 });
+    animateKpi(el.scanAverage, total / getActiveApcCount(state.apcs), { suffix: "M", duration: 360 });
     const gap = getFrontlineGap(state.level, main);
     if (el.scanGap) {
       el.scanGap.textContent = formatGap(gap);
@@ -4046,10 +3924,17 @@
     return state.apcs.reduce((sum, apc) => sum + Number(apc.cp || 0), 0);
   }
 
+  /** Count APCs with CP > 0 for averages (empty optional APC4 does not dilute). */
+  function getActiveApcCount(apcs) {
+    const filled = (apcs || []).filter(apc => Number(apc.cp || 0) > 0).length;
+    return Math.max(1, filled);
+  }
+
   function getBalance(apcs) {
-    const values = apcs.map(apc => Number(apc.cp || 0));
-    const max = Math.max(...values, 0);
-    if (!max) return 0;
+    const values = (apcs || []).map(apc => Number(apc.cp || 0)).filter(v => v > 0);
+    if (!values.length) return 0;
+    if (values.length === 1) return 100;
+    const max = Math.max(...values);
     const min = Math.min(...values);
     return Math.max(0, Math.min(100, 100 - ((max - min) / max) * 100));
   }
@@ -4143,85 +4028,6 @@
     if (gapInfo.met) return `+${formatNumber(Math.abs(gapInfo.gap))}M`;
     if (!Number(gapInfo.target)) return "—";
     return `-${formatNumber(Math.max(0, gapInfo.gap))}M`;
-  }
-
-  function applyPasteInput() {
-    const raw = document.getElementById("pasteInput")?.value || "";
-    const parsed = parsePasteLine(raw);
-    if (!parsed) {
-      toast("Could not parse paste. Try: Name i5 820/760/710/655 450000", "error");
-      playSfx("error");
-      return;
-    }
-    if (parsed.name) state.name = parsed.name.slice(0, 30);
-    if (parsed.level) state.level = parsed.level;
-    if (parsed.rank) state.rank = parsed.rank;
-    if (parsed.powers) {
-      parsed.powers.forEach((cp, i) => {
-        if (i < APC_COUNT) state.apcs[i].cp = clamp(cp, 0, getMaxForLevel(state.level));
-      });
-    }
-    if (parsed.rallyCapacity != null) {
-      state.rallyCapacity = Math.max(0, Math.floor(Number(parsed.rallyCapacity) || 0));
-    }
-    renderWizard(true);
-    syncLiveRallyClassification();
-    toast(parsed.rallyCapacity ? "Paste applied (APC + Plaza)." : "Paste applied.", "success");
-    playSfx("success");
-  }
-
-  function parsePasteLine(text) {
-    const line = String(text || "").trim().replace(/,/g, " ");
-    if (!line) return null;
-
-    const powersMatch = line.match(/(\d+(?:\.\d+)?)\s*[\/|]\s*(\d+(?:\.\d+)?)\s*[\/|]\s*(\d+(?:\.\d+)?)\s*[\/|]\s*(\d+(?:\.\d+)?)/)
-      || line.match(/(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)(?!.*\d)/);
-    if (!powersMatch) return null;
-
-    const powers = powersMatch.slice(1, 5).map(Number);
-    let rest = line.replace(powersMatch[0], " ").replace(/\s+/g, " ").trim();
-
-    let level = null;
-    const levelMatch = rest.match(/\b(i\d{1,2}|I\d{1,2}|WT\d{1,2}|\d{1,2})\b/);
-    if (levelMatch) {
-      level = normalizeLevelToken(levelMatch[1]);
-      rest = rest.replace(levelMatch[0], " ").replace(/\s+/g, " ").trim();
-    }
-
-    let rank = null;
-    const rankMatch = rest.match(/\b(R[1-5])\b/i);
-    if (rankMatch) {
-      rank = rankMatch[1].toUpperCase();
-      rest = rest.replace(rankMatch[0], " ").replace(/\s+/g, " ").trim();
-    }
-
-    let rallyCapacity = null;
-    const plazaK = rest.match(/\b(\d+(?:\.\d+)?)\s*[kK]\b/);
-    const plazaRaw = rest.match(/\b(\d{5,})\b/);
-    if (plazaK) {
-      rallyCapacity = Math.round(Number(plazaK[1]) * 1000);
-      rest = rest.replace(plazaK[0], " ").replace(/\s+/g, " ").trim();
-    } else if (plazaRaw) {
-      rallyCapacity = Math.floor(Number(plazaRaw[1]));
-      rest = rest.replace(plazaRaw[0], " ").replace(/\s+/g, " ").trim();
-    }
-
-    const name = rest.replace(/[|/]+/g, " ").trim();
-    return {
-      name: name || null,
-      level: level && BANDS[level] ? level : null,
-      rank: RANKS.includes(rank) ? rank : null,
-      powers,
-      rallyCapacity
-    };
-  }
-
-  function normalizeLevelToken(token) {
-    const value = String(token || "");
-    if (/^i\d{1,2}$/i.test(value)) return `I${value.slice(1)}`;
-    if (/^WT\d{1,2}$/i.test(value)) return `WT${value.slice(2)}`;
-    if (/^\d{1,2}$/.test(value)) return `WT${value}`;
-    return value;
   }
 
   function copyDiscordReport() {
