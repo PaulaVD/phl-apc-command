@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Teko:wght@500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=113" />
+  <link rel="stylesheet" href="styles.css?v=114" />
 </head>
 <body class="mobile-tab-times">
   <a class="skip-link" href="#operatorConsole">Skip to form</a>
@@ -247,11 +247,11 @@
         <svg viewBox="0 0 24 24"><path d="M17 9h-1V7a4 4 0 1 0-8 0v2H7a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2Zm-3 0h-4V7a2 2 0 1 1 4 0Z"/></svg>
       </div>
       <div>
-        <strong>How Personal Code works</strong>
+        <strong class="privacy-title">How Personal Code works</strong>
         <span><strong>1)</strong> Open <strong>Push Data</strong> and submit your APC CP with Personal Code blank.
           <strong>2)</strong> A popup shows your new code — copy &amp; save it.
           <strong>3)</strong> Later, enter that code under Push Data to overwrite, or use <strong>My profile</strong> to unlock only your record.
-          Tip ES: la primera vez deja el código vacío; el sistema lo genera. Tip: paste <code>Name i5 820/760/710/655 450000</code>.
+          Tip: on first submit, leave the code blank so the system can generate it. You can also paste a line like <code>Name i5 820/760/710/655 450000</code>.
           Admins: members registered before codes existed show <strong>Gen</strong> — assign &amp; copy a code for them.</span>
       </div>
     </section>
@@ -579,7 +579,7 @@
       <h2 id="personalCodeModalTitle">Your Personal Code</h2>
       <p><strong>Copy and save this code now.</strong> You need it to overwrite your entry under Push Data and to unlock <strong>My profile</strong>. Without it, later submits create a <code>Name-updt</code> review entry for R4–R5.</p>
       <div class="personal-code-reveal" id="personalCodeReveal">————</div>
-      <p class="personal-code-modal-tip">Tip ES: guarda este código — es tu llave personal.</p>
+      <p class="personal-code-modal-tip">Tip: save this code — it is your personal key.</p>
       <div class="admin-modal-actions">
         <button class="btn btn-primary" id="personalCodeCopyBtn" type="button">Copy code</button>
         <button class="btn btn-ghost" id="personalCodeCloseBtn" type="button" data-modal-close="personalCode">Got it</button>
@@ -595,6 +595,6 @@
   <script src="serverClock.js?v=34"></script>
   <script src="rallyRoles.js?v=28"></script>
   <script src="rallyMatchmaking.js?v=27"></script>
-  <script src="app.js?v=113" defer></script>
+  <script src="app.js?v=114" defer></script>
 </body>
 </html>

@@ -786,7 +786,6 @@
             <strong>First time:</strong> leave blank → we generate your code and show a “Save this code” popup.<br>
             <strong>Returning:</strong> enter your code to overwrite your entry.
             ${remembered ? ` Last on this device: <strong>${escapeHtml(remembered)}</strong>.` : ""}
-            Tip: ES — la primera vez deja el campo vacío; después usa el código para actualizar.
           </small>
         </div>
       </div>

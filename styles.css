@@ -663,8 +663,9 @@ body.admin-mode .member-privacy-note{display:none}
 .scan-toggle{display:none}
 @media (max-width:1180px){.scan-toggle{display:inline-flex}}
 .confirm-modal-card{max-width:440px}
-.member-privacy-note strong{display:block;font-size:.86rem;letter-spacing:.12em;text-transform:uppercase;color:var(--gold)}
+.member-privacy-note .privacy-title{display:block;font-size:.86rem;letter-spacing:.12em;text-transform:uppercase;color:var(--gold)}
 .member-privacy-note span{display:block;margin-top:5px;color:var(--muted);font-size:.88rem;line-height:1.5}
+.member-privacy-note span strong{display:inline;font-size:inherit;letter-spacing:normal;text-transform:none;font-weight:700;color:var(--gold)}
 .admin-modal{position:fixed;inset:0;z-index:80;display:none;place-items:center;padding:18px}
 .admin-modal.open{display:grid}
 .admin-modal-backdrop{position:absolute;inset:0;background:rgba(3,1,1,.8);backdrop-filter:blur(12px)}
