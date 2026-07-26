@@ -1045,6 +1045,10 @@ button.row-val.field-tap small{font-size:.62em;color:var(--soft)}
   background:rgba(255,255,255,.03);color:var(--text);text-align:left;cursor:pointer;
   font-family:var(--font);-webkit-tap-highlight-color:transparent
 }
+.drawer-field-row.is-static{cursor:default}
+.drawer-field-row.is-static:hover,.drawer-field-row.is-static:focus-visible{
+  border-color:var(--line);background:rgba(255,255,255,.03)
+}
 .drawer-field-row span{color:var(--muted);font-size:.72rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase}
 .drawer-field-row strong{font-size:1rem;font-weight:700;color:var(--text);text-align:right}
 .drawer-field-row:hover,.drawer-field-row:focus-visible{
