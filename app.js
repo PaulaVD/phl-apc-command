@@ -12,7 +12,8 @@
   const APC_COUNT = 4;
   const STALE_MS = 7 * 24 * 60 * 60 * 1000;
   const HISTORY_CAP = 300;
-  const MOBILE_MQ = "(max-width: 760px)";
+  const MOBILE_MQ = "(max-width: 900px)";
+  const MOBILE_HINT_KEY = "phl_mobile_tab_hint_v1";
   const PERSONAL_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   /** One real upload is enough to start live RL/RJ from actual CP. */
   const MIN_RALLY_ROSTER_SAMPLES = 1;
@@ -61,7 +62,7 @@
   let audioAvailable = true;
   let pendingDeleteId = null;
   let lastFocusedElement = null;
-  let mobileTab = "preview";
+  let mobileTab = "times";
   let adminView = "roster";
   let drawerMemberId = null;
   let pendingPersonalCodeReveal = null;
@@ -390,29 +391,58 @@
     const mq = window.matchMedia(MOBILE_MQ);
     const apply = () => {
       const isMobile = mq.matches;
-      if (el.mobileShellTabs) el.mobileShellTabs.hidden = !isMobile;
+      document.documentElement.classList.toggle("is-mobile-shell", isMobile);
       if (!isMobile) {
-        document.body.classList.remove("mobile-tab-preview", "mobile-tab-push");
+        document.body.classList.remove("mobile-tab-times", "mobile-tab-push", "mobile-tab-preview");
+        const hint = document.getElementById("mobileTabHint");
+        if (hint) hint.hidden = true;
         return;
       }
-      setMobileTab(mobileTab || "preview", { silent: true });
+      setMobileTab(mobileTab === "push" ? "push" : "times", { silent: true });
+      maybeShowMobileTabHint();
     };
     el.mobileShellTabs?.querySelectorAll("[data-mobile-tab]").forEach(btn => {
       btn.addEventListener("click", () => setMobileTab(btn.dataset.mobileTab));
     });
     apply();
-    mq.addEventListener?.("change", apply);
+    if (mq.addEventListener) mq.addEventListener("change", apply);
+    else if (mq.addListener) mq.addListener(apply);
+  }
+
+  function maybeShowMobileTabHint() {
+    const hint = document.getElementById("mobileTabHint");
+    if (!hint || !window.matchMedia(MOBILE_MQ).matches) return;
+    try {
+      if (localStorage.getItem(MOBILE_HINT_KEY) === "1") {
+        hint.hidden = true;
+        return;
+      }
+    } catch {
+      /* ignore */
+    }
+    hint.hidden = false;
+    window.setTimeout(() => {
+      hint.hidden = true;
+      try { localStorage.setItem(MOBILE_HINT_KEY, "1"); } catch { /* ignore */ }
+    }, 7000);
   }
 
   function setMobileTab(tab, { silent = false } = {}) {
-    mobileTab = tab === "push" ? "push" : "preview";
-    document.body.classList.toggle("mobile-tab-preview", mobileTab === "preview");
+    mobileTab = tab === "push" ? "push" : "times";
+    document.body.classList.remove("mobile-tab-preview");
+    document.body.classList.toggle("mobile-tab-times", mobileTab === "times");
     document.body.classList.toggle("mobile-tab-push", mobileTab === "push");
     el.mobileShellTabs?.querySelectorAll("[data-mobile-tab]").forEach(btn => {
       const active = btn.dataset.mobileTab === mobileTab;
       btn.classList.toggle("is-active", active);
       btn.setAttribute("aria-selected", String(active));
+      btn.setAttribute("tabindex", active ? "0" : "-1");
     });
+    if (mobileTab === "push") {
+      document.getElementById("operatorConsole")?.scrollIntoView({ block: "nearest" });
+    } else {
+      document.getElementById("timesEventsPanel")?.scrollIntoView({ block: "nearest" });
+    }
     if (!silent) playSfx("click");
   }
 
@@ -571,11 +601,11 @@
     document.body.classList.toggle("quick-entry", quick);
     el.guidedModeBtn?.classList.toggle("active", !quick);
     el.quickModeBtn?.classList.toggle("active", quick);
-    if (el.entryTitle) el.entryTitle.textContent = quick ? "Quick APC submit" : "Guided APC setup";
+    if (el.entryTitle) el.entryTitle.textContent = quick ? "Push Data · Quick" : "Push Data";
     if (el.entrySubtitle) {
       el.entrySubtitle.textContent = quick
-        ? "One screen for Dark War Survival Garage APC CP. Paste chat lines or fill fields and submit."
-        : "Register one PH-L member at a time. Only the field you need is shown.";
+        ? "Submit APC CP here. Enter your Personal Code to overwrite your entry — or leave blank to register / flag [name]-updt."
+        : "Register one PH-L member at a time. Keep your Personal Code to overwrite later without creating a review entry.";
     }
     if (el.wizardCardHead) el.wizardCardHead.hidden = quick;
     if (el.wizardRail) el.wizardRail.hidden = quick;
@@ -997,6 +1027,11 @@
       openMemberDrawer(action.dataset.id);
       return;
     }
+    const cardOpen = event.target.closest(".member-card[data-id]");
+    if (cardOpen && !event.target.closest("[data-action], a, button, input, select, textarea")) {
+      openMemberDrawer(cardOpen.dataset.id);
+      return;
+    }
     if (action?.dataset.action === "delete") {
       deleteMember(action.dataset.id);
       return;
@@ -1344,12 +1379,12 @@
       member = upsertMember(member);
       saveRoster();
       const synced = await pushCloudRosterWithRetry({ silent: true });
+      if (revealCode || actionLabel === "claim-legacy" || actionLabel === "needs-review") {
+        pendingPersonalCodeReveal = member.personalCode;
+        openPersonalCodeModal(member.personalCode);
+      }
       if (synced) {
         clearCloudOutboxMember(member.id);
-        if (revealCode || actionLabel === "claim-legacy" || actionLabel === "needs-review") {
-          pendingPersonalCodeReveal = member.personalCode;
-          openPersonalCodeModal(member.personalCode);
-        }
         const reviewNote = needsReview ? " Flagged for admin review." : "";
         toast(
           actionLabel === "code-overwrite" || actionLabel === "admin-update" || actionLabel === "claim-legacy"
@@ -1857,7 +1892,7 @@
       const rally = getMemberRallyRole(member);
       const review = memberNeedsReview(member);
       return `
-        <article class="member-card${review ? " is-needs-review" : ""}" style="--status:${st.color}">
+        <article class="member-card${review ? " is-needs-review" : ""}" style="--status:${st.color}" data-id="${member.id}" tabindex="0" role="button" aria-label="Edit ${escapeHtml(member.name)}">
           <div>
             <div class="member-tags">
               <span class="tag level">${formatLevel(member.level)}</span>
