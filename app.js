@@ -1575,7 +1575,7 @@
       }
     }
     if (!Number(state.rallyCapacity) && !window.confirm(
-      "Rally Plaza capacity is empty. Save anyway? RL/RJ classification needs Plaza troops with APC1."
+      "Rally Plaza capacity is empty. Save anyway? Plaza is still used for strike-team march packing."
     )) {
       document.getElementById("rallyCapacityInput")?.focus();
       return;
@@ -2634,7 +2634,7 @@
 
     const api = globalThis.PHL_RALLY_MATCHMAKING || globalThis.PHL_RALLY_ROLES;
     if (!api?.suggestRallyFormations) {
-      el.rallyFormationList.innerHTML = `<div class="rally-leader-empty">Matchmaking module not loaded. Hard-refresh (v134).</div>`;
+      el.rallyFormationList.innerHTML = `<div class="rally-leader-empty">Matchmaking module not loaded. Hard-refresh (v135).</div>`;
       return;
     }
 
@@ -2711,14 +2711,17 @@
   }
 
   function getAllianceRallyThresholdsFromRoster() {
+    // Same non-demo uploaded members the admin roster shows; skip missing/zero APC1.
     const samples = roster
       .filter(member => !member.isDemo)
       .map(member => ({
         apc1_cp: toAbsoluteCp(getMain(member))
-      }));
+      }))
+      .filter(sample => Number(sample.apc1_cp) > 0);
+
     const derived = window.PHL_RALLY_ROLES?.deriveThresholdsFromRoster
       ? window.PHL_RALLY_ROLES.deriveThresholdsFromRoster(samples)
-      : { minApc1Cp: 0, sampleApc: 0 };
+      : deriveThresholdsFromRosterFallback(samples);
 
     const minApc1Cp = Number(derived.minApc1Cp) || 0;
     const minApc1M = minApc1Cp >= 10_000 ? minApc1Cp / 1_000_000 : minApc1Cp;
@@ -2735,6 +2738,18 @@
         ? "Waiting for real uploads (APC1 CP) — median not ready yet."
         : `Median APC1: ${formatNumber(minApc1M)}M · ≥ median = RL · below = RJ · n=${sampleApc}`
     };
+  }
+
+  /** Inline median if rallyRoles.js failed to bind (e.g. script load conflict). */
+  function deriveThresholdsFromRosterFallback(samples) {
+    const apcs = (samples || [])
+      .map(s => Number(s.apc1_cp))
+      .filter(n => Number.isFinite(n) && n > 0)
+      .sort((a, b) => a - b);
+    if (!apcs.length) return { minApc1Cp: 0, sampleApc: 0 };
+    const mid = Math.floor(apcs.length / 2);
+    const minApc1Cp = apcs.length % 2 ? apcs[mid] : (apcs[mid - 1] + apcs[mid]) / 2;
+    return { minApc1Cp, sampleApc: apcs.length };
   }
 
   function formatThresholdSummary(thresholds) {

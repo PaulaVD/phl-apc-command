@@ -284,7 +284,7 @@ function suggestRallyFormations(categorized, options = {}) {
   return groups;
 }
 
-const api = {
+const rallyRolesApi = {
   DEFAULT_THRESHOLDS,
   DEFAULT_JOINER_MARCH_TROOPS,
   normalizeThresholds,
@@ -299,10 +299,10 @@ const api = {
 };
 
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = api;
+  module.exports = rallyRolesApi;
 }
 if (typeof window !== "undefined") {
-  window.PHL_RALLY_ROLES = api;
+  window.PHL_RALLY_ROLES = rallyRolesApi;
   window.PHL_RALLY_MATCHMAKING = {
     DEFAULT_JOINER_MARCH_TROOPS,
     slotsForCapacity,

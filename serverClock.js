@@ -351,7 +351,7 @@ function mountServerClock(nodes) {
   };
 }
 
-const api = {
+const serverClockApi = {
   ASUNCION_TZ,
   SERVER_UTC_OFFSET,
   PARAGUAY_UTC_OFFSET,
@@ -375,7 +375,7 @@ const api = {
 
 (function exportServerClock(root) {
   if (typeof module !== "undefined" && module.exports) {
-    module.exports = api;
+    module.exports = serverClockApi;
   }
-  if (root) root.PHL_SERVER_CLOCK = api;
+  if (root) root.PHL_SERVER_CLOCK = serverClockApi;
 })(typeof globalThis !== "undefined" ? globalThis : typeof window !== "undefined" ? window : undefined);
