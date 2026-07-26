@@ -64,6 +64,7 @@
   let rallyRosterTimer = 0;
   let lastRenderedLevel = null;
   let wizardRailDirty = true;
+  let lastWizardRailScrollStep = -1;
   let audioAvailable = true;
   let pendingDeleteId = null;
   let lastFocusedElement = null;
@@ -598,29 +599,61 @@
     rosterFilterTimer = window.setTimeout(renderRoster, 120);
   }
 
-  function renderAll() {
-    wizardRailDirty = true;
-    renderWizard(true);
-    renderScan();
-    if (isAdmin) {
-      renderSummaryStrip();
-      renderRoster();
-      renderReadiness();
-      renderFactionCoverage();
-      renderRallySplit();
-      renderRanking();
-      renderRefList(true);
-      if (adminView === "history") renderHistory();
-      clearMemberProfileUi();
-    } else if (isMember) {
-      clearAdminViews();
-      renderMemberProfile();
-    } else {
-      clearAdminViews();
-      clearMemberProfileUi();
+  function captureScrollState() {
+    const panels = [];
+    document.querySelectorAll(
+      ".wizard-rail, .roster-list, .ranking-list, .history-list, .admin-chat-log, .te-schedule, .ref-list, .faction-coverage, .rally-formation-list"
+    ).forEach(node => {
+      panels.push({ node, top: node.scrollTop, left: node.scrollLeft });
+    });
+    return { x: window.scrollX, y: window.scrollY, panels };
+  }
+
+  function restoreScrollState(saved) {
+    if (!saved) return;
+    window.scrollTo(saved.x, saved.y);
+    for (const panel of saved.panels) {
+      if (!panel.node.isConnected) continue;
+      panel.node.scrollTop = panel.top;
+      panel.node.scrollLeft = panel.left;
     }
-    syncLiveRallyClassification({ skipScan: true });
-    renderScheduledEvents();
+  }
+
+  function withPreservedScroll(fn) {
+    const saved = captureScrollState();
+    try {
+      return fn();
+    } finally {
+      restoreScrollState(saved);
+      window.requestAnimationFrame(() => restoreScrollState(saved));
+    }
+  }
+
+  function renderAll() {
+    withPreservedScroll(() => {
+      wizardRailDirty = true;
+      renderWizard(true);
+      renderScan();
+      if (isAdmin) {
+        renderSummaryStrip();
+        renderRoster();
+        renderReadiness();
+        renderFactionCoverage();
+        renderRallySplit();
+        renderRanking();
+        renderRefList(true);
+        if (adminView === "history") renderHistory();
+        clearMemberProfileUi();
+      } else if (isMember) {
+        clearAdminViews();
+        renderMemberProfile();
+      } else {
+        clearAdminViews();
+        clearMemberProfileUi();
+      }
+      syncLiveRallyClassification({ skipScan: true });
+      renderScheduledEvents();
+    });
   }
 
   function initServerClockPanel() {
@@ -717,9 +750,18 @@
     });
   }
 
+  function scheduledEventsFingerprint(list) {
+    return sortScheduledEvents(list)
+      .map(event => `${event.id}:${event.time}:${event.title}:${event.note || ""}:${isAdmin ? "a" : "p"}`)
+      .join("|");
+  }
+
   function renderScheduledEvents() {
     if (!el.teScheduleList) return;
     const list = sortScheduledEvents(scheduledEvents);
+    const nextFp = scheduledEventsFingerprint(list);
+    if (el.teScheduleList.dataset.eventsFp === nextFp) return;
+    el.teScheduleList.dataset.eventsFp = nextFp;
     if (!list.length) {
       el.teScheduleList.innerHTML = `<p class="te-empty" id="teScheduleEmpty">No events scheduled.</p>`;
       el.teScheduleEmpty = document.getElementById("teScheduleEmpty");
@@ -872,8 +914,20 @@
     }
   }
 
+  /** Scroll active rail item horizontally inside the rail only — never the window. */
+  function scrollWizardRailActiveIntoView() {
+    const rail = el.wizardRail;
+    const active = rail?.querySelector(".rail-item.active");
+    if (!rail || !active) return;
+    const railRect = rail.getBoundingClientRect();
+    const itemRect = active.getBoundingClientRect();
+    const delta = ((itemRect.left + itemRect.right) - (railRect.left + railRect.right)) / 2;
+    if (Math.abs(delta) > 1) rail.scrollLeft += delta;
+  }
+
   function renderWizard(forceRail = false) {
     const meta = stepMeta[currentStep];
+    const stepChanged = lastWizardRailScrollStep !== currentStep;
     updateWizardMeta(meta);
 
     if (forceRail || wizardRailDirty) {
@@ -891,13 +945,12 @@
         else node.removeAttribute("aria-current");
       });
     }
-    window.requestAnimationFrame(() => {
-      el.wizardRail?.querySelector(".rail-item.active")?.scrollIntoView({
-        behavior: "smooth",
-        inline: "nearest",
-        block: "nearest"
-      });
-    });
+    // Only nudge the horizontal rail when the wizard step actually changes.
+    // scrollIntoView here was resetting window scroll on every cloud sync re-render.
+    if (stepChanged) {
+      lastWizardRailScrollStep = currentStep;
+      window.requestAnimationFrame(scrollWizardRailActiveIntoView);
+    }
 
     if (meta.key === "identity") renderIdentityStep();
     else if (meta.key.startsWith("apc")) renderApcStep(Number(meta.key.slice(3)) - 1);
@@ -4219,6 +4272,11 @@
         logoutMemberSession({ toastMessage: "", playClick: false });
         return false;
       }
+      const fingerprint = rosterFingerprint([member], member.updated);
+      if (silent && fingerprint === lastCloudFingerprint && lastCloudFingerprint !== "") {
+        return true;
+      }
+      lastCloudFingerprint = fingerprint;
       memberSession = {
         ...memberSession,
         memberId: member.id,
@@ -4321,6 +4379,11 @@
       }
 
       const fingerprint = rosterFingerprint(remoteMembers, remoteUpdatedAt);
+      const unchanged = fingerprint === lastCloudFingerprint && lastCloudFingerprint !== "";
+      if (unchanged && silent) {
+        if (pendingDeletedIds.size) maybeAutoPushCloud();
+        return true;
+      }
       const changed = fingerprint !== lastCloudFingerprint && lastCloudFingerprint !== "";
       lastCloudFingerprint = fingerprint;
 
