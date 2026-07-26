@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Teko:wght@500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=68" />
+  <link rel="stylesheet" href="styles.css?v=69" />
 </head>
 <body>
   <a class="skip-link" href="#operatorConsole">Skip to form</a>
@@ -39,13 +39,6 @@
         <em class="time-block-badge" id="localOffsetBadge">auto</em>
         <small class="time-block-zone" id="localZoneLabel">Detecting…</small>
       </div>
-    </div>
-
-    <div class="top-actions">
-      <button class="icon-btn active" id="sfxBtn" title="Toggle sound effects" aria-label="Toggle sound effects">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3.23v17.54a1 1 0 0 1-1.64.77L7.56 17H4a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2h3.56l4.8-4.54A1 1 0 0 1 14 3.23Zm3.54 4.05a1 1 0 0 1 1.41 0 6.98 6.98 0 0 1 0 9.9 1 1 0 1 1-1.41-1.42 4.98 4.98 0 0 0 0-7.06 1 1 0 0 1 0-1.42Zm-2.83 2.83a1 1 0 0 1 1.41 0 2.98 2.98 0 0 1 0 4.22 1 1 0 1 1-1.41-1.42.98.98 0 0 0 0-1.38 1 1 0 0 1 0-1.42Z"/></svg>
-      </button>
-      <button class="btn btn-admin" id="adminAccessBtn"><span class="lock-dot"></span><span id="adminAccessLabel"><span class="admin-label-full">Admin access</span><span class="admin-label-short">Admin</span></span></button>
     </div>
 
     <div class="time-block time-block-convert" title="Convert a server event to your local time">
@@ -86,6 +79,13 @@
         <input id="lofiVolume" type="range" min="0" max="100" value="55" aria-label="Lofi volume">
       </label>
       <div class="lofi-playlist" id="lofiPlaylist" hidden role="listbox" aria-label="Lofi Girl playlist"></div>
+    </div>
+
+    <div class="top-actions">
+      <button class="icon-btn active" id="sfxBtn" title="Toggle sound effects" aria-label="Toggle sound effects">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3.23v17.54a1 1 0 0 1-1.64.77L7.56 17H4a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2h3.56l4.8-4.54A1 1 0 0 1 14 3.23Zm3.54 4.05a1 1 0 0 1 1.41 0 6.98 6.98 0 0 1 0 9.9 1 1 0 1 1-1.41-1.42 4.98 4.98 0 0 0 0-7.06 1 1 0 0 1 0-1.42Zm-2.83 2.83a1 1 0 0 1 1.41 0 2.98 2.98 0 0 1 0 4.22 1 1 0 1 1-1.41-1.42.98.98 0 0 0 0-1.38 1 1 0 0 1 0-1.42Z"/></svg>
+      </button>
+      <button class="btn btn-admin" id="adminAccessBtn"><span class="lock-dot"></span><span id="adminAccessLabel"><span class="admin-label-full">Admin access</span><span class="admin-label-short">Admin</span></span></button>
     </div>
 
     <div class="top-actions-admin admin-only">
@@ -448,6 +448,6 @@
   <script src="serverClock.js?v=34"></script>
   <script src="rallyRoles.js?v=28"></script>
   <script src="rallyMatchmaking.js?v=27"></script>
-  <script src="app.js?v=57" defer></script>
+  <script src="app.js?v=58" defer></script>
 </body>
 </html>
