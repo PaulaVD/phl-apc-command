@@ -159,23 +159,24 @@
     signInBtn: document.getElementById("signInBtn"),
     signInLabel: document.getElementById("signInLabel"),
     authModal: document.getElementById("authModal"),
-    authTabMember: document.getElementById("authTabMember"),
-    authTabAdmin: document.getElementById("authTabAdmin"),
-    authPaneMember: document.getElementById("authPaneMember"),
-    authPaneAdmin: document.getElementById("authPaneAdmin"),
     authModalTitle: document.getElementById("authModalTitle"),
+    authModalLead: document.getElementById("authModalLead"),
+    accessCodeInput: document.getElementById("accessCodeInput"),
+    authUnlockBtn: document.getElementById("authUnlockBtn"),
+    authCancelBtn: document.getElementById("authCancelBtn"),
+    authError: document.getElementById("authError"),
     adminModal: document.getElementById("authModal"),
-    adminCodeInput: document.getElementById("adminCodeInput"),
-    adminLoginBtn: document.getElementById("adminLoginBtn"),
-    adminCancelBtn: document.getElementById("adminCancelBtn"),
-    adminError: document.getElementById("adminError"),
+    adminCodeInput: document.getElementById("accessCodeInput"),
+    adminLoginBtn: document.getElementById("authUnlockBtn"),
+    adminCancelBtn: document.getElementById("authCancelBtn"),
+    adminError: document.getElementById("authError"),
     memberAccessBtn: document.getElementById("signInBtn"),
     memberAccessLabel: document.getElementById("signInLabel"),
     memberModal: document.getElementById("authModal"),
-    memberCodeInput: document.getElementById("memberCodeInput"),
-    memberLoginBtn: document.getElementById("memberLoginBtn"),
-    memberCancelBtn: document.getElementById("memberCancelBtn"),
-    memberError: document.getElementById("memberError"),
+    memberCodeInput: document.getElementById("accessCodeInput"),
+    memberLoginBtn: document.getElementById("authUnlockBtn"),
+    memberCancelBtn: document.getElementById("authCancelBtn"),
+    memberError: document.getElementById("authError"),
     memberProfilePanel: document.getElementById("memberProfilePanel"),
     memberProfileTitle: document.getElementById("memberProfileTitle"),
     memberProfileSub: document.getElementById("memberProfileSub"),
@@ -346,13 +347,9 @@
       playSfx("click");
     });
     el.signInBtn?.addEventListener("click", handleSignInAccess);
-    el.adminLoginBtn.addEventListener("click", attemptAdminLogin);
-    el.adminCancelBtn.addEventListener("click", () => closeModal("auth"));
-    el.memberLoginBtn?.addEventListener("click", attemptMemberLogin);
-    el.memberCancelBtn?.addEventListener("click", () => closeModal("auth"));
+    el.authUnlockBtn?.addEventListener("click", attemptUnlock);
+    el.authCancelBtn?.addEventListener("click", () => closeModal("auth"));
     el.memberLogoutBtn?.addEventListener("click", () => logoutMemberSession());
-    el.authTabMember?.addEventListener("click", () => setAuthTab("member"));
-    el.authTabAdmin?.addEventListener("click", () => setAuthTab("admin"));
     el.adminChatForm?.addEventListener("submit", onAdminChatSubmit);
     document.querySelectorAll("[data-modal-close]").forEach(node => {
       node.addEventListener("click", () => closeModal(node.dataset.modalClose));
@@ -360,8 +357,7 @@
     el.deleteConfirmBtn.addEventListener("click", confirmDeleteMember);
     el.deleteCancelBtn.addEventListener("click", () => closeModal("delete"));
     el.scanToggleBtn?.addEventListener("click", toggleScanPanel);
-    el.adminCodeInput.addEventListener("keydown", event => { if (event.key === "Enter") attemptAdminLogin(); });
-    el.memberCodeInput?.addEventListener("keydown", event => { if (event.key === "Enter") attemptMemberLogin(); });
+    el.accessCodeInput?.addEventListener("keydown", event => { if (event.key === "Enter") attemptUnlock(); });
     el.memberDrawerSave?.addEventListener("click", saveMemberDrawer);
     el.memberDrawerCancel?.addEventListener("click", onMemberDrawerCancel);
     el.personalCodeCopyBtn?.addEventListener("click", copyRevealedPersonalCode);
@@ -491,7 +487,7 @@
     if (!silent) playSfx("click");
   }
 
-  function setSessionBanner(message, { actionLabel = "Admin access", onAction = null } = {}) {
+  function setSessionBanner(message, { actionLabel = "Sign in", onAction = null } = {}) {
     if (!el.sessionBanner) return;
     if (!message) {
       el.sessionBanner.hidden = true;
@@ -526,8 +522,8 @@
     }
     if (hadLegacy && !isAdmin) {
       setSessionBanner(
-        "Your previous admin session is no longer valid after the access update. Sign in again with <strong>Admin access</strong>.",
-        { actionLabel: "Admin access", onAction: () => openAdminModal() }
+        "Your previous session is no longer valid. Sign in again.",
+        { actionLabel: "Sign in", onAction: () => openAdminModal() }
       );
       toast("Admin session expired — please log in again.", "error");
     }
@@ -2192,10 +2188,10 @@
     if (!filtered.length) {
       el.rosterList.innerHTML = `
         <div class="empty">
-          <strong>${isAdmin ? "No roster signals found" : "Leadership roster locked"}</strong>
+          <strong>${isAdmin ? "No roster signals found" : "Sign in required"}</strong>
           <p>${isAdmin
             ? "Create a member with Push Data to start the alliance roster."
-            : "Unlock with <strong>Admin access</strong> (R4–R5) to see the full alliance roster. Members use <strong>My profile</strong> with their Personal Code."}</p>
+            : "Enter your access code to continue."}</p>
           <div class="empty-actions">
             <button class="btn btn-primary" data-empty-action="start">Start guided entry</button>
           </div>
@@ -2668,19 +2664,19 @@
 
   function handleSignInAccess() {
     if (isAdmin) {
-      void logoutAdminSession({ toastMessage: "Leadership session closed." });
+      void logoutAdminSession({ toastMessage: "Session closed." });
       return;
     }
     if (isMember) {
       logoutMemberSession();
       return;
     }
-    openAuthModal("member");
+    openAuthModal();
   }
 
   function handleMemberAccess() {
     if (isAdmin) {
-      toast("Exit leadership mode to unlock a personal profile.", "error");
+      toast("Exit your current session to unlock another profile.", "error");
       return;
     }
     if (isMember) {
@@ -2690,59 +2686,32 @@
     openMemberModal();
   }
 
-  function setAuthTab(tab) {
-    const isMemberTab = tab !== "admin";
-    el.authTabMember?.classList.toggle("is-active", isMemberTab);
-    el.authTabAdmin?.classList.toggle("is-active", !isMemberTab);
-    el.authTabMember?.setAttribute("aria-selected", String(isMemberTab));
-    el.authTabAdmin?.setAttribute("aria-selected", String(!isMemberTab));
-    if (el.authPaneMember) {
-      el.authPaneMember.classList.toggle("is-active", isMemberTab);
-      el.authPaneMember.hidden = !isMemberTab;
-    }
-    if (el.authPaneAdmin) {
-      el.authPaneAdmin.classList.toggle("is-active", !isMemberTab);
-      el.authPaneAdmin.hidden = isMemberTab;
-    }
-    if (el.authModalTitle) {
-      el.authModalTitle.textContent = isMemberTab ? "Unlock my profile" : "Leadership authentication";
-    }
-    const lead = document.getElementById("authModalLead");
-    if (lead) {
-      lead.textContent = isMemberTab
-        ? "Enter your Personal Code to load only your APC record. Alliance stats stay hidden."
-        : "R4–R5 officers: enter your PH-L admin access code for roster, rankings, history and exports.";
-    }
-  }
-
-  function openAuthModal(tab = "member") {
+  function openAuthModal() {
     if (!el.authModal) return;
-    if (el.memberError) el.memberError.textContent = "";
-    if (el.adminError) el.adminError.textContent = "";
-    if (el.adminCodeInput) el.adminCodeInput.value = "";
-    if (el.memberCodeInput) {
-      el.memberCodeInput.value = recallPersonalCodeHint() || memberSession?.personalCode || "";
+    if (el.authError) el.authError.textContent = "";
+    if (el.authModalTitle) el.authModalTitle.textContent = "Sign in";
+    if (el.authModalLead) el.authModalLead.textContent = "Enter your PH-L access code.";
+    if (el.accessCodeInput) {
+      el.accessCodeInput.value = recallPersonalCodeHint() || memberSession?.personalCode || "";
     }
-    setAuthTab(tab);
-    const focusTarget = tab === "admin" ? el.adminCodeInput : el.memberCodeInput;
-    openModal("auth", focusTarget);
+    openModal("auth", el.accessCodeInput);
     playSfx("transition");
   }
 
   function openMemberModal() {
-    openAuthModal("member");
+    openAuthModal();
   }
 
   function handleAdminAccess() {
     if (isAdmin) {
-      void logoutAdminSession({ toastMessage: "Leadership session closed." });
+      void logoutAdminSession({ toastMessage: "Session closed." });
       return;
     }
     openAdminModal();
   }
 
   function openAdminModal() {
-    openAuthModal("admin");
+    openAuthModal();
   }
 
   function resolveModal(name) {
@@ -2777,11 +2746,8 @@
     ) {
       document.body.classList.remove("modal-open");
     }
-    if (name === "admin" || name === "auth") {
-      if (el.adminError) el.adminError.textContent = "";
-    }
-    if (name === "member" || name === "auth") {
-      if (el.memberError) el.memberError.textContent = "";
+    if (name === "admin" || name === "member" || name === "auth") {
+      if (el.authError) el.authError.textContent = "";
     }
     if (name === "delete") pendingDeleteId = null;
     if (name === "sync" && el.syncError) el.syncError.textContent = "";
@@ -2805,24 +2771,12 @@
     });
   }
 
-  async function attemptAdminLogin() {
-    const code = el.adminCodeInput.value.trim();
-    if (!code) {
-      el.adminError.textContent = "Enter your personal admin access code.";
-      playSfx("error");
-      return;
-    }
+  function setAuthError(message) {
+    if (el.authError) el.authError.textContent = message;
+    playSfx("error");
+  }
 
-    const hash = await sha256(code);
-    const account = getAdminAccounts().find(admin => admin.hash === hash);
-    if (!account) {
-      el.adminError.textContent = "Access code not recognized.";
-      el.adminCodeInput.select();
-      playSfx("error");
-      return;
-    }
-
-    // Leadership session clears any personal member unlock
+  async function completeAdminLogin(account, code) {
     memberSession = null;
     isMember = false;
     sessionStorage.removeItem(MEMBER_SESSION_KEY);
@@ -2841,73 +2795,86 @@
     await startAdminRealtime({ claim: true });
     await pullCloudRoster({ silent: true });
     renderAll();
-    toast(`Welcome, <strong>${escapeHtml(account.name)}</strong>. Leadership roster synced.`, "success");
+    toast(`Welcome, <strong>${escapeHtml(account.name)}</strong>.`, "success");
     playSfx("success");
   }
 
-  async function attemptMemberLogin() {
-    const code = normalizePersonalCode(el.memberCodeInput?.value || "");
-    if (!code) {
-      if (el.memberError) el.memberError.textContent = "Enter your Personal Code.";
-      playSfx("error");
-      return;
-    }
-    if (!isCloudConfigured() || !usesNetlifyCloud()) {
-      if (el.memberError) el.memberError.textContent = "Cloud roster is not configured.";
-      playSfx("error");
+  async function completeMemberLogin(member, code) {
+    memberSession = {
+      personalCode: normalizePersonalCode(member.personalCode || code),
+      memberId: member.id,
+      name: member.name,
+      rank: member.rank,
+      roleTier: "R1-R3"
+    };
+    isMember = true;
+    sessionStorage.setItem(MEMBER_SESSION_KEY, JSON.stringify(memberSession));
+    rememberPersonalCode(member.name, memberSession.personalCode);
+    roster = [member];
+    changeHistory = [];
+    saveRoster();
+    saveHistory();
+    closeModal("auth");
+    applyAccessMode();
+    renderAll();
+    toast(`Unlocked <strong>${escapeHtml(member.name)}</strong>.`, "success");
+    playSfx("success");
+  }
+
+  async function attemptUnlock() {
+    const raw = (el.accessCodeInput?.value || "").trim();
+    if (!raw) {
+      setAuthError("Enter your access code.");
       return;
     }
 
-    if (el.memberLoginBtn) el.memberLoginBtn.disabled = true;
+    if (el.authUnlockBtn) el.authUnlockBtn.disabled = true;
     try {
+      // Prefer admin hash match first; otherwise try personal code unlock.
+      const hash = await sha256(raw);
+      const account = getAdminAccounts().find(admin => admin.hash === hash);
+      if (account) {
+        await completeAdminLogin(account, raw);
+        return;
+      }
+
+      if (!isCloudConfigured() || !usesNetlifyCloud()) {
+        setAuthError("Invalid code.");
+        return;
+      }
+
+      const code = normalizePersonalCode(raw);
       const response = await fetch(getConfig().cloudApiUrl, {
         cache: "no-store",
         headers: { "X-PHL-Personal-Code": code }
       });
       let data = null;
       try { data = await response.json(); } catch { data = null; }
-      if (response.status === 404) {
-        if (el.memberError) el.memberError.textContent = "Personal Code not found.";
-        playSfx("error");
-        return;
-      }
-      if (!response.ok) {
-        if (el.memberError) el.memberError.textContent = data?.error || `Unlock failed (${response.status})`;
-        playSfx("error");
+      if (response.status === 404 || !response.ok) {
+        setAuthError("Invalid code.");
+        el.accessCodeInput?.select();
         return;
       }
       const member = Array.isArray(data?.members) ? sanitizeMember(data.members[0]) : null;
       if (!member) {
-        if (el.memberError) el.memberError.textContent = "No profile returned for that code.";
-        playSfx("error");
+        setAuthError("Invalid code.");
         return;
       }
-
-      memberSession = {
-        personalCode: normalizePersonalCode(member.personalCode || code),
-        memberId: member.id,
-        name: member.name,
-        rank: member.rank,
-        roleTier: "R1-R3"
-      };
-      isMember = true;
-      sessionStorage.setItem(MEMBER_SESSION_KEY, JSON.stringify(memberSession));
-      rememberPersonalCode(member.name, memberSession.personalCode);
-      roster = [member];
-      changeHistory = [];
-      saveRoster();
-      saveHistory();
-      closeModal("auth");
-      applyAccessMode();
-      renderAll();
-      toast(`Unlocked <strong>${escapeHtml(member.name)}</strong> — personal view only.`, "success");
-      playSfx("success");
+      await completeMemberLogin(member, code);
     } catch {
-      if (el.memberError) el.memberError.textContent = "Could not reach the roster API.";
-      playSfx("error");
+      setAuthError("Invalid code.");
     } finally {
-      if (el.memberLoginBtn) el.memberLoginBtn.disabled = false;
+      if (el.authUnlockBtn) el.authUnlockBtn.disabled = false;
     }
+  }
+
+  // Back-compat aliases for any remaining call sites
+  async function attemptAdminLogin() {
+    return attemptUnlock();
+  }
+
+  async function attemptMemberLogin() {
+    return attemptUnlock();
   }
 
   function logoutMemberSession({ toastMessage = "Personal profile locked.", playClick = true } = {}) {
@@ -2977,7 +2944,7 @@
         normalizePersonalCode(m.personalCode) === normalizePersonalCode(memberSession?.personalCode)
     );
     if (!member) {
-      el.memberProfileList.innerHTML = `<div class="empty"><strong>Profile not loaded</strong><p>Re-enter your Personal Code to unlock.</p></div>`;
+      el.memberProfileList.innerHTML = `<div class="empty"><strong>Profile not loaded</strong><p>Sign in again to unlock.</p></div>`;
       if (el.memberProfileResult) el.memberProfileResult.textContent = "0 profiles";
       return;
     }
@@ -2985,7 +2952,7 @@
     if (el.memberProfileSub) {
       el.memberProfileSub.textContent = `${member.rank || "R1"} · Personal Code ${member.personalCode || "—"} · tap fields to edit`;
     }
-    if (el.memberProfileResult) el.memberProfileResult.textContent = "1 profile · private";
+    if (el.memberProfileResult) el.memberProfileResult.textContent = "1 profile";
 
     // Reuse admin card markup into the member list (single record)
     const previousList = el.rosterList;
@@ -3267,8 +3234,8 @@
     applyAccessMode();
     renderAll();
     setSessionBanner(
-      "Your admin session was taken over on another device. Sign in again if needed.",
-      { actionLabel: "Admin access", onAction: () => openAdminModal() }
+      "Your session was taken over on another device. Sign in again if needed.",
+      { actionLabel: "Sign in", onAction: () => openAdminModal() }
     );
     toast("Your admin session was taken over on another device.", "error");
     playSfx("error");
@@ -3331,7 +3298,7 @@
     if (el.kpiRj) animateKpi(el.kpiRj, 0, { decimals: 0, duration: 280 });
     animateGauge(0);
     animateKpi(el.readinessValue, 0, { suffix: "%", decimals: 0, duration: 280 });
-    el.readinessCopy.textContent = "Unlock Admin access (R4–R5) for alliance stats. Members: use My profile with your Personal Code.";
+    el.readinessCopy.textContent = "Sign in to view alliance readiness.";
     el.summaryStrip.classList.add("is-empty");
     lastRenderedLevel = null;
   }
@@ -4187,8 +4154,8 @@
           playClick: false
         });
         setSessionBanner(
-          "Leadership credentials were rejected. Sign in again with <strong>Admin access</strong>.",
-          { actionLabel: "Admin access", onAction: () => openAdminModal() }
+          "Your session was rejected. Sign in again.",
+          { actionLabel: "Sign in", onAction: () => openAdminModal() }
         );
         return false;
       }

@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Teko:wght@500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=130" />
+  <link rel="stylesheet" href="styles.css?v=131" />
 </head>
 <body class="mobile-tab-times">
   <a class="skip-link" href="#operatorConsole">Skip to form</a>
@@ -252,9 +252,9 @@
     <section class="member-profile-panel member-only" id="memberProfilePanel" data-mobile-pane="push" hidden>
       <div class="panel-head compact">
         <div>
-          <span class="eyebrow"><span></span>R1–R3 · personal view (not leadership)</span>
+          <span class="eyebrow"><span></span>Your profile</span>
           <h2 id="memberProfileTitle">Your APC profile</h2>
-          <p id="memberProfileSub">Only your record is loaded. Tap a field to edit with your Personal Code.</p>
+          <p id="memberProfileSub">Tap a field to edit.</p>
         </div>
         <button type="button" class="btn btn-ghost" id="memberLogoutBtn">Lock profile</button>
       </div>
@@ -285,9 +285,9 @@
       <section class="panel roster-panel">
         <div class="panel-head">
           <div>
-          <span class="eyebrow"><span></span>PH-L alliance registry · R4–R5</span>
+          <span class="eyebrow"><span></span>PH-L alliance registry</span>
             <h2>Member power roster</h2>
-            <p>Full alliance view. Switch to <strong>History</strong> for recent creates and edits.</p>
+            <p>Switch to <strong>History</strong> for recent creates and edits.</p>
           </div>
           <div class="admin-view-switcher">
             <span class="admin-view-switcher-label">View</span>
@@ -475,44 +475,19 @@
     <section class="admin-modal-card auth-modal-card" role="dialog" aria-modal="true" aria-labelledby="authModalTitle">
       <span class="eyebrow"><span></span>PH-L unlock</span>
       <h2 id="authModalTitle">Sign in</h2>
-      <p id="authModalLead">Use your Personal Code for your APC profile, or an admin code for leadership tools.</p>
-      <div class="auth-tabs" role="tablist" aria-label="Sign-in method">
-        <button type="button" class="auth-tab is-active" id="authTabMember" role="tab" aria-selected="true" aria-controls="authPaneMember" data-auth-tab="member">Personal Code</button>
-        <button type="button" class="auth-tab" id="authTabAdmin" role="tab" aria-selected="false" aria-controls="authPaneAdmin" data-auth-tab="admin">Admin code</button>
+      <p id="authModalLead">Enter your PH-L access code.</p>
+      <label class="admin-code-field">
+        <span>Access code</span>
+        <input id="accessCodeInput" type="text" maxlength="64" autocomplete="off" spellcheck="false" placeholder="Enter access code">
+      </label>
+      <div class="admin-error" id="authError" aria-live="polite"></div>
+      <div class="admin-modal-actions">
+        <button class="btn btn-primary" id="authUnlockBtn" type="button">Unlock</button>
+        <button class="btn btn-ghost" id="authCancelBtn" type="button" data-modal-close="auth">Cancel</button>
       </div>
-
-      <div class="auth-pane is-active" id="authPaneMember" role="tabpanel" data-auth-pane="member" aria-labelledby="authTabMember">
-        <p class="member-modal-hint">Got your Personal Code after the first Push Data submit? Enter it to load only your APC record.</p>
-        <p class="member-modal-hint">No code yet? Close this, open <strong>Push Data</strong>, leave Personal Code blank, submit once — then save the popup code.</p>
-        <label class="admin-code-field">
-          <span>Personal Code</span>
-          <input id="memberCodeInput" type="text" maxlength="16" autocomplete="off" spellcheck="false" placeholder="e.g. PHL-AB12CD">
-        </label>
-        <div class="admin-error" id="memberError" aria-live="polite"></div>
-        <div class="admin-modal-actions">
-          <button class="btn btn-primary" id="memberLoginBtn" type="button">Unlock profile</button>
-          <button class="btn btn-ghost" id="memberCancelBtn" type="button" data-modal-close="auth">Cancel</button>
-        </div>
-        <small class="admin-security-note">Member session is stored for this browser tab only. Codes are never logged.</small>
-      </div>
-
-      <div class="auth-pane" id="authPaneAdmin" role="tabpanel" data-auth-pane="admin" aria-labelledby="authTabAdmin" hidden>
-        <p>R4–R5 officers: enter your PH-L admin access code for the full roster, rankings, history and exports.</p>
-        <label class="admin-code-field">
-          <span>Admin access code</span>
-          <input id="adminCodeInput" type="password" autocomplete="current-password" placeholder="Enter access code">
-        </label>
-        <div class="admin-error" id="adminError" aria-live="polite"></div>
-        <div class="admin-modal-actions">
-          <button class="btn btn-primary" id="adminLoginBtn" type="button">Unlock dashboard</button>
-          <button class="btn btn-ghost" id="adminCancelBtn" type="button" data-modal-close="auth">Cancel</button>
-        </div>
-        <small class="admin-security-note">Leadership access is remembered only for the current browser session.</small>
-      </div>
+      <small class="admin-security-note">Session is stored for this browser tab only. Codes are never logged.</small>
     </section>
   </div>
-
-  <!-- Unified auth modal above; admin/member flows open it via JS -->
 
   <div class="admin-modal" id="deleteModal" aria-hidden="true">
     <div class="admin-modal-backdrop" data-modal-close="delete"></div>
@@ -572,7 +547,7 @@
     <section class="admin-modal-card confirm-modal-card" role="dialog" aria-modal="true" aria-labelledby="personalCodeModalTitle">
       <span class="eyebrow"><span></span>Save this code</span>
       <h2 id="personalCodeModalTitle">Your Personal Code</h2>
-      <p><strong>Copy and save this code now.</strong> You need it to overwrite your entry under Push Data and to unlock <strong>My profile</strong>. Without it, later submits create a <code>Name-updt</code> review entry for R4–R5.</p>
+      <p><strong>Copy and save this code now.</strong> You need it to overwrite your entry under Push Data and to sign in later. Without it, later submits create a <code>Name-updt</code> review entry.</p>
       <div class="personal-code-reveal" id="personalCodeReveal">————</div>
       <p class="personal-code-modal-tip">Tip: save this code — it is your personal key.</p>
       <div class="admin-modal-actions">
@@ -590,6 +565,6 @@
   <script src="serverClock.js?v=34"></script>
   <script src="rallyRoles.js?v=28"></script>
   <script src="rallyMatchmaking.js?v=27"></script>
-  <script src="app.js?v=130" defer></script>
+  <script src="app.js?v=131" defer></script>
 </body>
 </html>
