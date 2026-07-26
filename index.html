@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Teko:wght@500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=116" />
+  <link rel="stylesheet" href="styles.css?v=117" />
 </head>
 <body class="mobile-tab-times">
   <a class="skip-link" href="#operatorConsole">Skip to form</a>
@@ -19,74 +19,76 @@
   <div class="vignette" aria-hidden="true"></div>
 
   <header class="topbar">
-    <div class="brand">
-      <div class="brand-mark"><img class="game-asset" src="assets/phl-logo.png?v=2" alt="Phoenix Legacy logo" width="48" height="48" decoding="async"></div>
-      <div class="brand-copy">
-        <strong>Phoenix Legacy</strong>
-        <small>From Ashes, We Rise Together</small>
+    <div class="topbar-main">
+      <div class="brand">
+        <div class="brand-mark"><img class="game-asset" src="assets/phl-logo.png?v=2" alt="Phoenix Legacy logo" width="48" height="48" decoding="async"></div>
+        <div class="brand-copy">
+          <strong>Phoenix Legacy</strong>
+          <small>From Ashes, We Rise Together</small>
+        </div>
       </div>
-    </div>
 
-    <div class="top-clocks" id="serverClockPanel" aria-label="Dark War server time">
-      <div class="time-block time-block-server" title="Dark War server time (Asunción +1h)">
-        <span class="time-block-kicker">Server</span>
-        <time id="serverClockDisplay" aria-live="polite">--:--:--</time>
-        <span class="time-block-badge" id="serverClockBadge">UTC-3</span>
+      <div class="top-clocks" id="serverClockPanel" aria-label="Dark War server time">
+        <div class="time-block time-block-server" title="Dark War server time (Asunción +1h)">
+          <span class="time-block-kicker">Server</span>
+          <time id="serverClockDisplay" aria-live="polite">--:--:--</time>
+          <span class="time-block-badge" id="serverClockBadge">UTC-3</span>
+        </div>
+        <div class="time-block time-block-local" title="Your local time">
+          <span class="time-block-kicker">Local</span>
+          <b id="localClockDisplay">--:--:--</b>
+          <em class="time-block-badge" id="localOffsetBadge">auto</em>
+          <small class="time-block-zone" id="localZoneLabel">Detecting…</small>
+        </div>
       </div>
-      <div class="time-block time-block-local" title="Your local time">
-        <span class="time-block-kicker">Local</span>
-        <b id="localClockDisplay">--:--:--</b>
-        <em class="time-block-badge" id="localOffsetBadge">auto</em>
-        <small class="time-block-zone" id="localZoneLabel">Detecting…</small>
-      </div>
-    </div>
 
-    <div class="time-block time-block-convert" title="Convert a server event to your local time">
-      <div class="event-convert-row">
-        <span class="time-block-kicker">Event</span>
-        <input class="input time-block-input" id="serverEventInput" type="time" value="15:00" step="60" aria-label="Server event time">
-        <span class="time-block-arrow" aria-hidden="true">→</span>
-        <strong id="localConvertedTime">--:--</strong>
-        <select class="time-block-offset" id="localOffsetSelect" aria-label="Target UTC offset"></select>
-        <small class="time-block-meta" id="localConvertedMeta">Detecting timezone…</small>
+      <div class="time-block time-block-convert" title="Convert a server event to your local time">
+        <div class="event-convert-row">
+          <span class="time-block-kicker">Event</span>
+          <input class="input time-block-input" id="serverEventInput" type="time" value="15:00" step="60" aria-label="Server event time">
+          <span class="time-block-arrow" aria-hidden="true">→</span>
+          <strong id="localConvertedTime">--:--</strong>
+          <select class="time-block-offset" id="localOffsetSelect" aria-label="Target UTC offset"></select>
+          <small class="time-block-meta" id="localConvertedMeta">Detecting timezone…</small>
+        </div>
       </div>
-    </div>
 
-    <div class="lofi-player" id="lofiPlayer" data-playing="0">
-      <div class="lofi-yt" aria-hidden="true"><div id="lofiYtMount"></div></div>
-      <button class="lofi-now" id="lofiNowBtn" type="button" aria-expanded="false" aria-controls="lofiPlaylist" title="Open Lofi Girl playlist">
-        <span class="lofi-eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
-        <span class="lofi-now-text">
-          <span class="lofi-kicker">Lofi</span>
-          <strong id="lofiTrackTitle">beats to relax/study to</strong>
-          <small id="lofiTrackArtist">Lofi Girl · live radio</small>
-        </span>
-      </button>
-      <div class="lofi-controls">
-        <button class="lofi-btn lofi-skip" id="lofiPrevBtn" type="button" title="Previous station" aria-label="Previous station">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
+      <div class="lofi-player" id="lofiPlayer" data-playing="0">
+        <div class="lofi-yt" aria-hidden="true"><div id="lofiYtMount"></div></div>
+        <button class="lofi-now" id="lofiNowBtn" type="button" aria-expanded="false" aria-controls="lofiPlaylist" title="Open Lofi Girl playlist">
+          <span class="lofi-eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+          <span class="lofi-now-text">
+            <span class="lofi-kicker">Lofi</span>
+            <strong id="lofiTrackTitle">beats to relax/study to</strong>
+            <small id="lofiTrackArtist">Lofi Girl · live radio</small>
+          </span>
         </button>
-        <button class="lofi-btn lofi-play" id="lofiPlayBtn" type="button" title="Play / pause" aria-label="Play Lofi Girl radio">
-          <svg class="lofi-icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
-          <svg class="lofi-icon-pause" viewBox="0 0 24 24" aria-hidden="true" hidden><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>
-        </button>
-        <button class="lofi-btn lofi-skip" id="lofiNextBtn" type="button" title="Next station" aria-label="Next station">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 6h2v12h-2zM6 18l8.5-6L6 6z"/></svg>
-        </button>
+        <div class="lofi-controls">
+          <button class="lofi-btn lofi-skip" id="lofiPrevBtn" type="button" title="Previous station" aria-label="Previous station">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
+          </button>
+          <button class="lofi-btn lofi-play" id="lofiPlayBtn" type="button" title="Play / pause" aria-label="Play Lofi Girl radio">
+            <svg class="lofi-icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+            <svg class="lofi-icon-pause" viewBox="0 0 24 24" aria-hidden="true" hidden><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>
+          </button>
+          <button class="lofi-btn lofi-skip" id="lofiNextBtn" type="button" title="Next station" aria-label="Next station">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 6h2v12h-2zM6 18l8.5-6L6 6z"/></svg>
+          </button>
+        </div>
+        <label class="lofi-vol" title="Volume">
+          <span class="sr-only">Volume</span>
+          <input id="lofiVolume" type="range" min="0" max="100" value="55" aria-label="Lofi volume">
+        </label>
+        <div class="lofi-playlist" id="lofiPlaylist" hidden role="listbox" aria-label="Lofi Girl playlist"></div>
       </div>
-      <label class="lofi-vol" title="Volume">
-        <span class="sr-only">Volume</span>
-        <input id="lofiVolume" type="range" min="0" max="100" value="55" aria-label="Lofi volume">
-      </label>
-      <div class="lofi-playlist" id="lofiPlaylist" hidden role="listbox" aria-label="Lofi Girl playlist"></div>
-    </div>
 
-    <div class="top-actions">
-      <button class="icon-btn active" id="sfxBtn" title="Toggle sound effects" aria-label="Toggle sound effects">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3.23v17.54a1 1 0 0 1-1.64.77L7.56 17H4a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2h3.56l4.8-4.54A1 1 0 0 1 14 3.23Zm3.54 4.05a1 1 0 0 1 1.41 0 6.98 6.98 0 0 1 0 9.9 1 1 0 1 1-1.41-1.42 4.98 4.98 0 0 0 0-7.06 1 1 0 0 1 0-1.42Zm-2.83 2.83a1 1 0 0 1 1.41 0 2.98 2.98 0 0 1 0 4.22 1 1 0 1 1-1.41-1.42.98.98 0 0 0 0-1.38 1 1 0 0 1 0-1.42Z"/></svg>
-      </button>
-      <button class="btn btn-member" id="memberAccessBtn" type="button"><span class="lock-dot member-dot"></span><span id="memberAccessLabel"><span class="member-label-full">My profile</span><span class="member-label-short">Profile</span></span></button>
-      <button class="btn btn-admin" id="adminAccessBtn"><span class="lock-dot"></span><span id="adminAccessLabel"><span class="admin-label-full">Admin access</span><span class="admin-label-short">Admin</span></span></button>
+      <div class="top-actions">
+        <button class="icon-btn active" id="sfxBtn" title="Toggle sound effects" aria-label="Toggle sound effects">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3.23v17.54a1 1 0 0 1-1.64.77L7.56 17H4a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2h3.56l4.8-4.54A1 1 0 0 1 14 3.23Zm3.54 4.05a1 1 0 0 1 1.41 0 6.98 6.98 0 0 1 0 9.9 1 1 0 1 1-1.41-1.42 4.98 4.98 0 0 0 0-7.06 1 1 0 0 1 0-1.42Zm-2.83 2.83a1 1 0 0 1 1.41 0 2.98 2.98 0 0 1 0 4.22 1 1 0 1 1-1.41-1.42.98.98 0 0 0 0-1.38 1 1 0 0 1 0-1.42Z"/></svg>
+        </button>
+        <button class="btn btn-member" id="memberAccessBtn" type="button"><span class="lock-dot member-dot"></span><span id="memberAccessLabel"><span class="member-label-full">My profile</span><span class="member-label-short">Profile</span></span></button>
+        <button class="btn btn-admin" id="adminAccessBtn"><span class="lock-dot"></span><span id="adminAccessLabel"><span class="admin-label-full">Admin access</span><span class="admin-label-short">Admin</span></span></button>
+      </div>
     </div>
 
     <div class="top-actions-admin admin-only">
@@ -591,6 +593,6 @@
   <script src="serverClock.js?v=34"></script>
   <script src="rallyRoles.js?v=28"></script>
   <script src="rallyMatchmaking.js?v=27"></script>
-  <script src="app.js?v=116" defer></script>
+  <script src="app.js?v=117" defer></script>
 </body>
 </html>

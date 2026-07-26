@@ -56,24 +56,32 @@ img{display:block;max-width:100%}
 .fx-canvas{z-index:-3}.noise{z-index:-2;opacity:.08;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 160'%3E%3Cfilter id='a'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23a)' opacity='.18'/%3E%3C/svg%3E")}.vignette{z-index:-1;background:radial-gradient(circle at center, transparent 45%, rgba(0,0,0,.55) 100%)}
 
 /* Sticky header — explicit CSS grid (desktop 2 rows / mobile stack). No display:contents. */
-/* Sticky header — single horizontal row on desktop (brand → clocks → event → lofi → sfx/admin) */
+/* Sticky header — main row (brand → clocks → event → lofi → sfx/admin); admin tools optional 2nd row */
 .topbar{
   --tb-gap:12px;
   --tb-chip-h:52px;
   position:sticky;top:0;z-index:20;
   display:flex;
-  flex-wrap:nowrap;
-  align-items:center;
-  gap:var(--tb-gap);
+  flex-direction:column;
+  align-items:stretch;
+  gap:10px;
   padding:12px clamp(14px,1.6vw,24px);
   border-bottom:1px solid var(--line);
   background:rgba(10,4,4,.94);
   backdrop-filter:blur(16px);
-  overflow-x:auto;
-  overflow-y:visible;
-  -webkit-overflow-scrolling:touch
+  overflow-x:hidden;
+  overflow-y:visible
 }
-body.admin-mode .topbar{flex-wrap:wrap}
+.topbar-main{
+  display:flex;
+  flex-wrap:nowrap;
+  align-items:center;
+  gap:var(--tb-gap);
+  min-width:0;
+  width:100%;
+  overflow-x:hidden;
+  overflow-y:visible
+}
 
 .brand{display:flex;align-items:center;gap:10px;min-width:0;flex:0 0 auto}
 .brand-mark{
@@ -125,7 +133,7 @@ body.admin-mode .topbar{flex-wrap:wrap}
 .time-block-zone{display:none}
 
 .top-actions{
-  display:flex;align-items:center;gap:10px;flex:0 0 auto;min-width:0
+  display:flex;align-items:center;gap:10px;flex:0 0 auto;min-width:0;margin-left:auto
 }
 .top-actions .btn{min-height:var(--tb-chip-h);padding:0 14px;border-radius:14px;font-size:.78rem;letter-spacing:.08em}
 .top-actions .icon-btn{
@@ -137,14 +145,14 @@ body.admin-mode .topbar{flex-wrap:wrap}
 .admin-label-short{display:none}
 
 .time-block-convert{
-  display:flex;align-items:center;flex:0 1 auto;width:auto;max-width:100%;min-width:0;
+  display:flex;align-items:center;flex:0 1 420px;width:auto;max-width:min(420px,42vw);min-width:0;
   height:var(--tb-chip-h);padding:0 12px;
   background:linear-gradient(180deg,rgba(255,122,70,.08),rgba(255,255,255,.02));
-  border-color:rgba(255,155,111,.24)
+  border-color:rgba(255,155,111,.24);overflow:hidden
 }
 .event-convert-row{
   display:flex;flex-wrap:nowrap;align-items:center;justify-content:flex-start;
-  gap:8px 10px;width:auto;max-width:100%;min-width:0
+  gap:8px 10px;width:100%;max-width:100%;min-width:0;overflow:hidden
 }
 /* Kill global .input { width:100% } bleed into header */
 .topbar .time-block-convert .input.time-block-input,
@@ -168,10 +176,15 @@ body.admin-mode .topbar{flex-wrap:wrap}
 .time-block-convert .time-block-offset,
 .time-block-convert .ui-select,
 .time-block-convert .ui-select-trigger{
-  flex:0 1 auto !important;width:auto !important;min-width:9.5rem;max-width:200px;
+  flex:1 1 auto !important;width:auto !important;min-width:0;max-width:200px;
   min-height:36px !important;height:36px !important;padding:0 10px !important;border-radius:10px !important;
   font-size:.74rem !important
 }
+.topbar .time-block-convert .ui-select-trigger span{
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0
+}
+/* Header Event meta crowds LOFI — hide on desktop; body panel still shows its own */
+.topbar .time-block-meta{display:none}
 .time-block-meta{
   flex:0 1 18ch;min-width:0;max-width:22ch;color:var(--soft);font-size:.68rem;line-height:1.25;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis
@@ -179,14 +192,14 @@ body.admin-mode .topbar{flex-wrap:wrap}
 
 .lofi-player{
   position:relative;display:flex;align-items:center;gap:8px;min-width:0;
-  flex:0 1 260px;width:auto;max-width:280px;height:var(--tb-chip-h);padding:0 12px;border-radius:14px;
+  flex:0 1 240px;width:auto;max-width:260px;height:var(--tb-chip-h);padding:0 12px;border-radius:14px;
   border:1px solid rgba(255,122,70,.22);
   background:linear-gradient(135deg,rgba(255,122,70,.1),rgba(255,255,255,.03) 55%,rgba(115,240,182,.05));
   box-shadow:inset 0 1px 0 rgba(255,255,255,.05);box-sizing:border-box
 }
 
 .top-actions-admin{
-  display:none;align-items:center;gap:8px;flex-wrap:wrap;min-width:0;flex:1 0 100%
+  display:none;align-items:center;gap:8px;flex-wrap:wrap;min-width:0;width:100%
 }
 body.admin-mode .top-actions-admin{display:flex!important}
 .top-actions-admin .btn{
@@ -264,22 +277,23 @@ body.admin-mode .top-actions-admin{display:flex!important}
   .lofi-player[data-playing="1"] .lofi-eq i{animation:none;height:70%}
 }
 
-/* Mid desktop — trim soft bits so the single row still fits */
+/* Mid desktop — trim soft bits so the single main row still fits */
 @media (max-width:1380px){
-  .time-block-meta{display:none}
+  .time-block-convert{flex-basis:360px;max-width:min(360px,40vw)}
   .lofi-vol{width:52px}
   .lofi-now-text{max-width:120px}
   .brand small{max-width:18ch}
 }
 @media (max-width:1180px){
   .lofi-vol{display:none}
-  .lofi-player{flex-basis:210px;max-width:220px}
+  .lofi-player{flex-basis:200px;max-width:210px}
+  .time-block-convert{flex-basis:320px;max-width:min(320px,38vw)}
   .topbar .time-block-convert .time-block-offset,
   .topbar .time-block-convert .ui-select,
   .topbar .time-block-convert .ui-select-trigger,
   .time-block-convert .time-block-offset,
   .time-block-convert .ui-select,
-  .time-block-convert .ui-select-trigger{min-width:8rem;max-width:150px}
+  .time-block-convert .ui-select-trigger{min-width:0;max-width:150px}
   .top-actions-admin .btn{padding:0 10px;font-size:.7rem}
 }
 
@@ -288,11 +302,15 @@ body.admin-mode .top-actions-admin{display:flex!important}
   .topbar{
     --tb-gap:10px;
     --tb-chip-h:48px;
-    flex-wrap:wrap;
+    gap:10px;
     overflow-x:hidden;
     padding:12px 14px;
-    padding-top:calc(12px + env(safe-area-inset-top,0px));
-    align-items:stretch
+    padding-top:calc(12px + env(safe-area-inset-top,0px))
+  }
+  .topbar-main{
+    flex-wrap:wrap;
+    align-items:stretch;
+    overflow-x:hidden
   }
   .brand{width:100%;flex:1 0 100%;gap:10px}
   .brand-mark{width:46px;height:46px}
@@ -308,9 +326,9 @@ body.admin-mode .top-actions-admin{display:flex!important}
   .time-block-local b{font-size:1.2rem}
   .time-block-badge,.time-block-zone{display:none}
   .time-block-convert{
-    width:100%;flex:1 0 100%;max-width:none;height:auto;min-height:var(--tb-chip-h);padding:10px
+    width:100%;flex:1 0 100%;max-width:none;height:auto;min-height:var(--tb-chip-h);padding:10px;overflow:visible
   }
-  .event-convert-row{width:100%;max-width:none;flex-wrap:wrap}
+  .event-convert-row{width:100%;max-width:none;flex-wrap:wrap;overflow:visible}
   .topbar .time-block-convert .input.time-block-input,
   .topbar .input.time-block-input,
   .input.time-block-input{
@@ -325,7 +343,6 @@ body.admin-mode .top-actions-admin{display:flex!important}
     min-height:40px !important;height:40px !important;font-size:16px !important
   }
   .time-block-convert .ui-select-trigger span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .time-block-meta{display:none}
   .lofi-player{
     width:100%;flex:1 0 100%;max-width:none;height:auto;min-height:var(--tb-chip-h);padding:8px 10px
   }
@@ -335,13 +352,13 @@ body.admin-mode .top-actions-admin{display:flex!important}
   .lofi-skip{display:none}
   .lofi-btn{width:36px;height:36px}
   .lofi-btn.lofi-play{width:40px;height:40px}
-  .top-actions{width:100%;flex:1 0 100%;justify-content:flex-start;gap:8px}
+  .top-actions{width:100%;flex:1 0 100%;margin-left:0;justify-content:flex-start;gap:8px}
   .top-actions .icon-btn{flex:0 0 48px;width:48px;height:48px}
   .top-actions .btn-admin{flex:1 1 auto;min-width:0}
   .admin-label-full{display:inline}
   .admin-label-short{display:none}
   body.admin-mode .top-actions-admin{
-    display:grid!important;grid-template-columns:1fr 1fr;width:100%;flex:1 0 100%;gap:8px
+    display:grid!important;grid-template-columns:1fr 1fr;width:100%;gap:8px
   }
   body.admin-mode .top-actions-admin .btn{width:100%;min-height:44px;padding:0 10px;font-size:.72rem}
 }
@@ -642,11 +659,11 @@ body.member-mode .member-dot{background:linear-gradient(180deg,#ffe3a5,#f0ba72);
 .member-dot{background:linear-gradient(180deg,#c4a574,#8a6a3e)}
 /* Header action cluster must beat blanket .admin-only { display:grid } */
 body.admin-mode .top-actions-admin{
-  display:flex!important;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:8px
+  display:flex!important;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:8px;width:100%
 }
 @media (max-width:980px){
   body.admin-mode .top-actions-admin{
-    display:grid!important;grid-template-columns:1fr 1fr;width:100%;flex:1 0 100%;gap:8px
+    display:grid!important;grid-template-columns:1fr 1fr;width:100%;gap:8px
   }
   body.admin-mode .top-actions-admin .btn{width:100%;min-height:44px;padding:0 10px;font-size:.72rem}
 }
