@@ -1,32 +1,23 @@
-# Deploy gratis (static site)
+# Deploy
 
-El proyecto es HTML/CSS/JS puro — no necesita build ni backend.
+## Live URL (unchanged)
 
-## Opción más rápida: Netlify Drop (sin cuenta compleja)
+**https://transcendent-kitsune-43421d.netlify.app/**
 
-1. Abrí https://app.netlify.com/drop
-2. Arrastrá la carpeta completa `phl-apc-command`
-3. Netlify te da una URL pública al instante (ej. `https://random-name.netlify.app`)
+Netlify site id: `ea9f0eb9-e894-4d21-8665-08be77d8b6d3`
 
-Para actualizar: Deploys → arrastrá la carpeta de nuevo.
+## Continuous deploy
 
-## CLI (Netlify)
+1. Push to `main` on GitHub (`PaulaVD/phl-apc-command`).
+2. The `Deploy to Netlify` GitHub Action builds/publishes to that same site.
+
+Required repo secrets: `NETLIFY_AUTH_TOKEN`, `NETLIFY_SITE_ID`.
+
+## Manual deploy
 
 ```bash
-npx --yes netlify-cli login
+npx --yes netlify-cli login   # once
 npx --yes netlify-cli deploy --dir=. --prod
 ```
 
-## Alternativas gratis
-
-| Servicio | Cómo |
-|----------|------|
-| **Vercel** | `npx --yes vercel --yes` |
-| **Cloudflare Pages** | `npx --yes wrangler pages deploy . --project-name phl-apc` |
-| **GitHub Pages** | Subí el repo y activá Pages → Deploy from branch `/` (root) |
-
-## Admin
-
-Código por defecto: `PHL-R5-2026`
-
-Roster/sync multi-dispositivo: ver `README.md` (JSON export o Supabase).
+Do not point `cloudApiUrl` / `adminRealtimeUrl` away from the Netlify domain.

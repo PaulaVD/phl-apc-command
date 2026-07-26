@@ -1,0 +1,15 @@
+node_modules/
+DEPLOY_URL.txt
+deploy-error.*
+.DS_Store
+
+.env
+.env.*
+.env.tiiny
+
+# Local Netlify folder
+.netlify
+
+# Local screenshots / temp
+.tmp-shots/
+*.log

@@ -4,13 +4,13 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#0b0404" />
-  <title>PH-L Alliance APC Console</title>
-  <meta name="description" content="PH-L internal APC combat power console for member submissions and admin roster analytics." />
+  <title>Phoenix Legacy</title>
+  <meta name="description" content="Phoenix Legacy — From Ashes, We Rise Together. Alliance APC combat power console." />
   <link rel="icon" href="assets/phl-logo.png?v=2" type="image/png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Teko:wght@500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=39" />
+  <link rel="stylesheet" href="styles.css?v=68" />
 </head>
 <body>
   <a class="skip-link" href="#operatorConsole">Skip to form</a>
@@ -20,36 +20,64 @@
 
   <header class="topbar">
     <div class="brand">
-      <div class="brand-mark"><img class="game-asset" src="assets/phl-logo.png?v=2" alt="PH-L Phoenix Legacy logo" width="64" height="64" decoding="async"></div>
-      <div>
-        <strong>PH-L</strong>
-        <small>Dark War · Season 4 · APC Console</small>
+      <div class="brand-mark"><img class="game-asset" src="assets/phl-logo.png?v=2" alt="Phoenix Legacy logo" width="48" height="48" decoding="async"></div>
+      <div class="brand-copy">
+        <strong>Phoenix Legacy</strong>
+        <small>From Ashes, We Rise Together</small>
       </div>
     </div>
 
-    <div class="top-pills">
-      <div class="top-pill"><span class="dot"></span><span>Alliance scope</span><b>PH-L only</b></div>
-      <div class="top-pill"><span class="mini-cube"></span><span>Watchtower bands</span><b>1–30 · i1–i12</b></div>
-      <div class="top-pill season-pill"><span class="map-dot"></span><span>Theater</span><b>Season 4</b></div>
+    <div class="top-clocks" id="serverClockPanel" aria-label="Dark War server time">
+      <div class="time-block time-block-server" title="Dark War server time (Asunción +1h)">
+        <span class="time-block-kicker">Server</span>
+        <time id="serverClockDisplay" aria-live="polite">--:--:--</time>
+        <span class="time-block-badge" id="serverClockBadge">UTC-3</span>
+      </div>
+      <div class="time-block time-block-local" title="Your local time">
+        <span class="time-block-kicker">Local</span>
+        <b id="localClockDisplay">--:--:--</b>
+        <em class="time-block-badge" id="localOffsetBadge">auto</em>
+        <small class="time-block-zone" id="localZoneLabel">Detecting…</small>
+      </div>
+    </div>
+
+    <div class="top-actions">
+      <button class="icon-btn active" id="sfxBtn" title="Toggle sound effects" aria-label="Toggle sound effects">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3.23v17.54a1 1 0 0 1-1.64.77L7.56 17H4a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2h3.56l4.8-4.54A1 1 0 0 1 14 3.23Zm3.54 4.05a1 1 0 0 1 1.41 0 6.98 6.98 0 0 1 0 9.9 1 1 0 1 1-1.41-1.42 4.98 4.98 0 0 0 0-7.06 1 1 0 0 1 0-1.42Zm-2.83 2.83a1 1 0 0 1 1.41 0 2.98 2.98 0 0 1 0 4.22 1 1 0 1 1-1.41-1.42.98.98 0 0 0 0-1.38 1 1 0 0 1 0-1.42Z"/></svg>
+      </button>
+      <button class="btn btn-admin" id="adminAccessBtn"><span class="lock-dot"></span><span id="adminAccessLabel"><span class="admin-label-full">Admin access</span><span class="admin-label-short">Admin</span></span></button>
+    </div>
+
+    <div class="time-block time-block-convert" title="Convert a server event to your local time">
+      <div class="event-convert-row">
+        <span class="time-block-kicker">Event</span>
+        <input class="input time-block-input" id="serverEventInput" type="time" value="15:00" step="60" aria-label="Server event time">
+        <span class="time-block-arrow" aria-hidden="true">→</span>
+        <strong id="localConvertedTime">--:--</strong>
+        <select class="time-block-offset" id="localOffsetSelect" aria-label="Target UTC offset"></select>
+        <small class="time-block-meta" id="localConvertedMeta">Detecting timezone…</small>
+      </div>
     </div>
 
     <div class="lofi-player" id="lofiPlayer" data-playing="0">
       <div class="lofi-yt" aria-hidden="true"><div id="lofiYtMount"></div></div>
-      <div class="lofi-eq" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
       <button class="lofi-now" id="lofiNowBtn" type="button" aria-expanded="false" aria-controls="lofiPlaylist" title="Open Lofi Girl playlist">
-        <span class="lofi-kicker">Lofi Girl</span>
-        <strong id="lofiTrackTitle">beats to relax/study to</strong>
-        <small id="lofiTrackArtist">Lofi Girl · live radio</small>
+        <span class="lofi-eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        <span class="lofi-now-text">
+          <span class="lofi-kicker">Lofi</span>
+          <strong id="lofiTrackTitle">beats to relax/study to</strong>
+          <small id="lofiTrackArtist">Lofi Girl · live radio</small>
+        </span>
       </button>
       <div class="lofi-controls">
-        <button class="lofi-btn" id="lofiPrevBtn" type="button" title="Previous station" aria-label="Previous station">
+        <button class="lofi-btn lofi-skip" id="lofiPrevBtn" type="button" title="Previous station" aria-label="Previous station">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
         </button>
         <button class="lofi-btn lofi-play" id="lofiPlayBtn" type="button" title="Play / pause" aria-label="Play Lofi Girl radio">
           <svg class="lofi-icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
           <svg class="lofi-icon-pause" viewBox="0 0 24 24" aria-hidden="true" hidden><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>
         </button>
-        <button class="lofi-btn" id="lofiNextBtn" type="button" title="Next station" aria-label="Next station">
+        <button class="lofi-btn lofi-skip" id="lofiNextBtn" type="button" title="Next station" aria-label="Next station">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 6h2v12h-2zM6 18l8.5-6L6 6z"/></svg>
         </button>
       </div>
@@ -60,60 +88,15 @@
       <div class="lofi-playlist" id="lofiPlaylist" hidden role="listbox" aria-label="Lofi Girl playlist"></div>
     </div>
 
-    <div class="top-actions">
-      <button class="icon-btn active" id="sfxBtn" title="Toggle sound effects" aria-label="Toggle sound effects">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3.23v17.54a1 1 0 0 1-1.64.77L7.56 17H4a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2h3.56l4.8-4.54A1 1 0 0 1 14 3.23Zm3.54 4.05a1 1 0 0 1 1.41 0 6.98 6.98 0 0 1 0 9.9 1 1 0 1 1-1.41-1.42 4.98 4.98 0 0 0 0-7.06 1 1 0 0 1 0-1.42Zm-2.83 2.83a1 1 0 0 1 1.41 0 2.98 2.98 0 0 1 0 4.22 1 1 0 1 1-1.41-1.42.98.98 0 0 0 0-1.38 1 1 0 0 1 0-1.42Z"/></svg>
-      </button>
-      <button class="btn btn-ghost admin-only" id="demoBtn">Load demo</button>
-      <button class="btn btn-ghost admin-only" id="copyDiscordBtn">Copy Discord</button>
-      <button class="btn btn-ghost admin-only" id="exportBtn">Export CSV</button>
-      <button class="btn btn-ghost admin-only" id="syncBtn">Sync</button>
-      <button class="btn btn-admin" id="adminAccessBtn"><span class="lock-dot"></span><span id="adminAccessLabel">Admin access</span></button>
+    <div class="top-actions-admin admin-only">
+      <button class="btn btn-ghost" id="demoBtn">Load demo</button>
+      <button class="btn btn-ghost" id="copyDiscordBtn">Copy Discord</button>
+      <button class="btn btn-ghost" id="exportBtn">Export CSV</button>
+      <button class="btn btn-ghost" id="syncBtn">Sync</button>
     </div>
   </header>
 
   <main class="shell">
-  <section class="server-clock-panel" id="serverClockPanel" aria-label="Dark War server time">
-    <div class="server-clock-live">
-      <div class="server-clock-label">
-        <span class="eyebrow"><span></span>Dark War server</span>
-        <strong>Server time</strong>
-      </div>
-      <div class="server-clock-face" aria-live="polite">
-        <time id="serverClockDisplay">--:--:--</time>
-        <span class="server-clock-badge" id="serverClockBadge">Asunción +1h</span>
-      </div>
-      <div class="server-clock-local">
-        <span>Your local</span>
-        <b id="localClockDisplay">--:--:--</b>
-        <em id="localOffsetBadge">auto</em>
-        <small id="localZoneLabel">Detecting…</small>
-      </div>
-    </div>
-
-    <div class="server-clock-converter">
-      <div class="server-clock-label">
-        <span class="eyebrow"><span></span>Event converter</span>
-        <strong>Server → local</strong>
-      </div>
-      <div class="server-clock-fields">
-        <label class="field">
-          <span>Server event</span>
-          <input class="input" id="serverEventInput" type="time" value="15:00" step="60" aria-label="Server event time">
-        </label>
-        <label class="field">
-          <span>Your timezone</span>
-          <select id="localOffsetSelect" aria-label="Target UTC offset"></select>
-        </label>
-        <div class="server-clock-result">
-          <span>Local event</span>
-          <strong id="localConvertedTime">--:--</strong>
-          <small id="localConvertedMeta">Detecting timezone…</small>
-        </div>
-      </div>
-    </div>
-  </section>
-
     <section class="dashboard-grid">
       <section class="panel scan-panel" data-tilt id="scanPanel">
         <div class="panel-head compact">
@@ -211,7 +194,7 @@
       </div>
       <div>
         <strong>PH-L private analytics</strong>
-        <span>Submit Garage APC CP + Rally Plaza capacity here. Roster, rankings and war readiness unlock with admin access. Tip: paste <code>Name i5 820/760/710/655 450000</code>.</span>
+        <span>Every submit is saved to the shared Phoenix Legacy cloud roster. Admins unlock to review all alliance uploads. Tip: paste <code>Name i5 820/760/710/655 450000</code>.</span>
       </div>
     </section>
 
@@ -290,6 +273,24 @@
       </section>
 
       <aside class="insights-col">
+        <section class="panel insight-panel admin-comms-panel" id="adminCommsPanel">
+          <div class="panel-head compact">
+            <div>
+              <span class="eyebrow"><span></span>Admin channel</span>
+              <h2>Officers online</h2>
+            </div>
+            <div class="badge live" id="adminOnlineCount">0 online</div>
+          </div>
+          <div class="admin-online-list" id="adminOnlineList" aria-live="polite"></div>
+          <div class="admin-chat">
+            <div class="admin-chat-log" id="adminChatLog" aria-live="polite"></div>
+            <form class="admin-chat-form" id="adminChatForm">
+              <input class="input" id="adminChatInput" type="text" maxlength="500" autocomplete="off" placeholder="Message other admins…">
+              <button class="btn btn-primary" type="submit" id="adminChatSend">Send</button>
+            </form>
+          </div>
+        </section>
+
         <section class="panel insight-panel season-map-panel">
           <div class="panel-head compact">
             <div>
@@ -330,21 +331,21 @@
           <div class="rally-split" id="rallySplit">
             <div class="rally-criteria" id="rallyCriteriaBox">
               <label class="rally-mode">
-                <span>Criteria source</span>
+                <span>RL / RJ target</span>
                 <select id="rallyCriteriaMode" aria-label="Rally criteria source">
-                  <option value="roster">Alliance roster (median)</option>
-                  <option value="manual">Manual alliance policy</option>
+                  <option value="roster">Live uploaded roster (median CP)</option>
+                  <option value="manual">Select custom target</option>
                 </select>
               </label>
               <div class="rally-roster-readout" id="rallyRosterReadout">
-                <div class="rally-chip"><span>Min APC1</span><b id="rallyReadoutApc">—</b></div>
-                <div class="rally-chip"><span>Min Plaza</span><b id="rallyReadoutPlaza">—</b></div>
+                <div class="rally-chip"><span>Live APC1 gate</span><b id="rallyReadoutApc">—</b></div>
+                <div class="rally-chip"><span>Live Plaza gate</span><b id="rallyReadoutPlaza">—</b></div>
               </div>
               <div class="rally-manual-fields" id="rallyManualFields" hidden>
-                <label>Min APC1 (M)<input id="rallyMinApc1Input" type="number" min="0" step="1" class="input"></label>
-                <label>Min Plaza<input id="rallyMinPlazaInput" type="number" min="0" step="1000" class="input"></label>
+                <label>Target APC1 (M)<input id="rallyMinApc1Input" type="number" min="0" step="1" class="input" placeholder="e.g. 700"></label>
+                <label>Target Plaza<input id="rallyMinPlazaInput" type="number" min="0" step="1000" class="input" placeholder="e.g. 400000"></label>
               </div>
-              <p class="rally-rule" id="rallyRuleCopy">Criteria come from loaded alliance member APC1 + Plaza.</p>
+              <p class="rally-rule" id="rallyRuleCopy">Choose live median from uploads, or set a custom APC1 + Plaza target.</p>
             </div>
             <div class="rally-kpis">
               <div class="rally-stat rl"><span>Rally Leaders</span><strong id="kpiRl">0</strong></div>
@@ -395,7 +396,7 @@
       </div>
       <span class="eyebrow"><span></span>Restricted PH-L access</span>
       <h2 id="adminModalTitle">Admin authentication</h2>
-      <p>Enter the shared PH-L admin access code to view the roster, rankings, readiness data and exports.</p>
+      <p>Enter your personal PH-L admin access code to view the roster, rankings, readiness data and exports.</p>
       <label class="admin-code-field">
         <span>Admin access code</span>
         <input id="adminCodeInput" type="password" autocomplete="current-password" placeholder="Enter access code">
@@ -427,7 +428,7 @@
     <section class="admin-modal-card sync-modal-card" role="dialog" aria-modal="true" aria-labelledby="syncModalTitle">
       <span class="eyebrow"><span></span>Multi-device roster</span>
       <h2 id="syncModalTitle">Alliance sync</h2>
-      <p id="syncStatusText">Export JSON for officers, import on another device, or connect Supabase in <code>config.js</code> for live shared roster.</p>
+      <p id="syncStatusText">Alliance roster syncs automatically to the cloud. Export/import JSON for backups.</p>
       <div class="sync-actions">
         <button class="btn btn-primary" id="syncPullBtn" type="button">Pull from cloud</button>
         <button class="btn btn-ghost" id="syncPushBtn" type="button">Push to cloud</button>
@@ -443,8 +444,10 @@
 
   <div class="toast-region" id="toastRegion" aria-live="polite"></div>
 
-  <script src="config.js"></script>
-  <script src="rallyRoles.js?v=27"></script>
-  <script src="app.js?v=39" defer></script>
+  <script src="config.js?v=50"></script>
+  <script src="serverClock.js?v=34"></script>
+  <script src="rallyRoles.js?v=28"></script>
+  <script src="rallyMatchmaking.js?v=27"></script>
+  <script src="app.js?v=57" defer></script>
 </body>
 </html>

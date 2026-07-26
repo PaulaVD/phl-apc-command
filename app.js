@@ -4,12 +4,13 @@
 
   const STORAGE_KEY = "phl_apex_console_v7";
   const PREFS_KEY = "phl_prefs_v1";
-  const ADMIN_SESSION_KEY = "phl_admin_session";
-  const ADMIN_CODE_HASH = "3a92acb462931701d92bf3e887291be2fa1c2f94b0619de637b301681c65059a";
+  const ADMIN_SESSION_KEY = "phl_admin_session_v2";
+  const OUTBOX_KEY = "phl_cloud_outbox_v1";
+  const ADMIN_HEARTBEAT_MS = 10_000;
   const APC_COUNT = 4;
   const STALE_MS = 7 * 24 * 60 * 60 * 1000;
-  /** Median RL gates need enough samples or a solo member becomes RL by definition. */
-  const MIN_RALLY_ROSTER_SAMPLES = 3;
+  /** One real upload is enough to start live RL/RJ from actual CP. */
+  const MIN_RALLY_ROSTER_SAMPLES = 1;
   const ASSETS = { apc: "assets/phl-apc.png?v=2", logo: "assets/phl-logo.png?v=2" };
   const TOWER_LEVELS = Array.from({ length: 30 }, (_, i) => `WT${i + 1}`);
   const INDUSTRY_LEVELS = Array.from({ length: 12 }, (_, i) => `I${i + 1}`);
@@ -38,8 +39,15 @@
   let currentStep = 0;
   let entryMode = prefs.entryMode === "quick" ? "quick" : "guided";
   let sfxEnabled = true;
+  let adminSession = loadAdminSession();
+  let isAdmin = Boolean(adminSession);
   let audioUnlocked = false;
-  let isAdmin = sessionStorage.getItem(ADMIN_SESSION_KEY) === "1";
+  let pendingDeletedIds = new Set();
+  let cloudSyncTimer = 0;
+  let adminRealtimeTimer = 0;
+  let adminRealtimeBusy = false;
+  let lastCloudFingerprint = "";
+  let lastAdminChatStamp = "";
   let rosterFilterTimer = 0;
   let rallyRosterTimer = 0;
   let lastRenderedLevel = null;
@@ -151,6 +159,13 @@
     adminLoginBtn: document.getElementById("adminLoginBtn"),
     adminCancelBtn: document.getElementById("adminCancelBtn"),
     adminError: document.getElementById("adminError"),
+    adminCommsPanel: document.getElementById("adminCommsPanel"),
+    adminOnlineCount: document.getElementById("adminOnlineCount"),
+    adminOnlineList: document.getElementById("adminOnlineList"),
+    adminChatLog: document.getElementById("adminChatLog"),
+    adminChatForm: document.getElementById("adminChatForm"),
+    adminChatInput: document.getElementById("adminChatInput"),
+    adminChatSend: document.getElementById("adminChatSend"),
     deleteModal: document.getElementById("deleteModal"),
     deleteModalText: document.getElementById("deleteModalText"),
     deleteConfirmBtn: document.getElementById("deleteConfirmBtn"),
@@ -235,8 +250,17 @@
     probeAudioAssets();
     if (!reducedMotion) startParticles();
     enableTilt(document.querySelector(".scan-panel[data-tilt]"));
+    if (window.matchMedia("(max-width: 760px)").matches) {
+      setScanPanelCollapsed(true);
+    }
     if (isCloudConfigured()) {
-      pullCloudRoster({ silent: true }).catch(() => {});
+      flushCloudOutbox()
+        .then(() => pullCloudRoster({ silent: true }))
+        .then(() => startCloudSyncLoop())
+        .catch(() => startCloudSyncLoop());
+    }
+    if (isAdmin) {
+      startAdminRealtime({ claim: true });
     }
   }
 
@@ -253,7 +277,7 @@
     el.syncBtn?.addEventListener("click", openSyncModal);
     el.syncCloseBtn?.addEventListener("click", () => closeModal("sync"));
     el.syncPullBtn?.addEventListener("click", () => pullCloudRoster({ silent: false }));
-    el.syncPushBtn?.addEventListener("click", pushCloudRoster);
+    el.syncPushBtn?.addEventListener("click", () => pushCloudRosterWithRetry({ silent: false }));
     el.exportJsonBtn?.addEventListener("click", exportJsonRoster);
     el.importJsonInput?.addEventListener("change", importJsonRoster);
     el.guidedModeBtn?.addEventListener("click", () => setEntryMode("guided"));
@@ -275,6 +299,7 @@
     el.adminAccessBtn.addEventListener("click", handleAdminAccess);
     el.adminLoginBtn.addEventListener("click", attemptAdminLogin);
     el.adminCancelBtn.addEventListener("click", () => closeModal("admin"));
+    el.adminChatForm?.addEventListener("submit", onAdminChatSubmit);
     document.querySelectorAll("[data-modal-close]").forEach(node => {
       node.addEventListener("click", () => closeModal(node.dataset.modalClose));
     });
@@ -310,10 +335,15 @@
     else nextStep();
   }
 
-  function toggleScanPanel() {
-    const collapsed = el.scanPanel.classList.toggle("is-collapsed");
+  function setScanPanelCollapsed(collapsed) {
+    if (!el.scanPanel || !el.scanToggleBtn) return;
+    el.scanPanel.classList.toggle("is-collapsed", collapsed);
     el.scanToggleBtn.setAttribute("aria-expanded", String(!collapsed));
     el.scanToggleBtn.textContent = collapsed ? "Show scan" : "Hide scan";
+  }
+
+  function toggleScanPanel() {
+    setScanPanelCollapsed(!el.scanPanel.classList.contains("is-collapsed"));
   }
 
   async function probeAudioAssets() {
@@ -377,7 +407,7 @@
         });
         const clock = document.getElementById("serverClockDisplay");
         if (clock) clock.dataset.mounted = "1";
-        enhanceSelects(document.getElementById("serverClockPanel"));
+        enhanceSelects(document.querySelector(".topbar"));
         return true;
       } catch (error) {
         console.warn("Server clock failed to mount:", error);
@@ -387,7 +417,7 @@
 
     if (mount()) return;
 
-    fetch(`serverClock.js?v=33&t=${Date.now()}`)
+    fetch(`serverClock.js?v=34&t=${Date.now()}`)
       .then(response => {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         return response.text();
@@ -676,8 +706,14 @@
           <h4>APC CP + rally role</h4>
           <div class="summary-stack">
             ${state.apcs.map((apc, i) => {
-              const gap = getFrontlineGap(state.level, apc.cp);
-              return `<div class="summary-line"><span>APC ${i + 1} · ${apc.faction}</span><b>${formatNumber(apc.cp)}M · ${formatGap(gap)}</b></div>`;
+              const gap = i === 0 ? getFrontlineGap(state.level, apc.cp) : null;
+              return `<div class="summary-line apc-review-line">
+                <span>APC ${i + 1} · ${apc.faction}</span>
+                <b class="apc-review-values">
+                  <em class="apc-cp">${formatNumber(apc.cp)}M <small>entered</small></em>
+                  ${gap ? `<em class="apc-gap ${gap.met ? "gap-met" : "gap-short"}">${formatGap(gap)} <small>vs frontline</small></em>` : ""}
+                </b>
+              </div>`;
             }).join("")}
             <div class="summary-line"><span>Total APC CP</span><b>${formatNumber(total)}M</b></div>
             <div class="summary-line"><span>Average APC</span><b>${formatNumber(average)}M</b></div>
@@ -978,7 +1014,7 @@
     return roster.find(member => member.name.trim().toLowerCase() === normalized && member.id !== excludeId);
   }
 
-  function saveCurrentMember() {
+  async function saveCurrentMember() {
     // Flush visible identity selects in case UI and state drifted.
     const levelEl = document.getElementById("memberLevelInput");
     const rankEl = document.getElementById("memberRankInput");
@@ -1029,18 +1065,61 @@
     prefs.lastLevel = member.level;
     prefs.lastRank = member.rank;
     savePrefs();
+    queueCloudOutbox(member);
     renderAll();
-    maybeAutoPushCloud();
-    toast(
-      isDuplicateUpdate || idx >= 0
-        ? `<strong>${escapeHtml(member.name)}</strong> updated.`
-        : (isAdmin
-          ? `<strong>${escapeHtml(member.name)}</strong> added to the roster.`
-          : `<strong>${escapeHtml(member.name)}</strong> submitted. PH-L admins can review it.`),
-      "success"
-    );
-    playSfx("success");
+    setSavingUi(true);
+
+    try {
+      // Pull latest shared roster, then push so every device sees this submit
+      await pullCloudRoster({ silent: true });
+      member = upsertMember(member);
+      saveRoster();
+      const synced = await pushCloudRosterWithRetry({ silent: true });
+      if (synced) {
+        clearCloudOutboxMember(member.id);
+        toast(
+          isDuplicateUpdate || idx >= 0
+            ? `<strong>${escapeHtml(member.name)}</strong> updated in the shared cloud roster.`
+            : `<strong>${escapeHtml(member.name)}</strong> saved to the shared cloud roster for all admins.`,
+          "success"
+        );
+        playSfx("success");
+      } else {
+        toast(
+          `<strong>${escapeHtml(member.name)}</strong> kept on this device. Cloud sync failed — will retry automatically.`,
+          "error"
+        );
+        playSfx("error");
+      }
+    } finally {
+      setSavingUi(false);
+    }
     resetForm(false);
+  }
+
+  function upsertMember(member) {
+    const idx = roster.findIndex(item => item.id === member.id);
+    if (idx >= 0) {
+      roster[idx] = member;
+      return member;
+    }
+    const byName = roster.findIndex(item => item.name.trim().toLowerCase() === member.name.trim().toLowerCase() && !item.isDemo);
+    if (byName >= 0) {
+      const merged = { ...member, id: roster[byName].id };
+      roster[byName] = merged;
+      return merged;
+    }
+    roster.unshift(member);
+    return member;
+  }
+
+  function setSavingUi(busy) {
+    if (!el.primaryBtn) return;
+    el.primaryBtn.disabled = busy;
+    el.primaryBtn.setAttribute("aria-busy", String(busy));
+    if (busy) el.primaryBtn.dataset.label = el.primaryBtn.textContent;
+    if (busy) el.primaryBtn.textContent = "Saving to cloud…";
+    else if (el.primaryBtn.dataset.label) el.primaryBtn.textContent = el.primaryBtn.dataset.label;
   }
 
   function resetForm(play = true) {
@@ -1100,11 +1179,18 @@
       return;
     }
     roster = roster.filter(item => item.id !== pendingDeleteId);
+    pendingDeletedIds.add(pendingDeleteId);
     if (editingId === pendingDeleteId) resetForm(false);
     saveRoster();
     renderAll();
-    maybeAutoPushCloud();
-    toast(`<strong>${escapeHtml(member.name)}</strong> removed.`, "success");
+    pushCloudRosterWithRetry({ silent: true }).then(ok => {
+      toast(
+        ok
+          ? `<strong>${escapeHtml(member.name)}</strong> removed from shared roster.`
+          : `<strong>${escapeHtml(member.name)}</strong> removed locally. Cloud sync will retry.`,
+        ok ? "success" : "error"
+      );
+    });
     playSfx("click");
     pendingDeleteId = null;
     closeModal("delete");
@@ -1462,7 +1548,7 @@
     if (!thresholds?.ready) {
       el.rallyFormationList.innerHTML = `
         <div class="rally-leader-empty">
-          Strike teams need RL criteria first: load <b>3+</b> members (Load demo) or switch Criteria source → <b>Manual alliance policy</b> and set Min APC1 + Min Plaza.
+          Strike teams need real uploads first. As members submit APC1 CP, live median gates appear and RL/RJ updates automatically.
         </div>`;
       return;
     }
@@ -1528,27 +1614,30 @@
   function syncRallyCriteriaControls() {
     const criteria = getRallyCriteriaPrefs();
     const rosterMode = criteria.mode !== "manual";
-    if (el.rallyCriteriaMode) el.rallyCriteriaMode.value = criteria.mode;
+    if (el.rallyCriteriaMode) {
+      el.rallyCriteriaMode.disabled = false;
+      el.rallyCriteriaMode.value = criteria.mode;
+    }
     if (el.rallyManualFields) el.rallyManualFields.hidden = rosterMode;
     if (el.rallyRosterReadout) el.rallyRosterReadout.hidden = !rosterMode;
 
     const live = getAllianceRallyThresholdsFromRoster();
     if (el.rallyReadoutApc) {
-      el.rallyReadoutApc.textContent = live.sampleApc
+      el.rallyReadoutApc.textContent = live.ready
         ? `${formatNumber(live.minApc1M)}M`
         : "—";
     }
     if (el.rallyReadoutPlaza) {
-      el.rallyReadoutPlaza.textContent = live.samplePlaza
+      el.rallyReadoutPlaza.textContent = live.minPlaza > 0
         ? formatTroops(live.minPlaza)
-        : "—";
+        : (live.samplePlaza ? "—" : "pending");
     }
 
     if (el.rallyMinApc1Input && document.activeElement !== el.rallyMinApc1Input) {
-      el.rallyMinApc1Input.value = String(criteria.minApc1M || "");
+      el.rallyMinApc1Input.value = criteria.minApc1M ? String(criteria.minApc1M) : "";
     }
     if (el.rallyMinPlazaInput && document.activeElement !== el.rallyMinPlazaInput) {
-      el.rallyMinPlazaInput.value = String(criteria.minPlaza || "");
+      el.rallyMinPlazaInput.value = criteria.minPlaza ? String(criteria.minPlaza) : "";
     }
   }
 
@@ -1557,11 +1646,12 @@
     criteria.mode = el.rallyCriteriaMode?.value === "manual" ? "manual" : "roster";
     if (criteria.mode === "manual") {
       const live = getAllianceRallyThresholdsFromRoster();
-      if (!criteria.minApc1M && live.minApc1M) criteria.minApc1M = live.minApc1M;
-      if (!criteria.minPlaza && live.minPlaza) criteria.minPlaza = live.minPlaza;
+      if (!criteria.minApc1M && live.minApc1M) criteria.minApc1M = Number(live.minApc1M) || 0;
+      if (!criteria.minPlaza && live.minPlaza) criteria.minPlaza = Number(live.minPlaza) || 0;
     }
     prefs.rallyCriteria = criteria;
     savePrefs();
+    syncRallyCriteriaControls();
     renderRoster();
     renderRallySplit();
     syncLiveRallyClassification({ skipScan: true });
@@ -1576,6 +1666,7 @@
     prefs.rallyCriteria = criteria;
     savePrefs();
     if (el.rallyCriteriaMode) el.rallyCriteriaMode.value = "manual";
+    syncRallyCriteriaControls();
     renderRoster();
     renderRallySplit();
     syncLiveRallyClassification({ skipScan: true });
@@ -1585,18 +1676,18 @@
     const raw = prefs.rallyCriteria && typeof prefs.rallyCriteria === "object" ? prefs.rallyCriteria : {};
     return {
       mode: raw.mode === "manual" ? "manual" : "roster",
-      minApc1M: Number(raw.minApc1M) || 0,
-      minPlaza: Number(raw.minPlaza) || 0
+      minApc1M: Math.max(0, Number(raw.minApc1M) || 0),
+      minPlaza: Math.max(0, Number(raw.minPlaza) || 0)
     };
   }
 
-  /** Thresholds always come from alliance roster data or explicit alliance policy prefs. */
+  /** Selected target: live roster median, or admin-selected custom APC1 + Plaza. */
   function getAllianceRallyThresholds() {
     const criteria = getRallyCriteriaPrefs();
     if (criteria.mode === "manual") {
       const minApc1M = Number(criteria.minApc1M) || 0;
       const minPlaza = Number(criteria.minPlaza) || 0;
-      const ready = minApc1M > 0 && minPlaza > 0;
+      const ready = minApc1M > 0;
       return {
         ready,
         source: "manual",
@@ -1605,26 +1696,28 @@
         minApc1Cp: toAbsoluteCp(minApc1M),
         minRallyCapacity: minPlaza,
         label: ready
-          ? `Alliance policy (manual): APC1 ≥ ${formatNumber(minApc1M)}M and Plaza ≥ ${formatTroops(minPlaza)}`
-          : "Set manual APC1 + Plaza policy for this alliance."
+          ? `Selected target: APC1 ≥ ${formatNumber(minApc1M)}M${minPlaza > 0 ? ` · Plaza ≥ ${formatTroops(minPlaza)}` : " · Plaza optional"}`
+          : "Select a custom APC1 target (M) to classify RL / RJ."
       };
     }
     return getAllianceRallyThresholdsFromRoster();
   }
 
   function getAllianceRallyThresholdsFromRoster() {
-    const samples = roster.map(member => ({
-      apc1_cp: toAbsoluteCp(getMain(member)),
-      rally_capacity: Number(member.rallyCapacity || 0)
-    }));
+    const samples = roster
+      .filter(member => !member.isDemo)
+      .map(member => ({
+        apc1_cp: toAbsoluteCp(getMain(member)),
+        rally_capacity: Number(member.rallyCapacity || 0)
+      }));
     const derived = window.PHL_RALLY_ROLES?.deriveThresholdsFromRoster
       ? window.PHL_RALLY_ROLES.deriveThresholdsFromRoster(samples)
       : { minApc1Cp: 0, minRallyCapacity: 0, sampleApc: 0, samplePlaza: 0 };
 
     const minApc1M = derived.minApc1Cp >= 10_000 ? derived.minApc1Cp / 1_000_000 : derived.minApc1Cp;
-    const minPlaza = derived.minRallyCapacity;
-    const sample = Math.min(derived.sampleApc, derived.samplePlaza);
-    const ready = sample >= MIN_RALLY_ROSTER_SAMPLES && minApc1M > 0 && minPlaza > 0;
+    const hasPlazaGate = derived.samplePlaza >= MIN_RALLY_ROSTER_SAMPLES && derived.minRallyCapacity > 0;
+    const minPlaza = hasPlazaGate ? derived.minRallyCapacity : 0;
+    const ready = derived.sampleApc >= MIN_RALLY_ROSTER_SAMPLES && minApc1M > 0;
 
     return {
       ready,
@@ -1635,11 +1728,11 @@
       minRallyCapacity: minPlaza,
       sampleApc: derived.sampleApc,
       samplePlaza: derived.samplePlaza,
-      label: ready
-        ? `From alliance roster medians (n=${sample}): APC1 ≥ ${formatNumber(minApc1M)}M and Plaza ≥ ${formatTroops(minPlaza)}`
-        : sample > 0
-          ? `Need ${MIN_RALLY_ROSTER_SAMPLES}+ members for median gates (n=${sample}). Or use Manual policy.`
-          : "Load members with APC1 + Plaza to derive alliance criteria."
+      label: !ready
+        ? "Waiting for real uploads (APC1 CP) to classify RL / RJ."
+        : hasPlazaGate
+          ? `Live from uploaded data (n=${derived.sampleApc}): APC1 ≥ ${formatNumber(minApc1M)}M · Plaza ≥ ${formatTroops(minPlaza)}`
+          : `Live from uploaded APC1 (n=${derived.sampleApc}): APC1 ≥ ${formatNumber(minApc1M)}M · Plaza gate pending`
     };
   }
 
@@ -1815,19 +1908,28 @@
 
   function applyAdminMode() {
     document.body.classList.toggle("admin-mode", isAdmin);
-    el.adminAccessLabel.textContent = isAdmin ? "Exit admin" : "Admin access";
+    const who = adminSession?.name ? ` · ${adminSession.name}` : "";
+    if (el.adminAccessLabel) {
+      const full = isAdmin ? `Exit admin${who}` : "Admin access";
+      const short = isAdmin ? `Exit${who}` : "Admin";
+      el.adminAccessLabel.innerHTML = `<span class="admin-label-full"></span><span class="admin-label-short"></span>`;
+      const fullEl = el.adminAccessLabel.querySelector(".admin-label-full");
+      const shortEl = el.adminAccessLabel.querySelector(".admin-label-short");
+      if (fullEl) fullEl.textContent = full;
+      if (shortEl) shortEl.textContent = short;
+    }
     el.adminAccessBtn.setAttribute("aria-pressed", String(isAdmin));
-    if (!isAdmin) clearAdminViews();
+    if (!isAdmin) {
+      clearAdminViews();
+      clearAdminCommsUi();
+    } else {
+      // keep shared sync loop running for everyone; admin just sees roster UI
+    }
   }
 
   function handleAdminAccess() {
     if (isAdmin) {
-      isAdmin = false;
-      sessionStorage.removeItem(ADMIN_SESSION_KEY);
-      applyAdminMode();
-      renderAll();
-      toast("Admin session closed.", "success");
-      playSfx("click");
+      void logoutAdminSession({ toastMessage: "Admin session closed." });
       return;
     }
     openAdminModal();
@@ -1865,31 +1967,311 @@
   async function attemptAdminLogin() {
     const code = el.adminCodeInput.value.trim();
     if (!code) {
-      el.adminError.textContent = "Enter the admin access code.";
+      el.adminError.textContent = "Enter your personal admin access code.";
       playSfx("error");
       return;
     }
 
     const hash = await sha256(code);
-    if (hash !== ADMIN_CODE_HASH) {
+    const account = getAdminAccounts().find(admin => admin.hash === hash);
+    if (!account) {
       el.adminError.textContent = "Access code not recognized.";
       el.adminCodeInput.select();
       playSfx("error");
       return;
     }
 
+    adminSession = {
+      id: account.id,
+      name: account.name,
+      sessionId: createAdminSessionId()
+    };
     isAdmin = true;
-    sessionStorage.setItem(ADMIN_SESSION_KEY, "1");
+    sessionStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(adminSession));
     closeModal("admin");
     applyAdminMode();
+    await startAdminRealtime({ claim: true });
+    await pullCloudRoster({ silent: true });
     renderAll();
-    toast("PH-L admin dashboard unlocked.", "success");
+    toast(`Welcome, <strong>${escapeHtml(account.name)}</strong>. Shared roster synced.`, "success");
     playSfx("success");
+  }
+
+  function getAdminAccounts() {
+    const list = Array.isArray(getConfig().admins) ? getConfig().admins : [];
+    return list
+      .filter(admin => admin && admin.hash && admin.name)
+      .map(admin => ({
+        id: String(admin.id || admin.name).toLowerCase(),
+        name: String(admin.name),
+        hash: String(admin.hash).toLowerCase()
+      }));
+  }
+
+  function loadAdminSession() {
+    try {
+      const raw = sessionStorage.getItem(ADMIN_SESSION_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (!parsed?.id || !parsed?.name) return null;
+      const stillValid = getAdminAccounts().some(admin => admin.id === parsed.id);
+      if (!stillValid) return null;
+      const sessionId = parsed.sessionId ? String(parsed.sessionId) : createAdminSessionId();
+      const session = { id: parsed.id, name: parsed.name, sessionId };
+      if (!parsed.sessionId) {
+        sessionStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(session));
+      }
+      return session;
+    } catch {
+      return null;
+    }
+  }
+
+  function createAdminSessionId() {
+    if (globalThis.crypto?.randomUUID) return crypto.randomUUID();
+    return `sess-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  }
+
+  function getAdminRealtimeUrl() {
+    const cfg = getConfig();
+    if (cfg.adminRealtimeUrl) return String(cfg.adminRealtimeUrl).replace(/\/$/, "");
+    if (cfg.cloudApiUrl) {
+      return String(cfg.cloudApiUrl).replace(/\/api\/roster\/?$/, "/api/admin-realtime");
+    }
+    return "";
+  }
+
+  function isAdminRealtimeConfigured() {
+    return Boolean(getAdminRealtimeUrl());
+  }
+
+  function adminRealtimePayload(extra = {}) {
+    if (!adminSession?.id || !adminSession?.name || !adminSession?.sessionId) return null;
+    return {
+      adminId: adminSession.id,
+      adminName: adminSession.name,
+      sessionId: adminSession.sessionId,
+      ...extra
+    };
+  }
+
+  async function postAdminRealtime(action, extra = {}) {
+    const base = getAdminRealtimeUrl();
+    const body = adminRealtimePayload(extra);
+    if (!base || !body) return null;
+
+    const response = await fetch(`${base}?action=${encodeURIComponent(action)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      cache: "no-store"
+    });
+
+    let data = null;
+    try {
+      data = await response.json();
+    } catch {
+      data = null;
+    }
+
+    if (response.status === 409 || data?.kicked) {
+      handleAdminSessionKicked();
+      return null;
+    }
+
+    if (!response.ok) {
+      throw new Error(data?.error || `Admin realtime failed (${response.status})`);
+    }
+
+    return data;
+  }
+
+  async function startAdminRealtime({ claim = false } = {}) {
+    if (!isAdmin || !adminSession) return;
+    if (!adminSession.sessionId) {
+      adminSession.sessionId = createAdminSessionId();
+      sessionStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(adminSession));
+    }
+    stopAdminRealtimePolling();
+    if (!isAdminRealtimeConfigured()) {
+      renderAdminOnline([]);
+      if (el.adminChatLog) {
+        el.adminChatLog.innerHTML = `<div class="admin-online-empty">Realtime channel not configured.</div>`;
+      }
+      return;
+    }
+
+    if (claim) {
+      try {
+        const claimed = await postAdminRealtime("claim");
+        if (claimed?.online) renderAdminOnline(claimed.online);
+      } catch {
+        // claim is best-effort; heartbeat will retry
+      }
+    }
+
+    await heartbeatAdminRealtime();
+    adminRealtimeTimer = window.setInterval(() => {
+      void heartbeatAdminRealtime();
+    }, ADMIN_HEARTBEAT_MS);
+  }
+
+  function stopAdminRealtimePolling() {
+    if (adminRealtimeTimer) {
+      window.clearInterval(adminRealtimeTimer);
+      adminRealtimeTimer = 0;
+    }
+    adminRealtimeBusy = false;
+  }
+
+  async function heartbeatAdminRealtime() {
+    if (!isAdmin || !adminSession || adminRealtimeBusy) return;
+    if (!isAdminRealtimeConfigured()) return;
+    adminRealtimeBusy = true;
+    try {
+      const data = await postAdminRealtime("heartbeat");
+      if (!data) return;
+      if (Array.isArray(data.online)) renderAdminOnline(data.online);
+      if (Array.isArray(data.messages)) renderAdminChat(data.messages);
+    } catch {
+      // transient network errors — next tick retries
+    } finally {
+      adminRealtimeBusy = false;
+    }
+  }
+
+  async function onAdminChatSubmit(event) {
+    event.preventDefault();
+    if (!isAdmin || !adminSession) return;
+    const text = el.adminChatInput?.value.trim() || "";
+    if (!text) return;
+    if (!isAdminRealtimeConfigured()) {
+      toast("Admin chat is not configured.", "error");
+      playSfx("error");
+      return;
+    }
+
+    if (el.adminChatSend) el.adminChatSend.disabled = true;
+    try {
+      const data = await postAdminRealtime("chat", { text });
+      if (!data) return;
+      if (el.adminChatInput) el.adminChatInput.value = "";
+      if (Array.isArray(data.online)) renderAdminOnline(data.online);
+      if (Array.isArray(data.messages)) renderAdminChat(data.messages);
+      playSfx("click");
+    } catch {
+      toast("Could not send admin message.", "error");
+      playSfx("error");
+    } finally {
+      if (el.adminChatSend) el.adminChatSend.disabled = false;
+      el.adminChatInput?.focus();
+    }
+  }
+
+  function renderAdminOnline(online) {
+    if (!el.adminOnlineList || !el.adminOnlineCount) return;
+    const list = Array.isArray(online) ? online : [];
+    const count = list.length;
+    el.adminOnlineCount.textContent = `${count} online`;
+    if (!count) {
+      el.adminOnlineList.innerHTML = `<span class="admin-online-empty">No officers online</span>`;
+      return;
+    }
+    el.adminOnlineList.innerHTML = list.map(row => {
+      const name = escapeHtml(row.name || row.id || "Admin");
+      const mine = row.id === adminSession?.id ? " (you)" : "";
+      return `<span class="admin-online-chip"><span class="dot" aria-hidden="true"></span>${name}${mine}</span>`;
+    }).join("");
+  }
+
+  function renderAdminChat(messages) {
+    if (!el.adminChatLog) return;
+    const list = Array.isArray(messages) ? messages : [];
+    const stamp = list.map(msg => `${msg.id || ""}:${msg.at || ""}`).join("|");
+    const stickToBottom =
+      el.adminChatLog.scrollHeight - el.adminChatLog.scrollTop - el.adminChatLog.clientHeight < 48;
+
+    if (!list.length) {
+      el.adminChatLog.innerHTML = `<div class="admin-online-empty">No messages yet. Say hello to other admins.</div>`;
+      lastAdminChatStamp = stamp;
+      return;
+    }
+
+    if (stamp === lastAdminChatStamp) return;
+    lastAdminChatStamp = stamp;
+
+    el.adminChatLog.innerHTML = list.map(msg => {
+      const mine = msg.adminId === adminSession?.id ? " mine" : "";
+      const name = escapeHtml(msg.adminName || msg.adminId || "Admin");
+      const body = escapeHtml(msg.text || "");
+      const when = formatAdminChatTime(msg.at);
+      return `<div class="admin-chat-msg${mine}"><div class="meta"><span>${name}</span><span>${when}</span></div><div class="body">${body}</div></div>`;
+    }).join("");
+
+    if (stickToBottom) {
+      el.adminChatLog.scrollTop = el.adminChatLog.scrollHeight;
+    }
+  }
+
+  function formatAdminChatTime(at) {
+    const ts = Number(at);
+    if (!Number.isFinite(ts) || ts <= 0) return "";
+    try {
+      return new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    } catch {
+      return "";
+    }
+  }
+
+  function clearAdminCommsUi() {
+    lastAdminChatStamp = "";
+    if (el.adminOnlineCount) el.adminOnlineCount.textContent = "0 online";
+    if (el.adminOnlineList) el.adminOnlineList.innerHTML = "";
+    if (el.adminChatLog) el.adminChatLog.innerHTML = "";
+    if (el.adminChatInput) el.adminChatInput.value = "";
+  }
+
+  function handleAdminSessionKicked() {
+    if (!isAdmin && !adminSession) return;
+    stopAdminRealtimePolling();
+    isAdmin = false;
+    adminSession = null;
+    sessionStorage.removeItem(ADMIN_SESSION_KEY);
+    applyAdminMode();
+    renderAll();
+    toast("Your admin session was taken over on another device.", "error");
+    playSfx("error");
+  }
+
+  async function logoutAdminSession({ toastMessage = "Admin session closed.", playClick = true } = {}) {
+    stopAdminRealtimePolling();
+    const base = getAdminRealtimeUrl();
+    const body = adminRealtimePayload();
+    if (base && body) {
+      try {
+        await fetch(`${base}?action=logout`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+          cache: "no-store"
+        });
+      } catch {
+        // best-effort logout presence cleanup
+      }
+    }
+    isAdmin = false;
+    adminSession = null;
+    sessionStorage.removeItem(ADMIN_SESSION_KEY);
+    applyAdminMode();
+    renderAll();
+    toast(toastMessage, "success");
+    if (playClick) playSfx("click");
   }
 
   async function sha256(value) {
     if (!globalThis.crypto?.subtle) {
-      return value === "PHL-R5-2026" ? ADMIN_CODE_HASH : "";
+      const fallback = getAdminAccounts().find(admin => admin.name === value);
+      return fallback ? fallback.hash : "";
     }
     const data = new TextEncoder().encode(value);
     const digest = await crypto.subtle.digest("SHA-256", data);
@@ -2688,8 +3070,8 @@
     const configured = isCloudConfigured();
     if (el.syncStatusText) {
       el.syncStatusText.innerHTML = configured
-        ? `Cloud sync ready for alliance <code>${escapeHtml(getAllianceId())}</code>. Pull/push shared roster, or use JSON backup.`
-        : `Cloud not configured. Use JSON export/import now, or add Supabase keys in <code>config.js</code>.`;
+        ? `Shared cloud roster is live. Every member submit syncs for all admins. Use Pull to refresh, Push to force-upload this device.`
+        : `Cloud not configured. Use JSON export/import, or set <code>cloudApiUrl</code> in <code>config.js</code>.`;
     }
     if (el.syncError) el.syncError.textContent = "";
     el.syncPullBtn.disabled = !configured;
@@ -2704,7 +3086,11 @@
 
   function isCloudConfigured() {
     const cfg = getConfig();
-    return Boolean(cfg.supabaseUrl && cfg.supabaseAnonKey);
+    return Boolean(cfg.cloudApiUrl || (cfg.supabaseUrl && cfg.supabaseAnonKey));
+  }
+
+  function usesNetlifyCloud() {
+    return Boolean(getConfig().cloudApiUrl);
   }
 
   function getAllianceId() {
@@ -2726,82 +3112,277 @@
     return `${cfg.supabaseUrl.replace(/\/$/, "")}/rest/v1/phl_roster?alliance_id=eq.${encodeURIComponent(getAllianceId())}`;
   }
 
+  function mergeRosterLists(baseList, incomingList) {
+    const map = new Map();
+    for (const member of [...(baseList || []), ...(incomingList || [])].map(sanitizeMember).filter(Boolean)) {
+      if (member.isDemo) continue;
+      const key = member.id;
+      const prev = map.get(key);
+      if (!prev || Number(member.updated || 0) >= Number(prev.updated || 0)) {
+        map.set(key, member);
+      }
+    }
+    const byName = new Map();
+    for (const member of map.values()) {
+      const nameKey = member.name.toLowerCase();
+      const prev = byName.get(nameKey);
+      if (!prev || Number(member.updated || 0) >= Number(prev.updated || 0)) {
+        byName.set(nameKey, member);
+      }
+    }
+    return [...byName.values()].sort((a, b) => Number(b.updated || 0) - Number(a.updated || 0));
+  }
+
   async function pullCloudRoster({ silent = false } = {}) {
     if (!isCloudConfigured()) {
       if (!silent) {
-        if (el.syncError) el.syncError.textContent = "Add supabaseUrl and supabaseAnonKey in config.js first.";
+        if (el.syncError) el.syncError.textContent = "Cloud sync is not configured.";
         playSfx("error");
       }
-      return;
+      return false;
     }
     try {
-      const response = await fetch(getCloudUrl(), { headers: getCloudHeaders() });
-      if (!response.ok) throw new Error(`Pull failed (${response.status})`);
-      const rows = await response.json();
-      const row = rows[0];
-      if (!row?.members) {
-        if (!silent) {
-          if (el.syncError) el.syncError.textContent = "No cloud roster yet. Push local data first.";
-          playSfx("error");
+      let remoteMembers = [];
+      let remoteUpdatedAt = null;
+      if (usesNetlifyCloud()) {
+        const response = await fetch(getConfig().cloudApiUrl, { cache: "no-store" });
+        if (!response.ok) throw new Error(`Pull failed (${response.status})`);
+        const data = await response.json();
+        remoteMembers = Array.isArray(data.members) ? data.members : [];
+        remoteUpdatedAt = data.updated_at || null;
+      } else {
+        const response = await fetch(getCloudUrl(), { headers: getCloudHeaders() });
+        if (!response.ok) throw new Error(`Pull failed (${response.status})`);
+        const rows = await response.json();
+        const row = rows[0];
+        if (!row?.members) {
+          if (!silent) {
+            if (el.syncError) el.syncError.textContent = "No cloud roster yet. Push local data first.";
+            playSfx("error");
+          }
+          return false;
         }
-        return;
+        remoteMembers = Array.isArray(row.members) ? row.members : [];
+        remoteUpdatedAt = row.updated_at || null;
       }
-      roster = (Array.isArray(row.members) ? row.members : []).map(sanitizeMember).filter(Boolean);
+
+      const fingerprint = rosterFingerprint(remoteMembers, remoteUpdatedAt);
+      const changed = fingerprint !== lastCloudFingerprint && lastCloudFingerprint !== "";
+      lastCloudFingerprint = fingerprint;
+
+      const demos = roster.filter(member => member.isDemo);
+      const previousIds = new Set(roster.filter(m => !m.isDemo).map(m => m.id));
+      roster = [
+        ...mergeRosterLists(roster.filter(m => !m.isDemo), remoteMembers)
+          .filter(member => !pendingDeletedIds.has(member.id)),
+        ...demos
+      ];
       saveRoster();
       renderAll();
+
+      if (pendingDeletedIds.size) {
+        maybeAutoPushCloud();
+      }
+
       if (!silent) {
         toast("Cloud roster pulled.", "success");
         playSfx("success");
         closeModal("sync");
+      } else if (changed && isAdmin) {
+        const added = roster.filter(m => !m.isDemo && !previousIds.has(m.id)).length;
+        toast(
+          added
+            ? `Roster updated from another admin (+${added}).`
+            : "Roster updated from another admin.",
+          "success"
+        );
       }
+      return true;
     } catch (error) {
       if (!silent) {
         if (el.syncError) el.syncError.textContent = error.message || "Pull failed.";
         playSfx("error");
       }
+      return false;
     }
   }
 
   async function pushCloudRoster({ silent = false } = {}) {
     if (!isCloudConfigured()) {
       if (!silent) {
-        if (el.syncError) el.syncError.textContent = "Add supabaseUrl and supabaseAnonKey in config.js first.";
+        if (el.syncError) el.syncError.textContent = "Cloud sync is not configured.";
         playSfx("error");
       }
-      return;
+      return false;
     }
     try {
-      const cfg = getConfig();
-      const payload = {
-        alliance_id: getAllianceId(),
-        members: roster.filter(member => !member.isDemo),
-        updated_at: new Date().toISOString()
-      };
-      const response = await fetch(`${cfg.supabaseUrl.replace(/\/$/, "")}/rest/v1/phl_roster`, {
-        method: "POST",
-        headers: {
-          ...getCloudHeaders(),
-          Prefer: "resolution=merge-duplicates,return=representation"
-        },
-        body: JSON.stringify(payload)
-      });
-      if (!response.ok) throw new Error(`Push failed (${response.status})`);
+      const members = roster.filter(member => !member.isDemo);
+      const deletedIds = [...pendingDeletedIds];
+      if (usesNetlifyCloud()) {
+        const response = await fetch(getConfig().cloudApiUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            alliance_id: getAllianceId(),
+            members,
+            deleted_ids: deletedIds,
+            updated_at: new Date().toISOString()
+          })
+        });
+        if (!response.ok) throw new Error(`Push failed (${response.status})`);
+        const data = await response.json();
+        if (Array.isArray(data.members)) {
+          const demos = roster.filter(member => member.isDemo);
+          // Keep any local non-demo rows that might not be in the response yet
+          roster = [...mergeRosterLists(members, data.members), ...demos];
+          for (const id of deletedIds) {
+            if (!roster.some(member => member.id === id)) pendingDeletedIds.delete(id);
+          }
+          lastCloudFingerprint = rosterFingerprint(data.members, data.updated_at);
+          saveRoster();
+          renderAll();
+        }
+      } else {
+        const cfg = getConfig();
+        const payload = {
+          alliance_id: getAllianceId(),
+          members,
+          updated_at: new Date().toISOString()
+        };
+        const response = await fetch(`${cfg.supabaseUrl.replace(/\/$/, "")}/rest/v1/phl_roster`, {
+          method: "POST",
+          headers: {
+            ...getCloudHeaders(),
+            Prefer: "resolution=merge-duplicates,return=representation"
+          },
+          body: JSON.stringify(payload)
+        });
+        if (!response.ok) throw new Error(`Push failed (${response.status})`);
+      }
       if (!silent) {
-        toast("Roster pushed to cloud.", "success");
+        toast("Roster saved to cloud.", "success");
         playSfx("success");
         closeModal("sync");
       }
+      return true;
     } catch (error) {
       if (!silent) {
         if (el.syncError) el.syncError.textContent = error.message || "Push failed.";
         playSfx("error");
+      } else {
+        console.warn("Cloud push failed:", error);
       }
+      return false;
     }
   }
 
   function maybeAutoPushCloud() {
-    if (!isCloudConfigured() || !isAdmin) return;
-    pushCloudRoster({ silent: true });
+    if (!isCloudConfigured()) return;
+    pushCloudRosterWithRetry({ silent: true });
+  }
+
+  async function pushCloudRosterWithRetry({ silent = false, attempts = 3 } = {}) {
+    for (let i = 0; i < attempts; i += 1) {
+      const ok = await pushCloudRoster({ silent: true });
+      if (ok) {
+        if (!silent && i === 0) {
+          /* pushCloudRoster already toasts when silent=false; we call silent */
+        }
+        if (!silent) {
+          toast("Roster saved to cloud.", "success");
+          playSfx("success");
+          closeModal("sync");
+        }
+        return true;
+      }
+      await new Promise(resolve => window.setTimeout(resolve, 600 * (i + 1)));
+    }
+    if (!silent) {
+      if (el.syncError) el.syncError.textContent = "Cloud sync failed after retries.";
+      playSfx("error");
+    }
+    return false;
+  }
+
+  function readCloudOutbox() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(OUTBOX_KEY) || "[]");
+      return Array.isArray(raw) ? raw.map(sanitizeMember).filter(Boolean) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function writeCloudOutbox(list) {
+    try {
+      localStorage.setItem(OUTBOX_KEY, JSON.stringify(list));
+    } catch {
+      /* ignore quota */
+    }
+  }
+
+  function queueCloudOutbox(member) {
+    const clean = sanitizeMember(member);
+    if (!clean) return;
+    const list = readCloudOutbox().filter(item => item.id !== clean.id && item.name.toLowerCase() !== clean.name.toLowerCase());
+    list.push(clean);
+    writeCloudOutbox(list);
+  }
+
+  function clearCloudOutboxMember(id) {
+    writeCloudOutbox(readCloudOutbox().filter(item => item.id !== id));
+  }
+
+  async function flushCloudOutbox() {
+    if (!isCloudConfigured()) return false;
+    const pending = readCloudOutbox();
+    if (!pending.length && !pendingDeletedIds.size) return true;
+    for (const member of pending) upsertMember(member);
+    saveRoster();
+    const ok = await pushCloudRosterWithRetry({ silent: true });
+    if (ok) writeCloudOutbox([]);
+    return ok;
+  }
+
+  function rosterFingerprint(members, updatedAt) {
+    const ids = (members || [])
+      .map(m => `${m.id}:${m.updated || 0}`)
+      .sort()
+      .join("|");
+    return `${updatedAt || ""}::${ids}`;
+  }
+
+  function startCloudSyncLoop() {
+    if (!isCloudConfigured()) return;
+    stopCloudSyncLoop();
+    cloudSyncTimer = window.setInterval(() => {
+      if (document.hidden) return;
+      flushCloudOutbox()
+        .then(() => (isAdmin ? pullCloudRoster({ silent: true }) : Promise.resolve()))
+        .catch(() => {});
+    }, 12000);
+    window.addEventListener("focus", onSharedWindowFocus);
+    document.addEventListener("visibilitychange", onSharedVisibility);
+  }
+
+  function stopCloudSyncLoop() {
+    if (cloudSyncTimer) {
+      window.clearInterval(cloudSyncTimer);
+      cloudSyncTimer = 0;
+    }
+    window.removeEventListener("focus", onSharedWindowFocus);
+    document.removeEventListener("visibilitychange", onSharedVisibility);
+  }
+
+  function onSharedWindowFocus() {
+    flushCloudOutbox()
+      .then(() => (isAdmin ? pullCloudRoster({ silent: true }) : Promise.resolve()))
+      .catch(() => {});
+  }
+
+  function onSharedVisibility() {
+    if (document.hidden) return;
+    onSharedWindowFocus();
   }
 
   function exportJsonRoster() {
@@ -2835,6 +3416,7 @@
         roster = members.map(sanitizeMember).filter(Boolean);
         saveRoster();
         renderAll();
+        maybeAutoPushCloud();
         toast(`Imported ${roster.length} members.`, "success");
         playSfx("success");
         closeModal("sync");
@@ -2943,9 +3525,10 @@
     };
     const api = window.PHL_RALLY_ROLES;
     if (api?.classifyMember) return api.classifyMember(input, gate);
-    const isRl = Number(input.apc1_cp) >= gate.minApc1Cp && Number(input.rally_capacity) >= gate.minRallyCapacity;
+    const cpOk = Number(input.apc1_cp) >= gate.minApc1Cp;
+    const capOk = gate.minRallyCapacity <= 0 || Number(input.rally_capacity) >= gate.minRallyCapacity;
     const faction = ["Fighter", "Shooter", "Rider"].includes(input.apc1_faction) ? input.apc1_faction : "Fighter";
-    return { ...input, assigned_role: isRl ? "RL" : "RJ", specialty_faction: faction };
+    return { ...input, assigned_role: cpOk && capOk ? "RL" : "RJ", specialty_faction: faction };
   }
 
   function getRallyGateReasonFromState() {
@@ -2957,16 +3540,28 @@
 
   function getRallyGateReason(member) {
     const thresholds = getAllianceRallyThresholds();
-    if (!thresholds.ready) return "Waiting for alliance criteria";
+    if (!thresholds.ready) return "Waiting for uploaded alliance CP";
     const main = getMain(member);
     const absCp = toAbsoluteCp(main);
     const cap = Number(member.rallyCapacity || 0);
     const cpOk = absCp >= thresholds.minApc1Cp;
-    const capOk = cap >= thresholds.minRallyCapacity;
-    if (cpOk && capOk) return "Meets alliance RL criteria";
+    const capOk = thresholds.minRallyCapacity <= 0 || cap >= thresholds.minRallyCapacity;
+    if (cpOk && capOk) return thresholds.source === "manual" ? "RL vs selected target" : "RL vs live uploaded median";
     const parts = [];
-    if (!cpOk) parts.push(`APC1 ${formatNumber(main)}M < ${formatNumber(thresholds.minApc1M)}M`);
-    if (!capOk) parts.push(`Plaza ${formatTroops(cap)} < ${formatTroops(thresholds.minPlaza)}`);
+    if (!cpOk) {
+      parts.push(
+        thresholds.source === "manual"
+          ? `APC1 ${formatNumber(main)}M < target ${formatNumber(thresholds.minApc1M)}M`
+          : `APC1 ${formatNumber(main)}M < live ${formatNumber(thresholds.minApc1M)}M`
+      );
+    }
+    if (!capOk) {
+      parts.push(
+        thresholds.source === "manual"
+          ? `Plaza ${formatTroops(cap)} < target ${formatTroops(thresholds.minPlaza)}`
+          : `Plaza ${formatTroops(cap)} < live ${formatTroops(thresholds.minPlaza)}`
+      );
+    }
     return parts.join(" · ") || "RJ";
   }
 

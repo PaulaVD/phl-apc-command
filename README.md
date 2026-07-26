@@ -2,22 +2,32 @@
 
 Dark War Survival toolkit for **Phoenix Legacy (PH-L)** APC CP submissions and officer analytics.
 
-Member mode lets players submit Garage APC CP. Alliance roster, rankings, readiness, faction coverage, demo tools and exports unlock after admin authentication.
+## Live URL
 
-Default admin access code: `PHL-R5-2026`
+**https://transcendent-kitsune-43421d.netlify.app/**
+
+That Netlify URL is the public app link (do not change it). Cloud roster and admin realtime APIs stay on this domain.
+
+## Source of truth
+
+This GitHub repo is the source of truth for the code. Edit here, push to `main`, and the live Netlify site updates.
+
+## How deploy works
+
+Pushes to `main` trigger a GitHub Action that deploys to the existing Netlify site (`ea9f0eb9-e894-4d21-8665-08be77d8b6d3`) using `NETLIFY_AUTH_TOKEN` and `NETLIFY_SITE_ID` repository secrets. The public URL stays the same.
+
+Manual deploy (optional):
+
+```bash
+npx --yes netlify-cli deploy --dir=. --prod
+```
 
 ## Features
 
 - **Guided** or **Quick submit** entry (paste lines like `PlayerOne i5 820/760/710/655`)
 - **Gap to frontline** benchmarks on scan, wizard, roster and rankings
 - Officer tools: Discord copy, CSV export, JSON sync, stale / below-frontline filters
-- Optional **Supabase** cloud roster for multi-device sync
-
-## Assets
-
-- `assets/phl-logo.png` — Phoenix Legacy logo
-- `assets/phl-apc.png` — APC render
-- `assets/*.wav` — Sound effects and ambient music
+- Shared roster sync via Netlify Functions (`/api/roster`)
 
 ## Local run
 
@@ -27,45 +37,12 @@ python3 -m http.server 5500
 
 Open `http://localhost:5500`.
 
-## Multi-device sync
+## Admin
 
-### Fast path (no backend)
+Default admin access uses **personal codes** (one per officer). Ask an R5 for your code.
 
-1. Admin → **Sync** → **Export JSON**
-2. On another device → **Sync** → **Import JSON**
+## Assets
 
-### Supabase (live shared roster)
-
-1. Create a Supabase project.
-2. Run:
-
-```sql
-create table if not exists phl_roster (
-  alliance_id text primary key,
-  members jsonb not null default '[]'::jsonb,
-  updated_at timestamptz default now()
-);
-
-alter table phl_roster enable row level security;
-
-create policy "phl roster read"
-  on phl_roster for select
-  using (true);
-
-create policy "phl roster write"
-  on phl_roster for insert
-  with check (true);
-
-create policy "phl roster update"
-  on phl_roster for update
-  using (true);
-```
-
-3. Put the project URL + anon key in `config.js`.
-4. Use **Sync → Push/Pull** (admins).
-
-> Note: open anon policies are fine for a private alliance tool URL, but not for a fully public hardened backend. Tighten RLS when you need stronger auth.
-
-## Security note
-
-Without Supabase, data stays in browser `localStorage` on that device only.
+- `assets/phl-logo.png` — Phoenix Legacy logo
+- `assets/phl-apc.png` — APC render
+- `assets/*.wav` — Sound effects and ambient music

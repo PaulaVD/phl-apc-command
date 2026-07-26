@@ -303,7 +303,7 @@ function mountServerClock(nodes) {
 
   if (nodes.localZoneLabelEl) nodes.localZoneLabelEl.textContent = detected.timeZone;
   if (nodes.localOffsetBadgeEl) nodes.localOffsetBadgeEl.textContent = formatOffsetLabel(detected.offsetHours);
-  if (nodes.serverBadgeEl) nodes.serverBadgeEl.textContent = "Asunción +1h";
+  if (nodes.serverBadgeEl) nodes.serverBadgeEl.textContent = formatOffsetLabel(getServerUtcOffsetHours());
 
   if (!nodes.eventInput.value) nodes.eventInput.value = "15:00";
 
@@ -314,7 +314,7 @@ function mountServerClock(nodes) {
     nodes.clockEl.textContent = formatServerClock(now);
     if (nodes.localClockEl) nodes.localClockEl.textContent = formatDeviceLocalClock(now);
     if (nodes.serverBadgeEl) {
-      nodes.serverBadgeEl.textContent = `Asunción +1h · ${formatOffsetLabel(getServerUtcOffsetHours(now))}`;
+      nodes.serverBadgeEl.textContent = formatOffsetLabel(getServerUtcOffsetHours(now));
     }
     refreshConversion();
   }
