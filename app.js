@@ -2363,7 +2363,7 @@
               : (isAdmin
                 ? `<button class="card-action code-action generate" type="button" data-action="generate-code" data-id="${member.id}" title="Generate Personal Code">Gen</button>`
                 : "")}
-            ${isAdmin && review ? `<button class="card-action" type="button" data-action="clear-review" data-id="${member.id}" title="Mark reviewed">OK</button>` : ""}
+            ${isAdmin && review ? `<button class="card-action ok-action" type="button" data-action="clear-review" data-id="${member.id}" title="Mark reviewed">OK</button>` : ""}
             ${isAdmin ? `<button class="card-action delete" type="button" data-action="delete" data-id="${member.id}" title="Delete">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 7h12l-1 14H7L7 7Zm3-4h6l1 2h4v2H4V5h4l1-2Z"/></svg>
             </button>` : ""}
