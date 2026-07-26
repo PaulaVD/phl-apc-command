@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Teko:wght@500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=126" />
+  <link rel="stylesheet" href="styles.css?v=130" />
 </head>
 <body class="mobile-tab-times">
   <a class="skip-link" href="#operatorConsole">Skip to form</a>
@@ -86,8 +86,10 @@
         <button class="icon-btn active" id="sfxBtn" title="Toggle sound effects" aria-label="Toggle sound effects">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3.23v17.54a1 1 0 0 1-1.64.77L7.56 17H4a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2h3.56l4.8-4.54A1 1 0 0 1 14 3.23Zm3.54 4.05a1 1 0 0 1 1.41 0 6.98 6.98 0 0 1 0 9.9 1 1 0 1 1-1.41-1.42 4.98 4.98 0 0 0 0-7.06 1 1 0 0 1 0-1.42Zm-2.83 2.83a1 1 0 0 1 1.41 0 2.98 2.98 0 0 1 0 4.22 1 1 0 1 1-1.41-1.42.98.98 0 0 0 0-1.38 1 1 0 0 1 0-1.42Z"/></svg>
         </button>
-        <button class="btn btn-member" id="memberAccessBtn" type="button"><span class="lock-dot member-dot"></span><span id="memberAccessLabel"><span class="member-label-full">My profile</span><span class="member-label-short">Profile</span></span></button>
-        <button class="btn btn-admin" id="adminAccessBtn"><span class="lock-dot"></span><span id="adminAccessLabel"><span class="admin-label-full">Admin access</span><span class="admin-label-short">Admin</span></span></button>
+        <button class="btn btn-signin" id="signInBtn" type="button" aria-haspopup="dialog" aria-controls="authModal">
+          <span class="lock-dot" id="signInDot"></span>
+          <span id="signInLabel">Sign in</span>
+        </button>
       </div>
     </div>
 
@@ -468,47 +470,49 @@
     </section>
   </main>
 
-  <div class="admin-modal" id="adminModal" aria-hidden="true">
-    <div class="admin-modal-backdrop" data-modal-close="admin"></div>
-    <section class="admin-modal-card" role="dialog" aria-modal="true" aria-labelledby="adminModalTitle">
-      <div class="admin-lock-visual">
-        <div class="lock-cube"><span></span></div>
+  <div class="admin-modal" id="authModal" aria-hidden="true">
+    <div class="admin-modal-backdrop" data-modal-close="auth"></div>
+    <section class="admin-modal-card auth-modal-card" role="dialog" aria-modal="true" aria-labelledby="authModalTitle">
+      <span class="eyebrow"><span></span>PH-L unlock</span>
+      <h2 id="authModalTitle">Sign in</h2>
+      <p id="authModalLead">Use your Personal Code for your APC profile, or an admin code for leadership tools.</p>
+      <div class="auth-tabs" role="tablist" aria-label="Sign-in method">
+        <button type="button" class="auth-tab is-active" id="authTabMember" role="tab" aria-selected="true" aria-controls="authPaneMember" data-auth-tab="member">Personal Code</button>
+        <button type="button" class="auth-tab" id="authTabAdmin" role="tab" aria-selected="false" aria-controls="authPaneAdmin" data-auth-tab="admin">Admin code</button>
       </div>
-      <span class="eyebrow"><span></span>Restricted PH-L access</span>
-      <h2 id="adminModalTitle">Leadership authentication</h2>
-      <p>R4–R5 officers: enter your PH-L admin access code for the full roster, rankings, history and exports.</p>
-      <label class="admin-code-field">
-        <span>Admin access code</span>
-        <input id="adminCodeInput" type="password" autocomplete="current-password" placeholder="Enter access code">
-      </label>
-      <div class="admin-error" id="adminError" aria-live="polite"></div>
-      <div class="admin-modal-actions">
-        <button class="btn btn-primary" id="adminLoginBtn">Unlock dashboard</button>
-        <button class="btn btn-ghost" id="adminCancelBtn">Cancel</button>
+
+      <div class="auth-pane is-active" id="authPaneMember" role="tabpanel" data-auth-pane="member" aria-labelledby="authTabMember">
+        <p class="member-modal-hint">Got your Personal Code after the first Push Data submit? Enter it to load only your APC record.</p>
+        <p class="member-modal-hint">No code yet? Close this, open <strong>Push Data</strong>, leave Personal Code blank, submit once — then save the popup code.</p>
+        <label class="admin-code-field">
+          <span>Personal Code</span>
+          <input id="memberCodeInput" type="text" maxlength="16" autocomplete="off" spellcheck="false" placeholder="e.g. PHL-AB12CD">
+        </label>
+        <div class="admin-error" id="memberError" aria-live="polite"></div>
+        <div class="admin-modal-actions">
+          <button class="btn btn-primary" id="memberLoginBtn" type="button">Unlock profile</button>
+          <button class="btn btn-ghost" id="memberCancelBtn" type="button" data-modal-close="auth">Cancel</button>
+        </div>
+        <small class="admin-security-note">Member session is stored for this browser tab only. Codes are never logged.</small>
       </div>
-      <small class="admin-security-note">Leadership access is remembered only for the current browser session.</small>
+
+      <div class="auth-pane" id="authPaneAdmin" role="tabpanel" data-auth-pane="admin" aria-labelledby="authTabAdmin" hidden>
+        <p>R4–R5 officers: enter your PH-L admin access code for the full roster, rankings, history and exports.</p>
+        <label class="admin-code-field">
+          <span>Admin access code</span>
+          <input id="adminCodeInput" type="password" autocomplete="current-password" placeholder="Enter access code">
+        </label>
+        <div class="admin-error" id="adminError" aria-live="polite"></div>
+        <div class="admin-modal-actions">
+          <button class="btn btn-primary" id="adminLoginBtn" type="button">Unlock dashboard</button>
+          <button class="btn btn-ghost" id="adminCancelBtn" type="button" data-modal-close="auth">Cancel</button>
+        </div>
+        <small class="admin-security-note">Leadership access is remembered only for the current browser session.</small>
+      </div>
     </section>
   </div>
 
-  <div class="admin-modal" id="memberModal" aria-hidden="true">
-    <div class="admin-modal-backdrop" data-modal-close="member"></div>
-    <section class="admin-modal-card confirm-modal-card" role="dialog" aria-modal="true" aria-labelledby="memberModalTitle">
-      <span class="eyebrow"><span></span>R1–R3 · personal unlock</span>
-      <h2 id="memberModalTitle">Unlock my profile</h2>
-      <p>Got your Personal Code after the first Push Data submit? Enter it here to load only your APC record. Alliance stats stay hidden.</p>
-      <p class="member-modal-hint">No code yet? Close this, open <strong>Push Data</strong>, leave Personal Code blank, submit once — then save the popup code.</p>
-      <label class="admin-code-field">
-        <span>Personal Code</span>
-        <input id="memberCodeInput" type="text" maxlength="16" autocomplete="off" spellcheck="false" placeholder="e.g. PHL-AB12CD">
-      </label>
-      <div class="admin-error" id="memberError" aria-live="polite"></div>
-      <div class="admin-modal-actions">
-        <button class="btn btn-primary" id="memberLoginBtn" type="button">Unlock profile</button>
-        <button class="btn btn-ghost" id="memberCancelBtn" type="button">Cancel</button>
-      </div>
-      <small class="admin-security-note">Member session is stored for this browser tab only. Codes are never logged.</small>
-    </section>
-  </div>
+  <!-- Unified auth modal above; admin/member flows open it via JS -->
 
   <div class="admin-modal" id="deleteModal" aria-hidden="true">
     <div class="admin-modal-backdrop" data-modal-close="delete"></div>
@@ -586,6 +590,6 @@
   <script src="serverClock.js?v=34"></script>
   <script src="rallyRoles.js?v=28"></script>
   <script src="rallyMatchmaking.js?v=27"></script>
-  <script src="app.js?v=126" defer></script>
+  <script src="app.js?v=130" defer></script>
 </body>
 </html>

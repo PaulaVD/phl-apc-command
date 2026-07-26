@@ -154,16 +154,24 @@
     lofiNextBtn: document.getElementById("lofiNextBtn"),
     lofiVolume: document.getElementById("lofiVolume"),
     lofiPlaylist: document.getElementById("lofiPlaylist"),
-    adminAccessBtn: document.getElementById("adminAccessBtn"),
-    adminAccessLabel: document.getElementById("adminAccessLabel"),
-    adminModal: document.getElementById("adminModal"),
+    adminAccessBtn: document.getElementById("signInBtn"),
+    adminAccessLabel: document.getElementById("signInLabel"),
+    signInBtn: document.getElementById("signInBtn"),
+    signInLabel: document.getElementById("signInLabel"),
+    authModal: document.getElementById("authModal"),
+    authTabMember: document.getElementById("authTabMember"),
+    authTabAdmin: document.getElementById("authTabAdmin"),
+    authPaneMember: document.getElementById("authPaneMember"),
+    authPaneAdmin: document.getElementById("authPaneAdmin"),
+    authModalTitle: document.getElementById("authModalTitle"),
+    adminModal: document.getElementById("authModal"),
     adminCodeInput: document.getElementById("adminCodeInput"),
     adminLoginBtn: document.getElementById("adminLoginBtn"),
     adminCancelBtn: document.getElementById("adminCancelBtn"),
     adminError: document.getElementById("adminError"),
-    memberAccessBtn: document.getElementById("memberAccessBtn"),
-    memberAccessLabel: document.getElementById("memberAccessLabel"),
-    memberModal: document.getElementById("memberModal"),
+    memberAccessBtn: document.getElementById("signInBtn"),
+    memberAccessLabel: document.getElementById("signInLabel"),
+    memberModal: document.getElementById("authModal"),
     memberCodeInput: document.getElementById("memberCodeInput"),
     memberLoginBtn: document.getElementById("memberLoginBtn"),
     memberCancelBtn: document.getElementById("memberCancelBtn"),
@@ -337,13 +345,14 @@
       el.sfxBtn.classList.toggle("active", sfxEnabled);
       playSfx("click");
     });
-    el.adminAccessBtn.addEventListener("click", handleAdminAccess);
+    el.signInBtn?.addEventListener("click", handleSignInAccess);
     el.adminLoginBtn.addEventListener("click", attemptAdminLogin);
-    el.adminCancelBtn.addEventListener("click", () => closeModal("admin"));
-    el.memberAccessBtn?.addEventListener("click", handleMemberAccess);
+    el.adminCancelBtn.addEventListener("click", () => closeModal("auth"));
     el.memberLoginBtn?.addEventListener("click", attemptMemberLogin);
-    el.memberCancelBtn?.addEventListener("click", () => closeModal("member"));
+    el.memberCancelBtn?.addEventListener("click", () => closeModal("auth"));
     el.memberLogoutBtn?.addEventListener("click", () => logoutMemberSession());
+    el.authTabMember?.addEventListener("click", () => setAuthTab("member"));
+    el.authTabAdmin?.addEventListener("click", () => setAuthTab("admin"));
     el.adminChatForm?.addEventListener("submit", onAdminChatSubmit);
     document.querySelectorAll("[data-modal-close]").forEach(node => {
       node.addEventListener("click", () => closeModal(node.dataset.modalClose));
@@ -377,10 +386,9 @@
       closeAllUiSelects();
       if (el.memberDrawer?.classList.contains("open")) closeMemberDrawer();
       else if (el.personalCodeModal?.classList.contains("open")) closeModal("personalCode");
-      else if (el.memberModal?.classList.contains("open")) closeModal("member");
+      else if (el.authModal?.classList.contains("open")) closeModal("auth");
       else if (el.deleteModal.classList.contains("open")) closeModal("delete");
       else if (el.syncModal?.classList.contains("open")) closeModal("sync");
-      else if (el.adminModal.classList.contains("open")) closeModal("admin");
       return;
     }
     if (document.body.classList.contains("modal-open")) return;
@@ -1751,7 +1759,7 @@
     drawerMemberId = null;
     drawerField = null;
     drawerFromOverview = false;
-    if (!el.adminModal?.classList.contains("open") && !el.deleteModal?.classList.contains("open") && !el.syncModal?.classList.contains("open") && !el.personalCodeModal?.classList.contains("open") && !el.memberModal?.classList.contains("open")) {
+    if (!el.authModal?.classList.contains("open") && !el.deleteModal?.classList.contains("open") && !el.syncModal?.classList.contains("open") && !el.personalCodeModal?.classList.contains("open")) {
       document.body.classList.remove("modal-open");
     }
     if (lastFocusedElement?.focus) lastFocusedElement.focus();
@@ -2633,27 +2641,16 @@
     document.body.classList.toggle("admin-mode", isAdmin);
     document.body.classList.toggle("member-mode", isMember && !isAdmin);
     const who = adminSession?.name ? ` · ${adminSession.name}` : "";
-    if (el.adminAccessLabel) {
-      const full = isAdmin ? `Exit admin${who}` : "Admin access";
-      const short = isAdmin ? `Exit${who}` : "Admin";
-      el.adminAccessLabel.innerHTML = `<span class="admin-label-full"></span><span class="admin-label-short"></span>`;
-      const fullEl = el.adminAccessLabel.querySelector(".admin-label-full");
-      const shortEl = el.adminAccessLabel.querySelector(".admin-label-short");
-      if (fullEl) fullEl.textContent = full;
-      if (shortEl) shortEl.textContent = short;
-    }
-    el.adminAccessBtn.setAttribute("aria-pressed", String(isAdmin));
-    if (el.memberAccessLabel) {
-      const mName = memberSession?.name ? ` · ${memberSession.name}` : "";
-      const full = isMember ? `Lock profile${mName}` : "My profile";
-      const short = isMember ? `Lock${mName}` : "Profile";
-      el.memberAccessLabel.innerHTML = `<span class="member-label-full"></span><span class="member-label-short"></span>`;
-      const fullEl = el.memberAccessLabel.querySelector(".member-label-full");
-      const shortEl = el.memberAccessLabel.querySelector(".member-label-short");
-      if (fullEl) fullEl.textContent = full;
-      if (shortEl) shortEl.textContent = short;
-    }
-    el.memberAccessBtn?.setAttribute("aria-pressed", String(isMember));
+    const mName = memberSession?.name ? ` · ${memberSession.name}` : "";
+    let label = "Sign in";
+    if (isAdmin) label = `Exit admin${who}`;
+    else if (isMember) label = `Lock profile${mName}`;
+    if (el.signInLabel) el.signInLabel.textContent = label;
+    else if (el.adminAccessLabel) el.adminAccessLabel.textContent = label;
+    el.signInBtn?.setAttribute("aria-pressed", String(isAdmin || isMember));
+    el.signInBtn?.classList.toggle("is-unlocked", isAdmin || isMember);
+    el.signInBtn?.classList.toggle("is-admin", isAdmin);
+    el.signInBtn?.classList.toggle("is-member", isMember && !isAdmin);
     if (el.memberProfilePanel) {
       if (isMember && !isAdmin) el.memberProfilePanel.removeAttribute("hidden");
       else el.memberProfilePanel.setAttribute("hidden", "");
@@ -2669,6 +2666,18 @@
     applyAccessMode();
   }
 
+  function handleSignInAccess() {
+    if (isAdmin) {
+      void logoutAdminSession({ toastMessage: "Leadership session closed." });
+      return;
+    }
+    if (isMember) {
+      logoutMemberSession();
+      return;
+    }
+    openAuthModal("member");
+  }
+
   function handleMemberAccess() {
     if (isAdmin) {
       toast("Exit leadership mode to unlock a personal profile.", "error");
@@ -2681,14 +2690,47 @@
     openMemberModal();
   }
 
-  function openMemberModal() {
-    if (!el.memberModal) return;
+  function setAuthTab(tab) {
+    const isMemberTab = tab !== "admin";
+    el.authTabMember?.classList.toggle("is-active", isMemberTab);
+    el.authTabAdmin?.classList.toggle("is-active", !isMemberTab);
+    el.authTabMember?.setAttribute("aria-selected", String(isMemberTab));
+    el.authTabAdmin?.setAttribute("aria-selected", String(!isMemberTab));
+    if (el.authPaneMember) {
+      el.authPaneMember.classList.toggle("is-active", isMemberTab);
+      el.authPaneMember.hidden = !isMemberTab;
+    }
+    if (el.authPaneAdmin) {
+      el.authPaneAdmin.classList.toggle("is-active", !isMemberTab);
+      el.authPaneAdmin.hidden = isMemberTab;
+    }
+    if (el.authModalTitle) {
+      el.authModalTitle.textContent = isMemberTab ? "Unlock my profile" : "Leadership authentication";
+    }
+    const lead = document.getElementById("authModalLead");
+    if (lead) {
+      lead.textContent = isMemberTab
+        ? "Enter your Personal Code to load only your APC record. Alliance stats stay hidden."
+        : "R4–R5 officers: enter your PH-L admin access code for roster, rankings, history and exports.";
+    }
+  }
+
+  function openAuthModal(tab = "member") {
+    if (!el.authModal) return;
     if (el.memberError) el.memberError.textContent = "";
+    if (el.adminError) el.adminError.textContent = "";
+    if (el.adminCodeInput) el.adminCodeInput.value = "";
     if (el.memberCodeInput) {
       el.memberCodeInput.value = recallPersonalCodeHint() || memberSession?.personalCode || "";
     }
-    openModal("member", el.memberCodeInput);
+    setAuthTab(tab);
+    const focusTarget = tab === "admin" ? el.adminCodeInput : el.memberCodeInput;
+    openModal("auth", focusTarget);
     playSfx("transition");
+  }
+
+  function openMemberModal() {
+    openAuthModal("member");
   }
 
   function handleAdminAccess() {
@@ -2700,22 +2742,19 @@
   }
 
   function openAdminModal() {
-    el.adminError.textContent = "";
-    el.adminCodeInput.value = "";
-    openModal("admin", el.adminCodeInput);
-    playSfx("transition");
+    openAuthModal("admin");
+  }
+
+  function resolveModal(name) {
+    if (name === "delete") return el.deleteModal;
+    if (name === "sync") return el.syncModal;
+    if (name === "personalCode") return el.personalCodeModal;
+    if (name === "auth" || name === "admin" || name === "member") return el.authModal;
+    return el.authModal;
   }
 
   function openModal(name, focusTarget) {
-    const modal = name === "delete"
-      ? el.deleteModal
-      : name === "sync"
-        ? el.syncModal
-        : name === "personalCode"
-          ? el.personalCodeModal
-          : name === "member"
-            ? el.memberModal
-            : el.adminModal;
+    const modal = resolveModal(name);
     if (!modal) return;
     lastFocusedElement = document.activeElement;
     modal.classList.add("open");
@@ -2725,30 +2764,25 @@
   }
 
   function closeModal(name) {
-    const modal = name === "delete"
-      ? el.deleteModal
-      : name === "sync"
-        ? el.syncModal
-        : name === "personalCode"
-          ? el.personalCodeModal
-          : name === "member"
-            ? el.memberModal
-            : el.adminModal;
+    const modal = resolveModal(name);
     if (!modal) return;
     modal.classList.remove("open");
     modal.setAttribute("aria-hidden", "true");
     if (
-      !el.adminModal.classList.contains("open")
-      && !el.deleteModal.classList.contains("open")
+      !el.authModal?.classList.contains("open")
+      && !el.deleteModal?.classList.contains("open")
       && !el.syncModal?.classList.contains("open")
       && !el.personalCodeModal?.classList.contains("open")
-      && !el.memberModal?.classList.contains("open")
       && !el.memberDrawer?.classList.contains("open")
     ) {
       document.body.classList.remove("modal-open");
     }
-    if (name === "admin") el.adminError.textContent = "";
-    if (name === "member" && el.memberError) el.memberError.textContent = "";
+    if (name === "admin" || name === "auth") {
+      if (el.adminError) el.adminError.textContent = "";
+    }
+    if (name === "member" || name === "auth") {
+      if (el.memberError) el.memberError.textContent = "";
+    }
     if (name === "delete") pendingDeleteId = null;
     if (name === "sync" && el.syncError) el.syncError.textContent = "";
     if (name === "personalCode") pendingPersonalCodeReveal = null;
@@ -2801,7 +2835,7 @@
     };
     isAdmin = true;
     sessionStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(adminSession));
-    closeModal("admin");
+    closeModal("auth");
     setSessionBanner("");
     applyAccessMode();
     await startAdminRealtime({ claim: true });
@@ -2863,7 +2897,7 @@
       changeHistory = [];
       saveRoster();
       saveHistory();
-      closeModal("member");
+      closeModal("auth");
       applyAccessMode();
       renderAll();
       toast(`Unlocked <strong>${escapeHtml(member.name)}</strong> — personal view only.`, "success");
