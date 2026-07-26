@@ -65,6 +65,8 @@
   let mobileTab = "times";
   let adminView = "roster";
   let drawerMemberId = null;
+  let drawerField = null; // null = overview; else single field key
+  let drawerFromOverview = false;
   let pendingPersonalCodeReveal = null;
   const kpiTweens = new WeakMap();
 
@@ -225,7 +227,10 @@
     memberDrawerBody: document.getElementById("memberDrawerBody"),
     memberDrawerTitle: document.getElementById("memberDrawerTitle"),
     memberDrawerSub: document.getElementById("memberDrawerSub"),
+    memberDrawerEyebrow: document.getElementById("memberDrawerEyebrow"),
+    memberDrawerActions: document.getElementById("memberDrawerActions"),
     memberDrawerSave: document.getElementById("memberDrawerSave"),
+    memberDrawerCancel: document.getElementById("memberDrawerCancel"),
     memberDrawerClose: document.getElementById("memberDrawerClose"),
     personalCodeModal: document.getElementById("personalCodeModal"),
     personalCodeReveal: document.getElementById("personalCodeReveal"),
@@ -346,6 +351,7 @@
     el.scanToggleBtn?.addEventListener("click", toggleScanPanel);
     el.adminCodeInput.addEventListener("keydown", event => { if (event.key === "Enter") attemptAdminLogin(); });
     el.memberDrawerSave?.addEventListener("click", saveMemberDrawer);
+    el.memberDrawerCancel?.addEventListener("click", onMemberDrawerCancel);
     el.personalCodeCopyBtn?.addEventListener("click", copyRevealedPersonalCode);
     el.historyRefreshBtn?.addEventListener("click", () => {
       pullCloudRoster({ silent: false }).then(() => renderHistory());
@@ -354,6 +360,7 @@
       btn.addEventListener("click", () => setAdminView(btn.dataset.adminView));
     });
     document.querySelectorAll("[data-drawer-close]").forEach(node => {
+      if (node === el.memberDrawerCancel) return;
       node.addEventListener("click", closeMemberDrawer);
     });
     document.addEventListener("click", onDynamicClick);
@@ -379,8 +386,14 @@
     const tag = target.tagName;
     if (tag === "TEXTAREA" || tag === "BUTTON" || tag === "A" || target.isContentEditable) return;
     if (document.querySelector(".ui-select.is-open")) return;
+    if (el.memberDrawer?.classList.contains("open")) {
+      if (drawerField && (tag === "INPUT" || tag === "SELECT")) {
+        event.preventDefault();
+        saveMemberDrawer();
+      }
+      return;
+    }
     if (tag !== "INPUT" && tag !== "SELECT") return;
-    if (el.memberDrawer?.classList.contains("open")) return;
 
     event.preventDefault();
     if (entryMode === "quick") saveCurrentMember();
@@ -604,8 +617,8 @@
     if (el.entryTitle) el.entryTitle.textContent = quick ? "Push Data · Quick" : "Push Data";
     if (el.entrySubtitle) {
       el.entrySubtitle.textContent = quick
-        ? "Submit APC CP here. Enter your Personal Code to overwrite your entry — or leave blank to register / flag [name]-updt."
-        : "Register one PH-L member at a time. Keep your Personal Code to overwrite later without creating a review entry.";
+        ? "Submit APC CP here. Enter your Personal Code to overwrite — or leave blank to register / flag Name-updt."
+        : "Register or overwrite APC CP. Save your Personal Code to update later without creating a review entry.";
     }
     if (el.wizardCardHead) el.wizardCardHead.hidden = quick;
     if (el.wizardRail) el.wizardRail.hidden = quick;
@@ -692,7 +705,7 @@
         <div class="field personal-code-field" style="grid-column:1/-1">
           <label for="personalCodeInput">Personal Code (optional — overwrite)</label>
           <input class="input" id="personalCodeInput" type="text" maxlength="16" autocomplete="off" spellcheck="false" placeholder="e.g. PHL-AB12CD" value="${escapeHtml(state.personalCode)}">
-          <small>${remembered ? `Last code on this device: <strong>${escapeHtml(remembered)}</strong>. ` : ""}Enter your code to overwrite your roster entry. Leave blank to register (or create a <code>[name]-updt</code> review entry).</small>
+          <small>${remembered ? `Last code on this device: <strong>${escapeHtml(remembered)}</strong>. ` : ""}Enter your code to overwrite your roster entry. Leave blank to register (or create a <code>Name-updt</code> review entry).</small>
         </div>
       </div>
       <div class="helper-grid">
@@ -743,7 +756,7 @@
           <div class="field personal-code-field" style="grid-column:1/-1">
             <label for="personalCodeInput">Personal Code (optional — overwrite)</label>
             <input class="input" id="personalCodeInput" type="text" maxlength="16" autocomplete="off" spellcheck="false" placeholder="e.g. PHL-AB12CD" value="${escapeHtml(state.personalCode)}">
-            <small>Enter your code to overwrite. Leave blank to register or create a <code>[name]-updt</code> review entry.</small>
+            <small>Enter your code to overwrite. Leave blank to register or create a <code>Name-updt</code> review entry.</small>
           </div>
         </div>
         <div class="quick-apc-grid">
@@ -1024,12 +1037,17 @@
 
     const action = event.target.closest("[data-action]");
     if (action?.dataset.action === "edit") {
-      openMemberDrawer(action.dataset.id);
+      openMemberDrawer(action.dataset.id, null);
+      return;
+    }
+    const fieldTap = event.target.closest("[data-edit-field]");
+    if (fieldTap?.dataset.id && fieldTap.dataset.editField) {
+      openMemberDrawer(fieldTap.dataset.id, fieldTap.dataset.editField);
       return;
     }
     const cardOpen = event.target.closest(".member-card[data-id]");
-    if (cardOpen && !event.target.closest("[data-action], a, button, input, select, textarea")) {
-      openMemberDrawer(cardOpen.dataset.id);
+    if (cardOpen && !event.target.closest("[data-action], [data-edit-field], a, button, input, select, textarea")) {
+      openMemberDrawer(cardOpen.dataset.id, null);
       return;
     }
     if (action?.dataset.action === "delete") {
@@ -1237,9 +1255,13 @@
   }
 
   function makeUpdateReviewName(baseName) {
-    const clean = String(baseName || "member").trim().replace(/\[|\]/g, "").replace(/-updt\d*$/i, "").slice(0, 18);
-    const tagged = `[${clean}]-updt`;
-    return tagged.slice(0, 30);
+    const clean = String(baseName || "member")
+      .trim()
+      .replace(/\[|\]/g, "")
+      .replace(/-updt\d*$/i, "")
+      .replace(/\s+/g, "")
+      .slice(0, 24);
+    return `${clean || "member"}-updt`.slice(0, 30);
   }
 
   function memberNeedsReview(member) {
@@ -1445,11 +1467,27 @@
   }
 
   function editMember(id) {
-    // Admin interactive edit uses the drawer; keep wizard path only as fallback.
-    openMemberDrawer(id);
+    // Admin interactive edit: overview of tappable fields (not a full wizard form).
+    openMemberDrawer(id, null);
   }
 
-  function openMemberDrawer(id) {
+  function fieldLabel(field) {
+    if (!field) return "Member";
+    if (field === "name") return "Player name";
+    if (field === "level") return "Level";
+    if (field === "rank") return "PH-L rank";
+    if (field === "plaza") return "Rally Plaza capacity";
+    if (field === "personalCode") return "Personal Code";
+    if (field === "needsReview") return "Needs review";
+    const apcMatch = /^apc(\d)\.(cp|faction)$/.exec(field);
+    if (apcMatch) {
+      const n = Number(apcMatch[1]) + 1;
+      return apcMatch[2] === "cp" ? `APC ${n} CP` : `APC ${n} faction`;
+    }
+    return field;
+  }
+
+  function openMemberDrawer(id, field = null) {
     if (!isAdmin) {
       openAdminModal();
       return;
@@ -1457,48 +1495,147 @@
     const member = roster.find(item => item.id === id);
     if (!member || !el.memberDrawer || !el.memberDrawerBody) return;
 
+    const sameMemberOpen = el.memberDrawer.classList.contains("open") && drawerMemberId === id;
     drawerMemberId = member.id;
-    lastFocusedElement = document.activeElement;
-    if (el.memberDrawerTitle) el.memberDrawerTitle.textContent = member.name;
-    if (el.memberDrawerSub) {
-      el.memberDrawerSub.textContent = member.personalCode
-        ? `Personal Code ${member.personalCode} · tap fields to edit`
-        : "No Personal Code yet · save to assign one";
+    if (field == null) {
+      drawerField = null;
+      drawerFromOverview = true;
+    } else {
+      if (!sameMemberOpen) drawerFromOverview = false;
+      drawerField = field;
     }
-
-    el.memberDrawerBody.innerHTML = `
-      <div class="field"><label for="drawerName">Player name</label><input class="input" id="drawerName" maxlength="30" value="${escapeHtml(member.name)}"></div>
-      <div class="field"><label for="drawerLevel">Level</label><select id="drawerLevel">${levelOptionsHtml(member.level)}</select></div>
-      <div class="field"><label for="drawerRank">PH-L rank</label><select id="drawerRank">${rankOptionsHtml(member.rank)}</select></div>
-      <div class="field"><label for="drawerPlaza">Rally Plaza capacity</label><input class="input" id="drawerPlaza" type="number" min="0" step="1000" value="${member.rallyCapacity || 0}"></div>
-      <div class="field personal-code-field"><label for="drawerCode">Personal Code</label><input class="input" id="drawerCode" maxlength="16" value="${escapeHtml(member.personalCode || "")}"><small>Admins can set or rotate codes. Leave blank to keep / auto-assign on save.</small></div>
-      <label class="field" style="display:flex;align-items:center;gap:10px;flex-direction:row">
-        <input type="checkbox" id="drawerNeedsReview" ${memberNeedsReview(member) ? "checked" : ""}>
-        <span>Needs review (-updt)</span>
-      </label>
-      <div class="drawer-apc-grid">
-        ${Array.from({ length: APC_COUNT }, (_, i) => {
-          const apc = member.apcs?.[i] || { cp: 0, faction: "Fighter" };
-          return `
-            <div class="drawer-apc-card">
-              <strong>APC ${i + 1}${i === 0 ? " · Main" : ""}</strong>
-              <div class="faction-row compact">
-                ${FACTIONS.map(f => `<button class="seg-btn ${apc.faction === f ? "active" : ""}" type="button" data-drawer-faction="${i}" data-faction="${f}">${f}</button>`).join("")}
-              </div>
-              <div class="value-wrap">
-                <input class="cp-input input" id="drawerCp${i}" type="number" min="0" step="1" value="${Number(apc.cp || 0)}" aria-label="APC ${i + 1} CP">
-                <b>M CP</b>
-              </div>
-            </div>`;
-        }).join("")}
-      </div>`;
-
-    enhanceSelects(el.memberDrawerBody);
+    lastFocusedElement = document.activeElement;
+    renderMemberDrawer();
     el.memberDrawer.classList.add("open");
     el.memberDrawer.setAttribute("aria-hidden", "false");
     document.body.classList.add("modal-open");
-    document.getElementById("drawerName")?.focus();
     playSfx("transition");
+  }
+
+  function renderMemberDrawer() {
+    const member = roster.find(item => item.id === drawerMemberId);
+    if (!member || !el.memberDrawerBody) return;
+
+    const eyebrow = el.memberDrawerEyebrow;
+    if (eyebrow) {
+      eyebrow.innerHTML = drawerField
+        ? "<span></span>Edit field"
+        : "<span></span>Member · tap a field";
+    }
+
+    if (!drawerField) {
+      if (el.memberDrawerTitle) el.memberDrawerTitle.textContent = member.name;
+      if (el.memberDrawerSub) {
+        el.memberDrawerSub.textContent = member.personalCode
+          ? `Personal Code ${member.personalCode} · tap any value to edit just that field`
+          : "No Personal Code yet · tap fields to edit; code auto-assigns on save";
+      }
+      if (el.memberDrawerSave) el.memberDrawerSave.hidden = true;
+      if (el.memberDrawerCancel) {
+        el.memberDrawerCancel.textContent = "Close";
+        el.memberDrawerCancel.removeAttribute("data-drawer-back");
+        el.memberDrawerCancel.setAttribute("data-drawer-close", "1");
+      }
+
+      const apcRows = Array.from({ length: APC_COUNT }, (_, i) => {
+        const apc = member.apcs?.[i] || { cp: 0, faction: "Fighter" };
+        return `
+          <button type="button" class="drawer-field-row" data-edit-field="apc${i}.cp" data-id="${member.id}">
+            <span>APC ${i + 1}${i === 0 ? " · Main" : ""} CP</span>
+            <strong>${formatNumber(apc.cp)}M</strong>
+          </button>
+          <button type="button" class="drawer-field-row" data-edit-field="apc${i}.faction" data-id="${member.id}">
+            <span>APC ${i + 1} faction</span>
+            <strong>${escapeHtml(apc.faction)}</strong>
+          </button>`;
+      }).join("");
+
+      el.memberDrawerBody.innerHTML = `
+        <div class="drawer-overview">
+          <button type="button" class="drawer-field-row" data-edit-field="name" data-id="${member.id}">
+            <span>Player name</span><strong>${escapeHtml(member.name)}</strong>
+          </button>
+          <button type="button" class="drawer-field-row" data-edit-field="level" data-id="${member.id}">
+            <span>Level</span><strong>${escapeHtml(formatLevel(member.level))}</strong>
+          </button>
+          <button type="button" class="drawer-field-row" data-edit-field="rank" data-id="${member.id}">
+            <span>PH-L rank</span><strong>${escapeHtml(member.rank)}</strong>
+          </button>
+          <button type="button" class="drawer-field-row" data-edit-field="plaza" data-id="${member.id}">
+            <span>Rally Plaza</span><strong>${formatTroops(member.rallyCapacity || 0)}</strong>
+          </button>
+          <button type="button" class="drawer-field-row" data-edit-field="personalCode" data-id="${member.id}">
+            <span>Personal Code</span><strong>${escapeHtml(member.personalCode || "—")}</strong>
+          </button>
+          <button type="button" class="drawer-field-row" data-edit-field="needsReview" data-id="${member.id}">
+            <span>Needs review (-updt)</span><strong>${memberNeedsReview(member) ? "Yes" : "No"}</strong>
+          </button>
+          ${apcRows}
+        </div>`;
+      return;
+    }
+
+    // Single-field editor
+    if (el.memberDrawerTitle) el.memberDrawerTitle.textContent = fieldLabel(drawerField);
+    if (el.memberDrawerSub) el.memberDrawerSub.textContent = `Editing only · ${member.name}`;
+    if (el.memberDrawerSave) {
+      el.memberDrawerSave.hidden = false;
+      el.memberDrawerSave.textContent = "Save field";
+    }
+    if (el.memberDrawerCancel) {
+      if (drawerFromOverview) {
+        el.memberDrawerCancel.textContent = "Back";
+        el.memberDrawerCancel.removeAttribute("data-drawer-close");
+        el.memberDrawerCancel.setAttribute("data-drawer-back", "1");
+      } else {
+        el.memberDrawerCancel.textContent = "Cancel";
+        el.memberDrawerCancel.removeAttribute("data-drawer-back");
+        el.memberDrawerCancel.setAttribute("data-drawer-close", "1");
+      }
+    }
+
+    let body = "";
+    if (drawerField === "name") {
+      body = `<div class="field"><label for="drawerFieldInput">Player name</label><input class="input" id="drawerFieldInput" maxlength="30" value="${escapeHtml(member.name)}"></div>`;
+    } else if (drawerField === "level") {
+      body = `<div class="field"><label for="drawerFieldInput">Level</label><select id="drawerFieldInput">${levelOptionsHtml(member.level)}</select></div>`;
+    } else if (drawerField === "rank") {
+      body = `<div class="field"><label for="drawerFieldInput">PH-L rank</label><select id="drawerFieldInput">${rankOptionsHtml(member.rank)}</select></div>`;
+    } else if (drawerField === "plaza") {
+      body = `<div class="field"><label for="drawerFieldInput">Rally Plaza capacity</label><input class="input" id="drawerFieldInput" type="number" min="0" step="1000" value="${member.rallyCapacity || 0}"></div>`;
+    } else if (drawerField === "personalCode") {
+      body = `<div class="field personal-code-field"><label for="drawerFieldInput">Personal Code</label><input class="input" id="drawerFieldInput" maxlength="16" value="${escapeHtml(member.personalCode || "")}"><small>Leave blank to keep current / auto-assign.</small></div>`;
+    } else if (drawerField === "needsReview") {
+      body = `<label class="field drawer-check-row"><input type="checkbox" id="drawerFieldInput" ${memberNeedsReview(member) ? "checked" : ""}><span>Flag for admin review (-updt)</span></label>`;
+    } else {
+      const apcMatch = /^apc(\d)\.(cp|faction)$/.exec(drawerField);
+      if (apcMatch) {
+        const i = Number(apcMatch[1]);
+        const apc = member.apcs?.[i] || { cp: 0, faction: "Fighter" };
+        if (apcMatch[2] === "cp") {
+          body = `<div class="field"><label for="drawerFieldInput">APC ${i + 1} CP (M)</label><input class="input" id="drawerFieldInput" type="number" min="0" step="1" value="${Number(apc.cp || 0)}"></div>`;
+        } else {
+          body = `<div class="field"><span class="field-label">APC ${i + 1} faction</span><div class="faction-row compact" id="drawerFactionRow">
+            ${FACTIONS.map(f => `<button class="seg-btn ${apc.faction === f ? "active" : ""}" type="button" data-drawer-faction="${i}" data-faction="${f}">${f}</button>`).join("")}
+          </div></div>`;
+        }
+      }
+    }
+
+    el.memberDrawerBody.innerHTML = body || `<p class="empty">Unknown field.</p>`;
+    enhanceSelects(el.memberDrawerBody);
+    const focusEl = document.getElementById("drawerFieldInput") || el.memberDrawerBody.querySelector(".seg-btn.active");
+    focusEl?.focus?.();
+  }
+
+  function onMemberDrawerCancel() {
+    if (el.memberDrawerCancel?.hasAttribute("data-drawer-back")) {
+      drawerField = null;
+      renderMemberDrawer();
+      playSfx("click");
+      return;
+    }
+    closeMemberDrawer();
   }
 
   function closeMemberDrawer() {
@@ -1506,6 +1643,8 @@
     el.memberDrawer.classList.remove("open");
     el.memberDrawer.setAttribute("aria-hidden", "true");
     drawerMemberId = null;
+    drawerField = null;
+    drawerFromOverview = false;
     if (!el.adminModal?.classList.contains("open") && !el.deleteModal?.classList.contains("open") && !el.syncModal?.classList.contains("open") && !el.personalCodeModal?.classList.contains("open")) {
       document.body.classList.remove("modal-open");
     }
@@ -1513,78 +1652,122 @@
   }
 
   async function saveMemberDrawer() {
-    if (!isAdmin || !drawerMemberId) return;
+    if (!isAdmin || !drawerMemberId || !drawerField) return;
     const previous = roster.find(m => m.id === drawerMemberId);
     if (!previous) {
       closeMemberDrawer();
       return;
     }
 
-    const name = String(document.getElementById("drawerName")?.value || "").trim().slice(0, 30);
-    const level = document.getElementById("drawerLevel")?.value;
-    const rank = document.getElementById("drawerRank")?.value;
-    const plaza = Math.max(0, Math.floor(Number(document.getElementById("drawerPlaza")?.value || 0)));
-    let code = normalizePersonalCode(document.getElementById("drawerCode")?.value || "");
-    const needsReview = Boolean(document.getElementById("drawerNeedsReview")?.checked);
-    if (!name) {
-      toast("Name is required.", "error");
-      playSfx("error");
-      return;
-    }
-    if (!BANDS[level] || !RANKS.includes(rank)) {
-      toast("Invalid level or rank.", "error");
-      playSfx("error");
-      return;
-    }
-    if (!code) code = previous.personalCode || generatePersonalCode();
-    const codeOwner = findMemberByPersonalCode(code);
-    if (codeOwner && codeOwner.id !== previous.id) {
-      toast("That Personal Code belongs to another member.", "error");
-      playSfx("error");
-      return;
-    }
-
-    const max = getMaxForLevel(level);
-    const apcs = Array.from({ length: APC_COUNT }, (_, i) => {
-      const factionBtn = el.memberDrawerBody.querySelector(`[data-drawer-faction="${i}"].active`);
-      const cp = clamp(Number(document.getElementById(`drawerCp${i}`)?.value || 0), 0, max);
-      return {
-        cp,
-        faction: factionBtn?.dataset.faction || previous.apcs?.[i]?.faction || "Fighter"
-      };
-    });
-
     const member = {
       ...previous,
-      name,
-      level,
-      rank,
-      rallyCapacity: plaza,
-      personalCode: code,
-      needsReview,
-      updated: Date.now(),
-      apcs
+      apcs: previous.apcs.map(apc => ({ ...apc })),
+      updated: Date.now()
     };
 
+    if (drawerField === "name") {
+      const name = String(document.getElementById("drawerFieldInput")?.value || "").trim().slice(0, 30);
+      if (!name) {
+        toast("Name is required.", "error");
+        playSfx("error");
+        return;
+      }
+      member.name = name;
+    } else if (drawerField === "level") {
+      const level = document.getElementById("drawerFieldInput")?.value;
+      if (!BANDS[level]) {
+        toast("Invalid level.", "error");
+        playSfx("error");
+        return;
+      }
+      member.level = level;
+      const max = getMaxForLevel(level);
+      member.apcs = member.apcs.map(apc => ({ ...apc, cp: clamp(Number(apc.cp || 0), 0, max) }));
+    } else if (drawerField === "rank") {
+      const rank = document.getElementById("drawerFieldInput")?.value;
+      if (!RANKS.includes(rank)) {
+        toast("Invalid rank.", "error");
+        playSfx("error");
+        return;
+      }
+      member.rank = rank;
+    } else if (drawerField === "plaza") {
+      member.rallyCapacity = Math.max(0, Math.floor(Number(document.getElementById("drawerFieldInput")?.value || 0)));
+    } else if (drawerField === "personalCode") {
+      let code = normalizePersonalCode(document.getElementById("drawerFieldInput")?.value || "");
+      if (!code) code = previous.personalCode || generatePersonalCode();
+      const codeOwner = findMemberByPersonalCode(code);
+      if (codeOwner && codeOwner.id !== previous.id) {
+        toast("That Personal Code belongs to another member.", "error");
+        playSfx("error");
+        return;
+      }
+      member.personalCode = code;
+    } else if (drawerField === "needsReview") {
+      member.needsReview = Boolean(document.getElementById("drawerFieldInput")?.checked);
+    } else {
+      const apcMatch = /^apc(\d)\.(cp|faction)$/.exec(drawerField);
+      if (!apcMatch) {
+        toast("Unknown field.", "error");
+        return;
+      }
+      const i = Number(apcMatch[1]);
+      if (!member.apcs[i]) member.apcs[i] = { cp: 0, faction: "Fighter" };
+      if (apcMatch[2] === "cp") {
+        const max = getMaxForLevel(member.level);
+        member.apcs[i] = {
+          ...member.apcs[i],
+          cp: clamp(Number(document.getElementById("drawerFieldInput")?.value || 0), 0, max)
+        };
+      } else {
+        const factionBtn = el.memberDrawerBody.querySelector(`[data-drawer-faction="${i}"].active`);
+        const faction = factionBtn?.dataset.faction || member.apcs[i].faction;
+        if (!FACTIONS.includes(faction)) {
+          toast("Pick a faction.", "error");
+          playSfx("error");
+          return;
+        }
+        member.apcs[i] = { ...member.apcs[i], faction };
+      }
+    }
+
     const fields = diffMemberFields(previous, member);
+    const editedLabel = fieldLabel(drawerField);
+    if (!fields.length) {
+      toast("No changes.", "success");
+      if (drawerFromOverview) {
+        drawerField = null;
+        renderMemberDrawer();
+      } else {
+        closeMemberDrawer();
+      }
+      return;
+    }
+
     const idx = roster.findIndex(m => m.id === member.id);
     if (idx >= 0) roster[idx] = member;
     saveRoster();
     appendHistoryEvent({
-      action: "admin-drawer",
+      action: "field-edit",
       memberId: member.id,
       memberName: member.name,
       actor: adminSession?.name || "admin",
       fields,
-      note: "Edited via member drawer"
+      note: `Edited ${editedLabel}`
     });
     queueCloudOutbox(member);
-    closeMemberDrawer();
+
+    if (drawerFromOverview) {
+      drawerField = null;
+      renderMemberDrawer();
+    } else {
+      closeMemberDrawer();
+    }
     renderAll();
     const ok = await pushCloudRosterWithRetry({ silent: true });
     toast(
       ok
-        ? `<strong>${escapeHtml(member.name)}</strong> updated.`
+        ? `<strong>${escapeHtml(editedLabel)}</strong> updated for ${escapeHtml(member.name)}.`
         : `<strong>${escapeHtml(member.name)}</strong> saved locally. Cloud sync will retry.`,
       ok ? "success" : "error"
     );
@@ -1895,38 +2078,38 @@
         <article class="member-card${review ? " is-needs-review" : ""}" style="--status:${st.color}" data-id="${member.id}" tabindex="0" role="button" aria-label="Edit ${escapeHtml(member.name)}">
           <div>
             <div class="member-tags">
-              <span class="tag level">${formatLevel(member.level)}</span>
-              <span class="tag">${member.rank}</span>
+              <button type="button" class="tag level field-tap" data-edit-field="level" data-id="${member.id}" title="Edit level">${formatLevel(member.level)}</button>
+              <button type="button" class="tag field-tap" data-edit-field="rank" data-id="${member.id}" title="Edit rank">${member.rank}</button>
               <span class="tag status">${st.label}</span>
               <span class="tag ${rally.assigned_role === "RL" ? "role-rl" : "role-rj"}">${rally.assigned_role}</span>
               <span class="tag">${rally.specialty_faction}</span>
               <span class="tag ${gap.met ? "gap-ok" : "gap-bad"}">${formatGap(gap)}</span>
               ${stale ? '<span class="tag stale">Stale</span>' : ""}
               ${review ? '<span class="tag needs-review">Needs review</span>' : ""}
-              ${member.personalCode ? `<span class="tag personal-code" title="Personal Code">${escapeHtml(member.personalCode)}</span>` : ""}
+              ${member.personalCode ? `<button type="button" class="tag personal-code field-tap" data-edit-field="personalCode" data-id="${member.id}" title="Edit Personal Code">${escapeHtml(member.personalCode)}</button>` : ""}
             </div>
-            <div class="member-name">${escapeHtml(member.name)}</div>
-            <div class="member-sub">${escapeHtml(getRallyGateReason(member))} · Plaza ${formatTroops(member.rallyCapacity || 0)} · Updated ${timeAgo(member.updated)}</div>
+            <button type="button" class="member-name field-tap" data-edit-field="name" data-id="${member.id}" title="Edit name">${escapeHtml(member.name)}</button>
+            <div class="member-sub">${escapeHtml(getRallyGateReason(member))} · <button type="button" class="inline-field-tap" data-edit-field="plaza" data-id="${member.id}" title="Edit Plaza">Plaza ${formatTroops(member.rallyCapacity || 0)}</button> · Updated ${timeAgo(member.updated)}</div>
           </div>
           <div class="apc-bars">
             ${member.apcs.map((apc, i) => `
               <div class="apc-row">
                 <b>A${i + 1}</b>
-                <span class="faction ${apc.faction.toLowerCase()}">${apc.faction}</span>
+                <button type="button" class="faction ${apc.faction.toLowerCase()} field-tap" data-edit-field="apc${i}.faction" data-id="${member.id}" title="Edit APC ${i + 1} faction">${apc.faction}</button>
                 <div class="bar"><div class="fill" style="--w:${Math.min(100, (apc.cp / Math.max(getMaxForLevel(member.level), 1)) * 100).toFixed(1)}%"></div></div>
-                <div class="row-val">${formatNumber(apc.cp)}<small>M</small></div>
+                <button type="button" class="row-val field-tap" data-edit-field="apc${i}.cp" data-id="${member.id}" title="Edit APC ${i + 1} CP">${formatNumber(apc.cp)}<small>M</small></button>
               </div>`).join("")}
           </div>
           <div class="score-box"><span>Total APC CP</span><strong>${formatNumber(total)}<small>M</small></strong></div>
           <div class="card-actions">
-            <button class="card-action edit-primary" type="button" data-action="edit" data-id="${member.id}" title="Edit in drawer">
+            <button class="card-action edit-primary" type="button" data-action="edit" data-id="${member.id}" title="Open field list">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17.25V21h3.75L17.8 9.94l-3.75-3.75L3 17.25Zm18-11.5a1 1 0 0 0 0-1.41l-1.34-1.34a1 1 0 0 0-1.41 0l-1.05 1.05 3.75 3.75L21 5.75Z"/></svg>
-              Edit
+              Fields
             </button>
             ${member.personalCode ? `<button class="card-action" type="button" data-action="copy-code" data-code="${escapeHtml(member.personalCode)}" title="Copy Personal Code">Code</button>` : ""}
             ${review ? `<button class="card-action" type="button" data-action="clear-review" data-id="${member.id}" title="Mark reviewed">OK</button>` : ""}
             <button class="card-action delete" type="button" data-action="delete" data-id="${member.id}" title="Delete">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 7h12l-1 14H7L6 7Zm3-4h6l1 2h4v2H4V5h4l1-2Z"/></svg>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 7h12l-1 14H7L7 7Zm3-4h6l1 2h4v2H4V5h4l1-2Z"/></svg>
             </button>
           </div>
         </article>`;

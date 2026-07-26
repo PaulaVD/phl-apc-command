@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Teko:wght@500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=90" />
+  <link rel="stylesheet" href="styles.css?v=100" />
 </head>
 <body class="mobile-tab-times">
   <a class="skip-link" href="#operatorConsole">Skip to form</a>
@@ -247,7 +247,7 @@
       </div>
       <div>
         <strong>PH-L private analytics</strong>
-        <span>Every submit is saved to the shared Phoenix Legacy cloud roster. Keep your <em>Personal Code</em> to overwrite your entry later. Without it, updates land as <code>[name]-updt</code> for admin review. Tip: paste <code>Name i5 820/760/710/655 450000</code>.</span>
+        <span>Every submit is saved to the shared Phoenix Legacy cloud roster. <strong>Save your Personal Code</strong> to overwrite your entry later. Without it, updates land as <code>Name-updt</code> for admin review. Tip: paste <code>Name i5 820/760/710/655 450000</code>.</span>
       </div>
     </section>
 
@@ -515,18 +515,18 @@
     <aside class="member-drawer-sheet" role="dialog" aria-modal="true" aria-labelledby="memberDrawerTitle">
       <div class="member-drawer-head">
         <div>
-          <span class="eyebrow"><span></span>Member edit</span>
+          <span class="eyebrow" id="memberDrawerEyebrow"><span></span>Field edit</span>
           <h2 id="memberDrawerTitle">Edit member</h2>
-          <p id="memberDrawerSub">Update fields directly. Changes sync to the cloud roster.</p>
+          <p id="memberDrawerSub">Tap a field to edit just that value. Changes sync to the cloud roster.</p>
         </div>
         <button type="button" class="icon-btn" id="memberDrawerClose" aria-label="Close editor" data-drawer-close="1">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.4 6.4 12 12l5.6-5.6 1.4 1.4L13.4 13.4l5.6 5.6-1.4 1.4L12 14.8l-5.6 5.6-1.4-1.4 5.6-5.6L5 7.8z"/></svg>
         </button>
       </div>
       <div class="member-drawer-body" id="memberDrawerBody"></div>
-      <div class="member-drawer-actions">
-        <button type="button" class="btn btn-primary" id="memberDrawerSave">Save changes</button>
-        <button type="button" class="btn btn-ghost" data-drawer-close="1">Cancel</button>
+      <div class="member-drawer-actions" id="memberDrawerActions">
+        <button type="button" class="btn btn-primary" id="memberDrawerSave">Save field</button>
+        <button type="button" class="btn btn-ghost" id="memberDrawerCancel">Cancel</button>
       </div>
     </aside>
   </div>
@@ -536,7 +536,7 @@
     <section class="admin-modal-card confirm-modal-card" role="dialog" aria-modal="true" aria-labelledby="personalCodeModalTitle">
       <span class="eyebrow"><span></span>Save this code</span>
       <h2 id="personalCodeModalTitle">Your Personal Code</h2>
-      <p>Use this code next time to overwrite your roster entry directly. Without it, new submits create a <code>[name]-updt</code> review entry.</p>
+      <p>Save this code. Enter it next time under Push Data to overwrite your roster entry directly. Without it, new submits create a <code>Name-updt</code> review entry.</p>
       <div class="personal-code-reveal" id="personalCodeReveal">————</div>
       <div class="admin-modal-actions">
         <button class="btn btn-primary" id="personalCodeCopyBtn" type="button">Copy code</button>
@@ -551,6 +551,6 @@
   <script src="serverClock.js?v=34"></script>
   <script src="rallyRoles.js?v=28"></script>
   <script src="rallyMatchmaking.js?v=27"></script>
-  <script src="app.js?v=80" defer></script>
+  <script src="app.js?v=90" defer></script>
 </body>
 </html>
