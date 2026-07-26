@@ -985,7 +985,8 @@ body.modal-open{overflow:hidden}
   #localClockDisplay{font-size:1.15rem;min-width:8.75ch;width:8.75ch}
   .scan-stage{height:220px;margin:10px}
   .scan-metrics{grid-template-columns:1fr 1fr;padding:0 10px}
-  .wizard-actions{grid-template-columns:1fr}
+  .wizard-actions{grid-template-columns:1fr 1fr}
+  .wizard-actions .btn-primary{grid-column:1/-1}
   .wizard-actions .btn-ghost{grid-column:auto}
   .rail-item{min-width:4.75rem;max-width:6.5rem}
   .rail-item strong{font-size:.6rem}
@@ -1329,12 +1330,12 @@ button.row-val.field-tap small{font-size:.62em;color:var(--soft)}
     width:100%;
     max-width:100%;
     margin:0;
-    /* Tab bar (~60) + sticky Continue (~56) + gaps + safe area */
-    padding:8px 10px calc(150px + env(safe-area-inset-bottom,0px));
+    /* Fixed tabs (~56–64) + sticky Continue row (~110) + breathing room */
+    padding:8px 10px calc(200px + env(safe-area-inset-bottom,0px));
     box-sizing:border-box;
     overflow-x:hidden
   }
-  .toast-region{bottom:calc(150px + env(safe-area-inset-bottom,0px))}
+  .toast-region{bottom:calc(200px + env(safe-area-inset-bottom,0px))}
 
   .wizard-panel{
     padding-bottom:12px;
@@ -1345,15 +1346,20 @@ button.row-val.field-tap small{font-size:.62em;color:var(--soft)}
   .wizard-panel .panel-head h2{font-size:clamp(1.3rem,5vw,1.6rem)}
   .wizard-shell{padding:12px 10px 0;gap:10px;overflow-x:hidden;min-width:0}
   .wizard-card{padding:14px;overflow:hidden;min-width:0}
-  .wizard-main{min-width:0;max-width:100%;padding-bottom:8px}
+  .wizard-main{min-width:0;max-width:100%;padding-bottom:12px}
   .wizard-actions{
     position:sticky;
     bottom:calc(64px + env(safe-area-inset-bottom,0px));
     z-index:40;
-    padding:12px 0 10px;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+    padding:10px 0 8px;
     margin:0;
     background:linear-gradient(180deg,transparent,rgba(9,3,3,.97) 22%,rgba(9,3,3,.99));
   }
+  .wizard-actions .btn-primary{grid-column:1/-1;min-width:0;width:100%}
+  .wizard-actions .btn{min-height:44px;width:100%}
   .wizard-rail{
     display:flex;gap:8px;
     width:100%;max-width:100%;min-width:0;
@@ -1378,12 +1384,19 @@ button.row-val.field-tap small{font-size:.62em;color:var(--soft)}
   .quick-btn{min-height:42px;font-size:.74rem;padding:10px 8px;border-radius:12px;white-space:normal}
   .quick-btn:last-child{grid-column:1/-1}
   .summary-line{padding:9px 0;gap:10px}
-  .rally-gate-note{margin-bottom:10px;font-size:.86rem}
+  .summary-line b.gap-met,
+  .summary-line b.gap-short{font-size:.92rem;font-weight:700}
+  .rally-gate-note{
+    display:block;position:static;z-index:auto;
+    margin:0 0 12px;font-size:.86rem
+  }
   .field label,.helper-card > span{font-size:.76rem}
   .wizard-card-head .tiny-label{display:none}
+  .wizard-panel .step-pill{min-height:32px;padding:0 10px;font-size:.7rem}
+  .wizard-panel .panel-head p{display:none} /* reclaim vertical space on phone */
   body.mobile-tab-push .member-privacy-note,
   body.mobile-tab-push .wizard-panel{
-    scroll-margin-bottom:calc(150px + env(safe-area-inset-bottom,0px))
+    scroll-margin-bottom:calc(200px + env(safe-area-inset-bottom,0px))
   }
 
   .member-drawer-sheet{width:100%;border-left:0;border-radius:22px 22px 0 0;height:min(92vh,100%);align-self:end}
@@ -1405,7 +1418,7 @@ button.row-val.field-tap small{font-size:.62em;color:var(--soft)}
 
 /* Narrow phone polish — must follow the ≤900 mobile shell block */
 @media (max-width:480px){
-  .shell{padding-left:10px;padding-right:10px;padding-bottom:calc(150px + env(safe-area-inset-bottom,0px))}
+  .shell{padding-left:10px;padding-right:10px;padding-bottom:calc(200px + env(safe-area-inset-bottom,0px))}
   .quick-row{grid-template-columns:1fr;gap:8px}
   .quick-btn:last-child{grid-column:auto}
   .rail-item{min-width:4.75rem;max-width:6.25rem}
@@ -1413,4 +1426,8 @@ button.row-val.field-tap small{font-size:.62em;color:var(--soft)}
   .wizard-card-head h3{font-size:1.28rem}
   .wizard-card-head p{font-size:.88rem;line-height:1.4}
   .step-pill{min-height:34px;padding:0 10px;font-size:.72rem}
+  /* Keep Back/Reset side-by-side so sticky chrome stays short */
+  .wizard-actions{grid-template-columns:1fr 1fr}
+  .wizard-actions .btn-primary{grid-column:1/-1}
+  .wizard-actions .btn-ghost{grid-column:auto}
 }
