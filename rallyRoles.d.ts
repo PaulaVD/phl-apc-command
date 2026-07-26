@@ -16,9 +16,9 @@ export interface CategorizedMember extends MemberInput {
   specialty_faction: DominantFaction;
 }
 
+/** APC1 median gate from live uploaded roster. */
 export interface RallyThresholds {
   minApc1Cp: number;
-  minRallyCapacity: number;
 }
 
 export interface RallyRoleSummary {
@@ -54,8 +54,8 @@ export function summarizeRallyRoles(
 ): RallyRoleSummary;
 
 export function deriveThresholdsFromRoster(
-  samples: Array<Pick<MemberInput, "apc1_cp" | "rally_capacity">>
-): RallyThresholds & { sampleApc: number; samplePlaza: number };
+  samples: Array<Pick<MemberInput, "apc1_cp"> | Pick<MemberInput, "apc1_cp" | "rally_capacity">>
+): RallyThresholds & { sampleApc: number };
 
 export function median(values: number[]): number;
 

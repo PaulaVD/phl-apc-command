@@ -1,6 +1,8 @@
 /**
- * Mock data + assertions for alliance-threshold classification
+ * Mock data + assertions for live-roster median APC1 classification
  * Run: node rallyRoles.test.js
+ *
+ * Rule: APC1 CP >= median → RL; below → RJ. Plaza is not part of the gate.
  */
 
 "use strict";
@@ -8,7 +10,8 @@
 const {
   classifyAllianceMembers,
   deriveThresholdsFromRoster,
-  summarizeRallyRoles
+  summarizeRallyRoles,
+  meetsRallyLeaderThresholds
 } = require("./rallyRoles");
 
 const MOCK_MEMBERS = [
@@ -24,26 +27,38 @@ function assert(condition, message) {
 }
 
 function run() {
+  const empty = deriveThresholdsFromRoster([]);
+  assert(empty.minApc1Cp === 0 && empty.sampleApc === 0, "Empty roster → no median");
+
   const thresholds = deriveThresholdsFromRoster(MOCK_MEMBERS);
   assert(thresholds.minApc1Cp === 605_000_000, `Expected median APC, got ${thresholds.minApc1Cp}`);
-  assert(thresholds.minRallyCapacity === 320_000, `Expected median plaza, got ${thresholds.minRallyCapacity}`);
+  assert(thresholds.sampleApc === 5, `Expected 5 APC samples, got ${thresholds.sampleApc}`);
+
+  // High APC1 with low plaza still qualifies as RL (plaza not in gate)
+  assert(
+    meetsRallyLeaderThresholds({ apc1_cp: 700_000_000, rally_capacity: 0 }, thresholds),
+    "High APC1 / zero plaza → RL"
+  );
+  assert(
+    !meetsRallyLeaderThresholds({ apc1_cp: 500_000_000, rally_capacity: 999_999 }, thresholds),
+    "Low APC1 / huge plaza → RJ"
+  );
 
   const result = classifyAllianceMembers(MOCK_MEMBERS, thresholds);
   const byId = Object.fromEntries(result.map(m => [m.id, m]));
 
-  // >= alliance median APC1 AND >= alliance median plaza
-  assert(byId["1"].assigned_role === "RL", "SnoopDawg above both medians");
-  assert(byId["2"].assigned_role === "RL", "Tea on both medians");
-  assert(byId["3"].assigned_role === "RL", "Fisherman above both medians");
-  assert(byId["4"].assigned_role === "RJ", "Tiger below both medians");
-  assert(byId["5"].assigned_role === "RJ", "Bella below both medians");
+  assert(byId["1"].assigned_role === "RL", "SnoopDawg at/above median");
+  assert(byId["2"].assigned_role === "RL", "Tea on median");
+  assert(byId["3"].assigned_role === "RL", "Fisherman above median");
+  assert(byId["4"].assigned_role === "RJ", "Tiger below median");
+  assert(byId["5"].assigned_role === "RJ", "Bella below median");
 
   const summary = summarizeRallyRoles(result);
   assert(summary.rl === 3, `Expected 3 RL, got ${summary.rl}`);
   assert(summary.rj === 2, `Expected 2 RJ, got ${summary.rj}`);
 
   console.log("rallyRoles.test.js — all passed");
-  console.log("alliance thresholds (from roster):", thresholds);
+  console.log("alliance median APC1 (from roster):", thresholds);
   console.table(result.map(m => ({
     name: m.name,
     apc1_cp: m.apc1_cp,

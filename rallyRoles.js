@@ -1,7 +1,7 @@
 /**
  * Dark War Survival — Alliance Rally Role Classifier
- * Pure module: thresholds are injected by the alliance layer (roster-derived or manual).
- * No hardcoded alliance policy lives here beyond safe fallbacks for tests.
+ * Pure module: thresholds are injected by the alliance layer (live roster median APC1).
+ * Rule: APC1 CP >= median → Rally Leader (RL); below → Rally Joiner (RJ).
  */
 
 "use strict";
@@ -11,8 +11,7 @@
 
 /**
  * @typedef {Object} RallyThresholds
- * @property {number} minApc1Cp         Absolute APC1 CP gate
- * @property {number} minRallyCapacity  Alliance Plaza troop capacity gate
+ * @property {number} minApc1Cp  Absolute APC1 CP gate (live uploaded median)
  */
 
 /**
@@ -34,10 +33,9 @@
 /** @type {ReadonlySet<DominantFaction>} */
 const VALID_FACTIONS = Object.freeze(new Set(["Fighter", "Shooter", "Rider"]));
 
-/** Test-only fallbacks — production UI must pass alliance thresholds. */
+/** Test-only fallback — production UI must pass live roster median. */
 const DEFAULT_THRESHOLDS = Object.freeze({
-  minApc1Cp: 1_200_000,
-  minRallyCapacity: 400_000
+  minApc1Cp: 1_200_000
 });
 
 /**
@@ -46,25 +44,20 @@ const DEFAULT_THRESHOLDS = Object.freeze({
  */
 function normalizeThresholds(thresholds) {
   const minApc1Cp = Number(thresholds?.minApc1Cp);
-  const minRallyCapacity = Number(thresholds?.minRallyCapacity);
   return {
-    minApc1Cp: Number.isFinite(minApc1Cp) && minApc1Cp >= 0 ? minApc1Cp : DEFAULT_THRESHOLDS.minApc1Cp,
-    minRallyCapacity: Number.isFinite(minRallyCapacity) && minRallyCapacity >= 0
-      ? minRallyCapacity
-      : DEFAULT_THRESHOLDS.minRallyCapacity
+    minApc1Cp: Number.isFinite(minApc1Cp) && minApc1Cp >= 0 ? minApc1Cp : DEFAULT_THRESHOLDS.minApc1Cp
   };
 }
 
 /**
- * Both gates must pass against the provided alliance thresholds.
+ * RL if APC1 CP is at or above the alliance median gate.
  * @param {Pick<MemberInput, "apc1_cp" | "rally_capacity">} member
  * @param {Partial<RallyThresholds>} [thresholds]
  * @returns {boolean}
  */
 function meetsRallyLeaderThresholds(member, thresholds) {
   const gate = normalizeThresholds(thresholds);
-  return Number(member.apc1_cp) >= gate.minApc1Cp
-    && Number(member.rally_capacity) >= gate.minRallyCapacity;
+  return Number(member.apc1_cp) >= gate.minApc1Cp;
 }
 
 /**
@@ -147,18 +140,15 @@ function summarizeRallyRoles(categorized) {
 }
 
 /**
- * Build roster-derived gates from alliance member samples (median).
- * @param {{ apc1_cp: number, rally_capacity: number }[]} samples
- * @returns {RallyThresholds & { sampleApc: number, samplePlaza: number }}
+ * Build roster-derived APC1 median gate from live uploaded samples.
+ * @param {{ apc1_cp: number, rally_capacity?: number }[]} samples
+ * @returns {RallyThresholds & { sampleApc: number }}
  */
 function deriveThresholdsFromRoster(samples) {
   const apcs = (samples || []).map(s => Number(s.apc1_cp)).filter(n => Number.isFinite(n) && n > 0);
-  const plazas = (samples || []).map(s => Number(s.rally_capacity)).filter(n => Number.isFinite(n) && n > 0);
   return {
     minApc1Cp: median(apcs),
-    minRallyCapacity: median(plazas),
-    sampleApc: apcs.length,
-    samplePlaza: plazas.length
+    sampleApc: apcs.length
   };
 }
 

@@ -127,13 +127,9 @@
     rallySplit: document.getElementById("rallySplit"),
     kpiRl: document.getElementById("kpiRl"),
     kpiRj: document.getElementById("kpiRj"),
-    rallyCriteriaMode: document.getElementById("rallyCriteriaMode"),
-    rallyManualFields: document.getElementById("rallyManualFields"),
     rallyRosterReadout: document.getElementById("rallyRosterReadout"),
     rallyReadoutApc: document.getElementById("rallyReadoutApc"),
-    rallyReadoutPlaza: document.getElementById("rallyReadoutPlaza"),
-    rallyMinApc1Input: document.getElementById("rallyMinApc1Input"),
-    rallyMinPlazaInput: document.getElementById("rallyMinPlazaInput"),
+    rallyReadoutSamples: document.getElementById("rallyReadoutSamples"),
     rallyRuleCopy: document.getElementById("rallyRuleCopy"),
     rallyLeaderList: document.getElementById("rallyLeaderList"),
     rallyFormationList: document.getElementById("rallyFormationList"),
@@ -312,7 +308,6 @@
     initMobileTabs();
     maybeWarnStaleSessions();
     enhanceSelects(document.querySelector(".toolbar"));
-    enhanceSelects(document.getElementById("rallyCriteriaBox"));
     initServerClockPanel();
     renderAll();
     pullScheduledEvents({ silent: true });
@@ -351,9 +346,6 @@
     el.rankFilter?.addEventListener("change", renderRoster);
     el.statusFilter.addEventListener("change", renderRoster);
     el.sortSelect.addEventListener("change", renderRoster);
-    el.rallyCriteriaMode?.addEventListener("change", onRallyCriteriaModeChange);
-    el.rallyMinApc1Input?.addEventListener("change", onRallyManualThresholdChange);
-    el.rallyMinPlazaInput?.addEventListener("change", onRallyManualThresholdChange);
     el.sfxBtn.addEventListener("click", () => {
       unlockAudio();
       sfxEnabled = !sfxEnabled;
@@ -1018,7 +1010,7 @@
             <div class="summary-line"><span>Level selected</span><b data-checklist="level">${formatLevel(state.level)}</b></div>
             <div class="summary-line"><span>Rank selected</span><b data-checklist="rank">${state.rank}</b></div>
             <div class="summary-line"><span>Plaza capacity</span><b data-checklist="plaza">${state.rallyCapacity ? formatTroops(state.rallyCapacity) : "—"}</b></div>
-            <div class="summary-line"><span>Rally role</span><b data-checklist="role" data-live-rally-role class="${role.assigned_role === "RL" ? "gap-met" : "gap-short"}">${role.assigned_role === "RL" ? "Rally Leader" : "Rally Joiner"}</b></div>
+            <div class="summary-line"><span>Rally role</span><b data-checklist="role" data-live-rally-role class="${role.pending ? "" : (role.assigned_role === "RL" ? "gap-met" : "gap-short")}">${role.pending ? "Waiting" : (role.assigned_role === "RL" ? "Rally Leader" : "Rally Joiner")}</b></div>
             <div class="summary-line"><span>Role gate</span><b data-live-rally-reason>${escapeHtml(formatRallyGateReasonForChecklist())}</b></div>
             <div class="summary-line"><span>Main gap</span><b data-checklist="gap">${formatGap(getFrontlineGap(state.level, state.apcs[0].cp))}</b></div>
           </div>
@@ -1069,7 +1061,7 @@
             <div class="plaza-live">
               ${rallyGateWaitingNoteHtml()}
               <div class="summary-line"><span>Plaza entered</span><b data-checklist="plaza">${state.rallyCapacity ? formatTroops(state.rallyCapacity) : "—"}</b></div>
-              <div class="summary-line"><span>Rally role</span><b data-live-rally-role class="${role.assigned_role === "RL" ? "gap-met" : "gap-short"}">${role.assigned_role === "RL" ? "Rally Leader" : "Rally Joiner"}</b></div>
+              <div class="summary-line"><span>Rally role</span><b data-live-rally-role class="${role.pending ? "" : (role.assigned_role === "RL" ? "gap-met" : "gap-short")}">${role.pending ? "Waiting" : (role.assigned_role === "RL" ? "Rally Leader" : "Rally Joiner")}</b></div>
               <div class="summary-line"><span>Role gate</span><b data-live-rally-reason>${escapeHtml(formatRallyGateReasonForChecklist())}</b></div>
             </div>
           </div>` : ""}
@@ -1128,7 +1120,7 @@
             <div class="summary-line"><span>Total APC CP</span><b>${formatNumber(total)}M</b></div>
             <div class="summary-line"><span>Average APC</span><b>${formatNumber(average)}M <small>of ${activeCount}</small></b></div>
             <div class="summary-line"><span>Plaza</span><b data-live-plaza>${state.rallyCapacity ? formatTroops(state.rallyCapacity) : "—"}</b></div>
-            <div class="summary-line"><span>Rally role</span><b data-live-rally-role class="${role.assigned_role === "RL" ? "gap-met" : "gap-short"}">${role.assigned_role === "RL" ? "Rally Leader" : "Rally Joiner"}</b></div>
+            <div class="summary-line"><span>Rally role</span><b data-live-rally-role class="${role.pending ? "" : (role.assigned_role === "RL" ? "gap-met" : "gap-short")}">${role.pending ? "Waiting" : (role.assigned_role === "RL" ? "Rally Leader" : "Rally Joiner")}</b></div>
             <div class="summary-line"><span>Status</span><b style="color:${mainStatus.color}">${mainStatus.label}</b></div>
           </div>
         </div>
@@ -2266,9 +2258,14 @@
     }
     const role = classifyCurrentState();
     if (el.scanRallyRole) {
-      el.scanRallyRole.textContent = role.assigned_role;
-      el.scanRallyRole.classList.toggle("role-rl", role.assigned_role === "RL");
-      el.scanRallyRole.classList.toggle("role-rj", role.assigned_role === "RJ");
+      if (role.pending) {
+        el.scanRallyRole.textContent = "—";
+        el.scanRallyRole.classList.remove("role-rl", "role-rj");
+      } else {
+        el.scanRallyRole.textContent = role.assigned_role;
+        el.scanRallyRole.classList.toggle("role-rl", role.assigned_role === "RL");
+        el.scanRallyRole.classList.toggle("role-rj", role.assigned_role === "RJ");
+      }
     }
     if (el.scanLevelLabel) el.scanLevelLabel.textContent = formatLevel(state.level);
     const hasInput = state.name.trim() || state.apcs.some(apc => apc.cp > 0);
@@ -2437,7 +2434,10 @@
     } else if (statusFilter === "needs-review") {
       filtered = filtered.filter(member => memberNeedsReview(member));
     } else if (statusFilter === "rl" || statusFilter === "rj") {
-      filtered = filtered.filter(member => getMemberRallyRole(member).assigned_role === statusFilter.toUpperCase());
+      filtered = filtered.filter(member => {
+        const role = getMemberRallyRole(member);
+        return !role.pending && role.assigned_role === statusFilter.toUpperCase();
+      });
     } else if (statusFilter !== "all") {
       filtered = filtered.filter(member => getStatusKey(member.level, getMain(member)) === statusFilter);
     }
@@ -2474,7 +2474,7 @@
               <button type="button" class="tag level field-tap" data-edit-field="level" data-id="${member.id}" title="Edit level">${formatLevel(member.level)}</button>
               <button type="button" class="tag field-tap" data-edit-field="rank" data-id="${member.id}" title="Edit rank">${member.rank}</button>
               <span class="tag status">${st.label}</span>
-              <span class="tag ${rally.assigned_role === "RL" ? "role-rl" : "role-rj"}">${rally.assigned_role}</span>
+              <span class="tag ${rally.pending ? "" : (rally.assigned_role === "RL" ? "role-rl" : "role-rj")}">${rally.pending ? "—" : rally.assigned_role}</span>
               <span class="tag">${rally.specialty_faction}</span>
               <span class="tag ${gap.met ? "gap-ok" : "gap-bad"}">${formatGap(gap)}</span>
               ${stale ? '<span class="tag stale">Stale</span>' : ""}
@@ -2525,7 +2525,7 @@
         <div class="rank-no">#${index + 1}</div>
         <div>
           <div class="rank-name">${escapeHtml(member.name)}</div>
-          <div class="rank-sub">${formatLevel(member.level)} · ${member.rank} · ${getMemberRallyRole(member).assigned_role} · ${formatGap(getFrontlineGap(member.level, getMain(member)))}</div>
+          <div class="rank-sub">${formatLevel(member.level)} · ${member.rank} · ${(() => { const r = getMemberRallyRole(member); return r.pending ? "—" : r.assigned_role; })()} · ${formatGap(getFrontlineGap(member.level, getMain(member)))}</div>
         </div>
         <div class="rank-val">${formatNumber(getTotal(member))}<small>M</small></div>
       </div>`).join("");
@@ -2565,6 +2565,29 @@
 
     syncRallyCriteriaControls();
     const thresholds = getAllianceRallyThresholds();
+
+    if (!thresholds.ready) {
+      if (kpiTweens.has(el.kpiRl)) {
+        const stored = kpiTweens.get(el.kpiRl);
+        if (stored?.frame) cancelAnimationFrame(stored.frame);
+      }
+      if (kpiTweens.has(el.kpiRj)) {
+        const stored = kpiTweens.get(el.kpiRj);
+        if (stored?.frame) cancelAnimationFrame(stored.frame);
+      }
+      el.kpiRl.textContent = "—";
+      el.kpiRj.textContent = "—";
+      kpiTweens.set(el.kpiRl, { value: 0 });
+      kpiTweens.set(el.kpiRj, { value: 0 });
+      if (el.rallyLeaderList) {
+        el.rallyLeaderList.hidden = true;
+        el.rallyLeaderList.innerHTML = "";
+      }
+      renderRallyFormations([], thresholds);
+      if (el.rallyRuleCopy) el.rallyRuleCopy.textContent = thresholds.label;
+      return;
+    }
+
     const saved = roster.map(getMemberRallyRole);
     const summary = {
       rl: saved.filter(m => m.assigned_role === "RL").length,
@@ -2575,10 +2598,7 @@
 
     const leaders = saved.filter(m => m.assigned_role === "RL");
     if (el.rallyLeaderList) {
-      if (!thresholds.ready) {
-        el.rallyLeaderList.hidden = true;
-        el.rallyLeaderList.innerHTML = "";
-      } else if (leaders.length) {
+      if (leaders.length) {
         el.rallyLeaderList.hidden = false;
         el.rallyLeaderList.innerHTML = leaders.map(m => {
           const raw = roster.find(r => r.id === m.id);
@@ -2586,7 +2606,7 @@
         }).join("");
       } else {
         el.rallyLeaderList.hidden = false;
-        el.rallyLeaderList.innerHTML = `<div class="rally-leader-empty">No Rally Leaders above ${formatThresholdSummary(thresholds)}.</div>`;
+        el.rallyLeaderList.innerHTML = `<div class="rally-leader-empty">No Rally Leaders at or above ${formatThresholdSummary(thresholds)}.</div>`;
       }
     }
 
@@ -2594,7 +2614,7 @@
 
     if (el.rallyRuleCopy) {
       const draft = hasDraftRallySignal() ? classifyCurrentState() : null;
-      const draftNote = draft && thresholds.ready ? ` · Form: ${draft.assigned_role}` : "";
+      const draftNote = draft && !draft.pending ? ` · Form: ${draft.assigned_role}` : "";
       el.rallyRuleCopy.textContent = `${thresholds.label}${draftNote}`;
     }
   }
@@ -2607,25 +2627,25 @@
     if (!thresholds?.ready) {
       el.rallyFormationList.innerHTML = `
         <div class="rally-leader-empty">
-          Strike teams need real uploads first. As members submit APC1 CP, live median gates appear and RL/RJ updates automatically.
+          Waiting for real uploads. RL / RJ uses the median APC1 CP from the live roster — counts update as members submit.
         </div>`;
       return;
     }
 
     const api = globalThis.PHL_RALLY_MATCHMAKING || globalThis.PHL_RALLY_ROLES;
     if (!api?.suggestRallyFormations) {
-      el.rallyFormationList.innerHTML = `<div class="rally-leader-empty">Matchmaking module not loaded. Hard-refresh (v25).</div>`;
+      el.rallyFormationList.innerHTML = `<div class="rally-leader-empty">Matchmaking module not loaded. Hard-refresh (v134).</div>`;
       return;
     }
 
     const leaders = categorized.filter(m => m.assigned_role === "RL");
     const joiners = categorized.filter(m => m.assigned_role === "RJ");
     if (!leaders.length) {
-      el.rallyFormationList.innerHTML = `<div class="rally-leader-empty">No Rally Leaders yet — raise Plaza / APC1 above the gates, or lower manual thresholds.</div>`;
+      el.rallyFormationList.innerHTML = `<div class="rally-leader-empty">No Rally Leaders yet — need APC1 at or above the live median (${formatNumber(thresholds.minApc1M)}M).</div>`;
       return;
     }
     if (!joiners.length) {
-      el.rallyFormationList.innerHTML = `<div class="rally-leader-empty">Need at least one Rally Joiner (below the gates) to fill marches (~100k each).</div>`;
+      el.rallyFormationList.innerHTML = `<div class="rally-leader-empty">Need at least one Rally Joiner (below the median) to fill marches (~100k each).</div>`;
       return;
     }
 
@@ -2671,94 +2691,22 @@
   }
 
   function syncRallyCriteriaControls() {
-    const criteria = getRallyCriteriaPrefs();
-    const rosterMode = criteria.mode !== "manual";
-    if (el.rallyCriteriaMode) {
-      el.rallyCriteriaMode.disabled = false;
-      el.rallyCriteriaMode.value = criteria.mode;
-    }
-    if (el.rallyManualFields) el.rallyManualFields.hidden = rosterMode;
-    if (el.rallyRosterReadout) el.rallyRosterReadout.hidden = !rosterMode;
-
-    const live = getAllianceRallyThresholdsFromRoster();
+    const live = getAllianceRallyThresholds();
+    if (el.rallyRosterReadout) el.rallyRosterReadout.hidden = false;
     if (el.rallyReadoutApc) {
       el.rallyReadoutApc.textContent = live.ready
         ? `${formatNumber(live.minApc1M)}M`
         : "—";
     }
-    if (el.rallyReadoutPlaza) {
-      el.rallyReadoutPlaza.textContent = live.minPlaza > 0
-        ? formatTroops(live.minPlaza)
-        : (live.samplePlaza ? "—" : "pending");
-    }
-
-    if (el.rallyMinApc1Input && document.activeElement !== el.rallyMinApc1Input) {
-      el.rallyMinApc1Input.value = criteria.minApc1M ? String(criteria.minApc1M) : "";
-    }
-    if (el.rallyMinPlazaInput && document.activeElement !== el.rallyMinPlazaInput) {
-      el.rallyMinPlazaInput.value = criteria.minPlaza ? String(criteria.minPlaza) : "";
+    if (el.rallyReadoutSamples) {
+      el.rallyReadoutSamples.textContent = live.sampleApc > 0
+        ? String(live.sampleApc)
+        : "—";
     }
   }
 
-  function onRallyCriteriaModeChange() {
-    const criteria = getRallyCriteriaPrefs();
-    criteria.mode = el.rallyCriteriaMode?.value === "manual" ? "manual" : "roster";
-    if (criteria.mode === "manual") {
-      const live = getAllianceRallyThresholdsFromRoster();
-      if (!criteria.minApc1M && live.minApc1M) criteria.minApc1M = Number(live.minApc1M) || 0;
-      if (!criteria.minPlaza && live.minPlaza) criteria.minPlaza = Number(live.minPlaza) || 0;
-    }
-    prefs.rallyCriteria = criteria;
-    savePrefs();
-    syncRallyCriteriaControls();
-    renderRoster();
-    renderRallySplit();
-    syncLiveRallyClassification({ skipScan: true });
-    playSfx("click");
-  }
-
-  function onRallyManualThresholdChange() {
-    const criteria = getRallyCriteriaPrefs();
-    criteria.mode = "manual";
-    criteria.minApc1M = Math.max(0, Number(el.rallyMinApc1Input?.value || 0));
-    criteria.minPlaza = Math.max(0, Math.floor(Number(el.rallyMinPlazaInput?.value || 0)));
-    prefs.rallyCriteria = criteria;
-    savePrefs();
-    if (el.rallyCriteriaMode) el.rallyCriteriaMode.value = "manual";
-    syncRallyCriteriaControls();
-    renderRoster();
-    renderRallySplit();
-    syncLiveRallyClassification({ skipScan: true });
-  }
-
-  function getRallyCriteriaPrefs() {
-    const raw = prefs.rallyCriteria && typeof prefs.rallyCriteria === "object" ? prefs.rallyCriteria : {};
-    return {
-      mode: raw.mode === "manual" ? "manual" : "roster",
-      minApc1M: Math.max(0, Number(raw.minApc1M) || 0),
-      minPlaza: Math.max(0, Number(raw.minPlaza) || 0)
-    };
-  }
-
-  /** Selected target: live roster median, or admin-selected custom APC1 + Plaza. */
+  /** Live uploaded roster median APC1 only — no custom targets. */
   function getAllianceRallyThresholds() {
-    const criteria = getRallyCriteriaPrefs();
-    if (criteria.mode === "manual") {
-      const minApc1M = Number(criteria.minApc1M) || 0;
-      const minPlaza = Number(criteria.minPlaza) || 0;
-      const ready = minApc1M > 0;
-      return {
-        ready,
-        source: "manual",
-        minApc1M,
-        minPlaza,
-        minApc1Cp: toAbsoluteCp(minApc1M),
-        minRallyCapacity: minPlaza,
-        label: ready
-          ? `Selected target: APC1 ≥ ${formatNumber(minApc1M)}M${minPlaza > 0 ? ` · Plaza ≥ ${formatTroops(minPlaza)}` : " · Plaza optional"}`
-          : "Select a custom APC1 target (M) to classify RL / RJ."
-      };
-    }
     return getAllianceRallyThresholdsFromRoster();
   }
 
@@ -2766,38 +2714,32 @@
     const samples = roster
       .filter(member => !member.isDemo)
       .map(member => ({
-        apc1_cp: toAbsoluteCp(getMain(member)),
-        rally_capacity: Number(member.rallyCapacity || 0)
+        apc1_cp: toAbsoluteCp(getMain(member))
       }));
     const derived = window.PHL_RALLY_ROLES?.deriveThresholdsFromRoster
       ? window.PHL_RALLY_ROLES.deriveThresholdsFromRoster(samples)
-      : { minApc1Cp: 0, minRallyCapacity: 0, sampleApc: 0, samplePlaza: 0 };
+      : { minApc1Cp: 0, sampleApc: 0 };
 
-    const minApc1M = derived.minApc1Cp >= 10_000 ? derived.minApc1Cp / 1_000_000 : derived.minApc1Cp;
-    const hasPlazaGate = derived.samplePlaza >= MIN_RALLY_ROSTER_SAMPLES && derived.minRallyCapacity > 0;
-    const minPlaza = hasPlazaGate ? derived.minRallyCapacity : 0;
-    const ready = derived.sampleApc >= MIN_RALLY_ROSTER_SAMPLES && minApc1M > 0;
+    const minApc1Cp = Number(derived.minApc1Cp) || 0;
+    const minApc1M = minApc1Cp >= 10_000 ? minApc1Cp / 1_000_000 : minApc1Cp;
+    const sampleApc = Number(derived.sampleApc) || 0;
+    const ready = sampleApc >= MIN_RALLY_ROSTER_SAMPLES && minApc1Cp > 0;
 
     return {
       ready,
       source: "roster",
       minApc1M,
-      minPlaza,
-      minApc1Cp: derived.minApc1Cp,
-      minRallyCapacity: minPlaza,
-      sampleApc: derived.sampleApc,
-      samplePlaza: derived.samplePlaza,
+      minApc1Cp,
+      sampleApc,
       label: !ready
-        ? "Waiting for real uploads (APC1 CP) to classify RL / RJ."
-        : hasPlazaGate
-          ? `Live from uploaded data (n=${derived.sampleApc}): APC1 ≥ ${formatNumber(minApc1M)}M · Plaza ≥ ${formatTroops(minPlaza)}`
-          : `Live from uploaded APC1 (n=${derived.sampleApc}): APC1 ≥ ${formatNumber(minApc1M)}M · Plaza gate pending`
+        ? "Waiting for real uploads (APC1 CP) — median not ready yet."
+        : `Median APC1: ${formatNumber(minApc1M)}M · ≥ median = RL · below = RJ · n=${sampleApc}`
     };
   }
 
   function formatThresholdSummary(thresholds) {
     if (!thresholds?.ready) return "insufficient alliance data";
-    return `APC1 ≥ ${formatNumber(thresholds.minApc1M)}M · Plaza ≥ ${formatTroops(thresholds.minPlaza)}`;
+    return `Median APC1 ${formatNumber(thresholds.minApc1M)}M`;
   }
 
   /**
@@ -2809,9 +2751,14 @@
     if (!options.skipScan) renderScan();
 
     el.wizardContent.querySelectorAll("[data-live-rally-role], [data-checklist='role']").forEach(node => {
-      node.textContent = role.assigned_role === "RL" ? "Rally Leader" : "Rally Joiner";
-      node.classList.toggle("gap-met", role.assigned_role === "RL");
-      node.classList.toggle("gap-short", role.assigned_role !== "RL");
+      if (role.pending) {
+        node.textContent = "Waiting";
+        node.classList.remove("gap-met", "gap-short");
+      } else {
+        node.textContent = role.assigned_role === "RL" ? "Rally Leader" : "Rally Joiner";
+        node.classList.toggle("gap-met", role.assigned_role === "RL");
+        node.classList.toggle("gap-short", role.assigned_role !== "RL");
+      }
     });
     const thresholdsReady = getAllianceRallyThresholds().ready;
     el.wizardContent.querySelectorAll("[data-live-rally-waiting]").forEach(node => {
@@ -4181,7 +4128,13 @@
   function loadPrefs() {
     try {
       const raw = JSON.parse(localStorage.getItem(PREFS_KEY) || "{}");
-      return raw && typeof raw === "object" ? raw : {};
+      if (!raw || typeof raw !== "object") return {};
+      // Custom RL/RJ targets removed — median from live roster only.
+      if (raw.rallyCriteria) {
+        delete raw.rallyCriteria;
+        try { localStorage.setItem(PREFS_KEY, JSON.stringify(raw)); } catch {}
+      }
+      return raw;
     } catch {
       return {};
     }
@@ -4951,20 +4904,17 @@
 
   function classifyMemberPayload(input) {
     const thresholds = getAllianceRallyThresholds();
-    if (!thresholds.ready) {
-      const faction = ["Fighter", "Shooter", "Rider"].includes(input.apc1_faction) ? input.apc1_faction : "Fighter";
-      return { ...input, assigned_role: "RJ", specialty_faction: faction };
-    }
-    const gate = {
-      minApc1Cp: thresholds.minApc1Cp,
-      minRallyCapacity: thresholds.minRallyCapacity
-    };
-    const api = window.PHL_RALLY_ROLES;
-    if (api?.classifyMember) return api.classifyMember(input, gate);
-    const cpOk = Number(input.apc1_cp) >= gate.minApc1Cp;
-    const capOk = gate.minRallyCapacity <= 0 || Number(input.rally_capacity) >= gate.minRallyCapacity;
     const faction = ["Fighter", "Shooter", "Rider"].includes(input.apc1_faction) ? input.apc1_faction : "Fighter";
-    return { ...input, assigned_role: cpOk && capOk ? "RL" : "RJ", specialty_faction: faction };
+    if (!thresholds.ready) {
+      return { ...input, assigned_role: "RJ", specialty_faction: faction, pending: true };
+    }
+    const gate = { minApc1Cp: thresholds.minApc1Cp };
+    const api = window.PHL_RALLY_ROLES;
+    if (api?.classifyMember) {
+      return { ...api.classifyMember(input, gate), pending: false };
+    }
+    const cpOk = Number(input.apc1_cp) >= gate.minApc1Cp;
+    return { ...input, assigned_role: cpOk ? "RL" : "RJ", specialty_faction: faction, pending: false };
   }
 
   function getRallyGateReasonFromState() {
@@ -4990,26 +4940,9 @@
     if (!thresholds.ready) return "Waiting for uploaded alliance CP";
     const main = getMain(member);
     const absCp = toAbsoluteCp(main);
-    const cap = Number(member.rallyCapacity || 0);
     const cpOk = absCp >= thresholds.minApc1Cp;
-    const capOk = thresholds.minRallyCapacity <= 0 || cap >= thresholds.minRallyCapacity;
-    if (cpOk && capOk) return thresholds.source === "manual" ? "RL vs selected target" : "RL vs live uploaded median";
-    const parts = [];
-    if (!cpOk) {
-      parts.push(
-        thresholds.source === "manual"
-          ? `APC1 ${formatNumber(main)}M < target ${formatNumber(thresholds.minApc1M)}M`
-          : `APC1 ${formatNumber(main)}M < live ${formatNumber(thresholds.minApc1M)}M`
-      );
-    }
-    if (!capOk) {
-      parts.push(
-        thresholds.source === "manual"
-          ? `Plaza ${formatTroops(cap)} < target ${formatTroops(thresholds.minPlaza)}`
-          : `Plaza ${formatTroops(cap)} < live ${formatTroops(thresholds.minPlaza)}`
-      );
-    }
-    return parts.join(" · ") || "RJ";
+    if (cpOk) return `RL ≥ median ${formatNumber(thresholds.minApc1M)}M`;
+    return `APC1 ${formatNumber(main)}M < median ${formatNumber(thresholds.minApc1M)}M`;
   }
 
   function formatTroops(value) {
