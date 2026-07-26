@@ -1339,13 +1339,15 @@ button.row-val.field-tap small{font-size:.62em;color:var(--soft)}
 
   .wizard-panel{
     padding-bottom:12px;
-    overflow-x:hidden;
-    max-width:100%
+    max-width:100%;
+    min-width:0;
+    overflow:visible /* override .panel overflow:hidden so sticky Continue works */
   }
   .wizard-panel .panel-head{padding:14px 14px 0}
   .wizard-panel .panel-head h2{font-size:clamp(1.3rem,5vw,1.6rem)}
-  .wizard-shell{padding:12px 10px 0;gap:10px;overflow-x:hidden;min-width:0}
-  .wizard-card{padding:14px;overflow:hidden;min-width:0}
+  /* Do NOT set overflow-x:hidden here — it breaks position:sticky on .wizard-actions */
+  .wizard-shell{padding:12px 10px 0;gap:10px;min-width:0;max-width:100%}
+  .wizard-card{padding:14px;min-width:0}
   .wizard-main{min-width:0;max-width:100%;padding-bottom:12px}
   .wizard-actions{
     position:sticky;
@@ -1376,7 +1378,7 @@ button.row-val.field-tap small{font-size:.62em;color:var(--soft)}
     max-width:6.75rem;
     scroll-snap-align:start
   }
-  .helper-card{padding:14px;min-width:0;overflow:hidden}
+  .helper-card{padding:14px;min-width:0}
   .benchmark-values{gap:8px}
   .benchmark-card{padding:12px}
   .benchmark-card strong{font-size:clamp(1.2rem,5vw,1.45rem)}
