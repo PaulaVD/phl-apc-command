@@ -1352,6 +1352,7 @@ button.row-val.field-tap small{font-size:.62em;color:var(--soft)}
   .wizard-content,
   .helper-card,
   .summary-stack,
+  .summary-line,
   .wizard-card .field,
   .plaza-live{
     scroll-margin-bottom:calc(200px + env(safe-area-inset-bottom,0px))
