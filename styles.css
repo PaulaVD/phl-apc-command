@@ -748,20 +748,40 @@ body.modal-open{overflow:hidden}
 .tag.role-rj{color:#ff9b6f;border-color:rgba(255,155,111,.3)}
 .rally-criteria{display:grid;gap:8px;padding:0;border:0;background:transparent;border-radius:0}
 .rally-roster-readout,.rally-kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;align-items:stretch}
-.rally-roster-readout[hidden],.rally-leader-list[hidden],.rally-matchmaking[hidden]{display:none!important}
+.rally-roster-readout[hidden],.rally-team-panel[hidden],.rally-matchmaking[hidden]{display:none!important}
 .rally-chip,.rally-stat{min-height:64px;padding:10px 12px;border-radius:14px;border:1px solid var(--line);background:rgba(255,255,255,.03);display:flex;flex-direction:column;justify-content:space-between;gap:6px;min-width:0}
-.rally-chip span,.rally-stat span{font-size:.62rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);line-height:1.2}
+.rally-chip span,.rally-stat .rally-stat-label{font-size:.62rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);line-height:1.2}
 .rally-chip b,.rally-stat strong{font-family:var(--font-display);font-size:1.35rem;font-weight:600;line-height:1;letter-spacing:.04em;color:var(--text)}
-.rally-stat{flex-direction:row;align-items:center;justify-content:space-between}
-.rally-stat strong{font-size:1.7rem}
+button.rally-stat{appearance:none;-webkit-appearance:none;margin:0;font:inherit;color:inherit;text-align:left;cursor:pointer;touch-action:manipulation;transition:border-color .18s ease,background .18s ease,transform .12s ease}
+button.rally-stat:disabled{cursor:default;opacity:.72}
+button.rally-stat:not(:disabled):hover{background:rgba(255,255,255,.055)}
+button.rally-stat:not(:disabled):active{transform:scale(.985)}
+button.rally-stat:focus-visible{outline:2px solid rgba(240,186,114,.55);outline-offset:2px}
+.rally-stat{flex-direction:row;align-items:center;justify-content:space-between;gap:8px;position:relative}
+.rally-stat .rally-stat-label{flex:1;min-width:0}
+.rally-stat strong{font-size:1.7rem;flex-shrink:0}
+.rally-stat-chevron{width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);margin:0 2px 4px 0;flex-shrink:0;transition:transform .18s ease,border-color .18s ease;opacity:.7}
+button.rally-stat[aria-expanded="true"] .rally-stat-chevron{transform:rotate(225deg);margin-bottom:0;margin-top:4px;opacity:1}
+button.rally-stat:disabled .rally-stat-chevron{opacity:.25}
 .rally-stat.rl{border-color:rgba(255,227,165,.28)}
 .rally-stat.rl strong{color:#ffe3a5}
+.rally-stat.rl[aria-expanded="true"]{border-color:rgba(255,227,165,.48);background:rgba(255,227,165,.08)}
+.rally-stat.rl[aria-expanded="true"] .rally-stat-chevron{border-color:#ffe3a5}
 .rally-stat.rj{border-color:rgba(255,155,111,.28)}
 .rally-stat.rj strong{color:#ff9b6f}
-.rally-leader-list{display:grid;gap:6px}
-.rally-leader-row{display:flex;justify-content:space-between;align-items:center;gap:10px;min-height:40px;padding:8px 10px;border-radius:12px;border:1px solid rgba(255,227,165,.2);background:rgba(255,227,165,.06);font-size:.84rem}
-.rally-leader-row b{color:#ffe3a5;font-family:var(--font-display);font-size:1rem;font-weight:600;letter-spacing:.04em;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.rally-leader-row span{color:var(--soft);flex-shrink:0;font-size:.75rem}
+.rally-stat.rj[aria-expanded="true"]{border-color:rgba(255,155,111,.48);background:rgba(255,155,111,.08)}
+.rally-stat.rj[aria-expanded="true"] .rally-stat-chevron{border-color:#ff9b6f}
+.rally-team-panel{display:grid;gap:8px;padding:10px;border-radius:14px;border:1px solid var(--line);background:rgba(0,0,0,.16);animation:rallyTeamIn .18s ease}
+@keyframes rallyTeamIn{from{opacity:.35;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.rally-team-head{font-size:.62rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.rally-leader-list,.rally-joiner-list{display:grid;gap:6px;max-height:min(42vh,320px);overflow:auto;-webkit-overflow-scrolling:touch}
+.rally-leader-row,.rally-joiner-row{display:flex;justify-content:space-between;align-items:center;gap:10px;min-height:40px;padding:8px 10px;border-radius:12px;font-size:.84rem}
+.rally-leader-row{border:1px solid rgba(255,227,165,.2);background:rgba(255,227,165,.06)}
+.rally-joiner-row{border:1px solid rgba(255,155,111,.2);background:rgba(255,155,111,.06)}
+.rally-leader-row b,.rally-joiner-row b{font-family:var(--font-display);font-size:1rem;font-weight:600;letter-spacing:.04em;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rally-leader-row b{color:#ffe3a5}
+.rally-joiner-row b{color:#ff9b6f}
+.rally-leader-row span,.rally-joiner-row span{color:var(--soft);flex-shrink:0;font-size:.75rem}
 .rally-leader-empty{padding:10px 12px;border-radius:12px;border:1px dashed var(--line);color:var(--soft);font-size:.8rem;line-height:1.4}
 .rally-rule{margin:0;color:var(--soft);font-size:.78rem;line-height:1.4}
 .rally-matchmaking,.roster-formations{display:grid;gap:10px}

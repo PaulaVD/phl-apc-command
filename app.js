@@ -62,6 +62,7 @@
   let lastAdminChatStamp = "";
   let rosterFilterTimer = 0;
   let rallyRosterTimer = 0;
+  let rallyTeamExpanded = { rl: false, rj: false };
   let lastRenderedLevel = null;
   let wizardRailDirty = true;
   let lastWizardRailScrollStep = -1;
@@ -127,11 +128,16 @@
     rallySplit: document.getElementById("rallySplit"),
     kpiRl: document.getElementById("kpiRl"),
     kpiRj: document.getElementById("kpiRj"),
+    kpiRlBtn: document.getElementById("kpiRlBtn"),
+    kpiRjBtn: document.getElementById("kpiRjBtn"),
     rallyRosterReadout: document.getElementById("rallyRosterReadout"),
     rallyReadoutApc: document.getElementById("rallyReadoutApc"),
     rallyReadoutSamples: document.getElementById("rallyReadoutSamples"),
     rallyRuleCopy: document.getElementById("rallyRuleCopy"),
+    rallyTeamRl: document.getElementById("rallyTeamRl"),
+    rallyTeamRj: document.getElementById("rallyTeamRj"),
     rallyLeaderList: document.getElementById("rallyLeaderList"),
+    rallyJoinerList: document.getElementById("rallyJoinerList"),
     rallyFormationList: document.getElementById("rallyFormationList"),
     rallyMatchmaking: document.getElementById("rallyMatchmaking"),
     refList: document.getElementById("refList"),
@@ -363,6 +369,8 @@
     el.deleteConfirmBtn.addEventListener("click", confirmDeleteMember);
     el.deleteCancelBtn.addEventListener("click", () => closeModal("delete"));
     el.scanToggleBtn?.addEventListener("click", toggleScanPanel);
+    el.kpiRlBtn?.addEventListener("click", () => toggleRallyTeamPanel("rl"));
+    el.kpiRjBtn?.addEventListener("click", () => toggleRallyTeamPanel("rj"));
     el.accessCodeInput?.addEventListener("keydown", event => { if (event.key === "Enter") attemptUnlock(); });
     el.memberDrawerSave?.addEventListener("click", saveMemberDrawer);
     el.memberDrawerCancel?.addEventListener("click", onMemberDrawerCancel);
@@ -2565,6 +2573,8 @@
 
     syncRallyCriteriaControls();
     const thresholds = getAllianceRallyThresholds();
+    const rosterAvailable = isAdmin && Array.isArray(roster);
+    const canExpand = rosterAvailable && thresholds.ready;
 
     if (!thresholds.ready) {
       if (kpiTweens.has(el.kpiRl)) {
@@ -2579,35 +2589,33 @@
       el.kpiRj.textContent = "—";
       kpiTweens.set(el.kpiRl, { value: 0 });
       kpiTweens.set(el.kpiRj, { value: 0 });
-      if (el.rallyLeaderList) {
-        el.rallyLeaderList.hidden = true;
-        el.rallyLeaderList.innerHTML = "";
-      }
+      setRallyTeamExpandEnabled(false);
+      collapseRallyTeamPanels();
+      clearRallyTeamLists();
       renderRallyFormations([], thresholds);
       if (el.rallyRuleCopy) el.rallyRuleCopy.textContent = thresholds.label;
       return;
     }
 
     const saved = roster.map(getMemberRallyRole);
-    const summary = {
-      rl: saved.filter(m => m.assigned_role === "RL").length,
-      rj: saved.filter(m => m.assigned_role === "RJ").length
-    };
+    const leaders = saved
+      .filter(m => m.assigned_role === "RL")
+      .sort((a, b) => Number(b.apc1_cp) - Number(a.apc1_cp));
+    const joiners = saved
+      .filter(m => m.assigned_role === "RJ")
+      .sort((a, b) => Number(b.apc1_cp) - Number(a.apc1_cp));
+    const summary = { rl: leaders.length, rj: joiners.length };
     animateKpi(el.kpiRl, summary.rl, { decimals: 0, duration: 420 });
     animateKpi(el.kpiRj, summary.rj, { decimals: 0, duration: 420 });
 
-    const leaders = saved.filter(m => m.assigned_role === "RL");
-    if (el.rallyLeaderList) {
-      if (leaders.length) {
-        el.rallyLeaderList.hidden = false;
-        el.rallyLeaderList.innerHTML = leaders.map(m => {
-          const raw = roster.find(r => r.id === m.id);
-          return `<div class="rally-leader-row"><b>${escapeHtml(m.name)}</b><span>${m.specialty_faction} · Plaza ${formatTroops(raw?.rallyCapacity || 0)}</span></div>`;
-        }).join("");
-      } else {
-        el.rallyLeaderList.hidden = false;
-        el.rallyLeaderList.innerHTML = `<div class="rally-leader-empty">No Rally Leaders at or above ${formatThresholdSummary(thresholds)}.</div>`;
-      }
+    setRallyTeamExpandEnabled(canExpand);
+    if (!canExpand) {
+      collapseRallyTeamPanels();
+      clearRallyTeamLists();
+    } else {
+      renderRallyTeamList("rl", leaders, thresholds);
+      renderRallyTeamList("rj", joiners, thresholds);
+      syncRallyTeamPanelVisibility();
     }
 
     renderRallyFormations(saved, thresholds);
@@ -2617,6 +2625,67 @@
       const draftNote = draft && !draft.pending ? ` · Form: ${draft.assigned_role}` : "";
       el.rallyRuleCopy.textContent = `${thresholds.label}${draftNote}`;
     }
+  }
+
+  function toggleRallyTeamPanel(role) {
+    if (!isAdmin || !getAllianceRallyThresholds().ready) return;
+    const key = role === "rj" ? "rj" : "rl";
+    rallyTeamExpanded[key] = !rallyTeamExpanded[key];
+    syncRallyTeamPanelVisibility();
+    playSfx("click");
+  }
+
+  function setRallyTeamExpandEnabled(enabled) {
+    [el.kpiRlBtn, el.kpiRjBtn].forEach(btn => {
+      if (!btn) return;
+      btn.disabled = !enabled;
+      btn.title = enabled
+        ? (btn === el.kpiRlBtn ? "Show or hide Rally Leaders" : "Show or hide Rally Joiners")
+        : "Alliance roster required to expand teams";
+    });
+  }
+
+  function collapseRallyTeamPanels() {
+    rallyTeamExpanded.rl = false;
+    rallyTeamExpanded.rj = false;
+    syncRallyTeamPanelVisibility();
+  }
+
+  function syncRallyTeamPanelVisibility() {
+    const showRl = Boolean(rallyTeamExpanded.rl);
+    const showRj = Boolean(rallyTeamExpanded.rj);
+    if (el.rallyTeamRl) el.rallyTeamRl.hidden = !showRl;
+    if (el.rallyTeamRj) el.rallyTeamRj.hidden = !showRj;
+    if (el.kpiRlBtn) el.kpiRlBtn.setAttribute("aria-expanded", String(showRl));
+    if (el.kpiRjBtn) el.kpiRjBtn.setAttribute("aria-expanded", String(showRj));
+  }
+
+  function clearRallyTeamLists() {
+    if (el.rallyLeaderList) el.rallyLeaderList.innerHTML = "";
+    if (el.rallyJoinerList) el.rallyJoinerList.innerHTML = "";
+  }
+
+  function renderRallyTeamList(role, members, thresholds) {
+    const listEl = role === "rj" ? el.rallyJoinerList : el.rallyLeaderList;
+    if (!listEl) return;
+    const isRl = role !== "rj";
+    const rowClass = isRl ? "rally-leader-row" : "rally-joiner-row";
+    const emptyLabel = isRl
+      ? `No Rally Leaders at or above ${formatThresholdSummary(thresholds)}.`
+      : `No Rally Joiners below ${formatThresholdSummary(thresholds)}.`;
+
+    if (!members.length) {
+      listEl.innerHTML = `<div class="rally-leader-empty">${emptyLabel}</div>`;
+      return;
+    }
+
+    listEl.innerHTML = members.map(m => {
+      const apc1M = Number(m.apc1_cp) >= 10_000 ? Number(m.apc1_cp) / 1_000_000 : Number(m.apc1_cp);
+      const meta = isRl
+        ? `${m.specialty_faction} · APC1 ${formatNumber(apc1M)}M · Plaza ${formatTroops(m.rally_capacity || 0)}`
+        : `${m.specialty_faction} · APC1 ${formatNumber(apc1M)}M`;
+      return `<div class="${rowClass}" role="listitem"><b>${escapeHtml(m.name)}</b><span>${escapeHtml(meta)}</span></div>`;
+    }).join("");
   }
 
   function renderRallyFormations(categorized, thresholds) {
@@ -2634,7 +2703,7 @@
 
     const api = globalThis.PHL_RALLY_MATCHMAKING || globalThis.PHL_RALLY_ROLES;
     if (!api?.suggestRallyFormations) {
-      el.rallyFormationList.innerHTML = `<div class="rally-leader-empty">Matchmaking module not loaded. Hard-refresh (v135).</div>`;
+      el.rallyFormationList.innerHTML = `<div class="rally-leader-empty">Matchmaking module not loaded. Hard-refresh (v136).</div>`;
       return;
     }
 
@@ -3519,6 +3588,9 @@
     animateKpi(el.kpiApexTotal, 0, { decimals: 0, duration: 280 });
     if (el.kpiRl) animateKpi(el.kpiRl, 0, { decimals: 0, duration: 280 });
     if (el.kpiRj) animateKpi(el.kpiRj, 0, { decimals: 0, duration: 280 });
+    setRallyTeamExpandEnabled(false);
+    collapseRallyTeamPanels();
+    clearRallyTeamLists();
     animateGauge(0);
     animateKpi(el.readinessValue, 0, { suffix: "%", decimals: 0, duration: 280 });
     el.readinessCopy.textContent = "Sign in to view alliance readiness.";

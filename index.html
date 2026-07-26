@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Teko:wght@500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=134" />
+  <link rel="stylesheet" href="styles.css?v=136" />
 </head>
 <body class="mobile-tab-times">
   <a class="skip-link" href="#operatorConsole">Skip to form</a>
@@ -430,10 +430,25 @@
               <p class="rally-rule" id="rallyRuleCopy">RL = APC1 at or above live uploaded median · RJ = below.</p>
             </div>
             <div class="rally-kpis">
-              <div class="rally-stat rl"><span>Rally Leaders</span><strong id="kpiRl">0</strong></div>
-              <div class="rally-stat rj"><span>Rally Joiners</span><strong id="kpiRj">0</strong></div>
+              <button type="button" class="rally-stat rl" id="kpiRlBtn" aria-expanded="false" aria-controls="rallyTeamRl" disabled title="Expand Rally Leaders">
+                <span class="rally-stat-label">Rally Leaders</span>
+                <strong id="kpiRl">0</strong>
+                <span class="rally-stat-chevron" aria-hidden="true"></span>
+              </button>
+              <button type="button" class="rally-stat rj" id="kpiRjBtn" aria-expanded="false" aria-controls="rallyTeamRj" disabled title="Expand Rally Joiners">
+                <span class="rally-stat-label">Rally Joiners</span>
+                <strong id="kpiRj">0</strong>
+                <span class="rally-stat-chevron" aria-hidden="true"></span>
+              </button>
             </div>
-            <div class="rally-leader-list" id="rallyLeaderList" hidden></div>
+            <div class="rally-team-panel" id="rallyTeamRl" hidden>
+              <div class="rally-team-head">Rally Leaders team</div>
+              <div class="rally-leader-list" id="rallyLeaderList" role="list"></div>
+            </div>
+            <div class="rally-team-panel" id="rallyTeamRj" hidden>
+              <div class="rally-team-head">Rally Joiners team</div>
+              <div class="rally-joiner-list" id="rallyJoinerList" role="list"></div>
+            </div>
           </div>
         </section>
 
@@ -565,6 +580,6 @@
   <script src="serverClock.js?v=35"></script>
   <script src="rallyRoles.js?v=30"></script>
   <script src="rallyMatchmaking.js?v=28"></script>
-  <script src="app.js?v=135" defer></script>
+  <script src="app.js?v=136" defer></script>
 </body>
 </html>
