@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Teko:wght@500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=114" />
+  <link rel="stylesheet" href="styles.css?v=115" />
 </head>
 <body class="mobile-tab-times">
   <a class="skip-link" href="#operatorConsole">Skip to form</a>
@@ -246,13 +246,13 @@
       <div class="privacy-icon" aria-hidden="true">
         <svg viewBox="0 0 24 24"><path d="M17 9h-1V7a4 4 0 1 0-8 0v2H7a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2Zm-3 0h-4V7a2 2 0 1 1 4 0Z"/></svg>
       </div>
-      <div>
+      <div class="privacy-copy">
         <strong class="privacy-title">How Personal Code works</strong>
-        <span><strong>1)</strong> Open <strong>Push Data</strong> and submit your APC CP with Personal Code blank.
-          <strong>2)</strong> A popup shows your new code — copy &amp; save it.
-          <strong>3)</strong> Later, enter that code under Push Data to overwrite, or use <strong>My profile</strong> to unlock only your record.
-          Tip: on first submit, leave the code blank so the system can generate it. You can also paste a line like <code>Name i5 820/760/710/655 450000</code>.
-          Admins: members registered before codes existed show <strong>Gen</strong> — assign &amp; copy a code for them.</span>
+        <p class="privacy-body">
+          1) <span class="privacy-term">Push Data</span> — leave Personal Code blank and submit.<br>
+          2) Save the code from the popup.<br>
+          3) Next time, enter that code to update your APC. Admins can <span class="privacy-term">Gen</span> codes for older members.
+        </p>
       </div>
     </section>
 
@@ -595,6 +595,6 @@
   <script src="serverClock.js?v=34"></script>
   <script src="rallyRoles.js?v=28"></script>
   <script src="rallyMatchmaking.js?v=27"></script>
-  <script src="app.js?v=114" defer></script>
+  <script src="app.js?v=115" defer></script>
 </body>
 </html>
