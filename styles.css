@@ -1330,12 +1330,12 @@ button.row-val.field-tap small{font-size:.62em;color:var(--soft)}
     width:100%;
     max-width:100%;
     margin:0;
-    /* Fixed tabs (~56–64) + sticky Continue row (~110) + breathing room */
-    padding:8px 10px calc(200px + env(safe-area-inset-bottom,0px));
+    /* Fixed tabs (~56–64) + fixed Continue block (~120) + breathing room */
+    padding:8px 10px calc(220px + env(safe-area-inset-bottom,0px));
     box-sizing:border-box;
     overflow-x:hidden
   }
-  .toast-region{bottom:calc(200px + env(safe-area-inset-bottom,0px))}
+  .toast-region{bottom:calc(220px + env(safe-area-inset-bottom,0px))}
 
   .wizard-panel{
     padding-bottom:12px;
@@ -1348,17 +1348,22 @@ button.row-val.field-tap small{font-size:.62em;color:var(--soft)}
   /* Do NOT set overflow-x:hidden here — it breaks position:sticky on .wizard-actions */
   .wizard-shell{padding:12px 10px 0;gap:10px;min-width:0;max-width:100%}
   .wizard-card{padding:14px;min-width:0}
-  .wizard-main{min-width:0;max-width:100%;padding-bottom:12px}
+  .wizard-main{min-width:0;max-width:100%;padding-bottom:calc(128px + env(safe-area-inset-bottom,0px))}
   .wizard-actions{
-    position:sticky;
+    position:fixed;
+    left:10px;
+    right:10px;
     bottom:calc(64px + env(safe-area-inset-bottom,0px));
-    z-index:40;
+    z-index:44;
     display:grid;
     grid-template-columns:1fr 1fr;
     gap:8px;
-    padding:10px 0 8px;
+    padding:10px 8px 8px;
     margin:0;
-    background:linear-gradient(180deg,transparent,rgba(9,3,3,.97) 22%,rgba(9,3,3,.99));
+    border-radius:16px 16px 0 0;
+    background:linear-gradient(180deg,rgba(9,3,3,.72),rgba(9,3,3,.97) 28%,rgba(9,3,3,.99));
+    backdrop-filter:blur(10px);
+    box-shadow:0 -10px 28px rgba(0,0,0,.35)
   }
   .wizard-actions .btn-primary{grid-column:1/-1;min-width:0;width:100%}
   .wizard-actions .btn{min-height:44px;width:100%}
@@ -1398,7 +1403,7 @@ button.row-val.field-tap small{font-size:.62em;color:var(--soft)}
   .wizard-panel .panel-head p{display:none} /* reclaim vertical space on phone */
   body.mobile-tab-push .member-privacy-note,
   body.mobile-tab-push .wizard-panel{
-    scroll-margin-bottom:calc(200px + env(safe-area-inset-bottom,0px))
+    scroll-margin-bottom:calc(220px + env(safe-area-inset-bottom,0px))
   }
 
   .member-drawer-sheet{width:100%;border-left:0;border-radius:22px 22px 0 0;height:min(92vh,100%);align-self:end}
@@ -1420,7 +1425,7 @@ button.row-val.field-tap small{font-size:.62em;color:var(--soft)}
 
 /* Narrow phone polish — must follow the ≤900 mobile shell block */
 @media (max-width:480px){
-  .shell{padding-left:10px;padding-right:10px;padding-bottom:calc(200px + env(safe-area-inset-bottom,0px))}
+  .shell{padding-left:10px;padding-right:10px;padding-bottom:calc(220px + env(safe-area-inset-bottom,0px))}
   .quick-row{grid-template-columns:1fr;gap:8px}
   .quick-btn:last-child{grid-column:auto}
   .rail-item{min-width:4.75rem;max-width:6.25rem}
