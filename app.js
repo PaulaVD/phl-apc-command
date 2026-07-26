@@ -688,6 +688,13 @@
         else node.removeAttribute("aria-current");
       });
     }
+    window.requestAnimationFrame(() => {
+      el.wizardRail?.querySelector(".rail-item.active")?.scrollIntoView({
+        behavior: "smooth",
+        inline: "nearest",
+        block: "nearest"
+      });
+    });
 
     if (meta.key === "identity") renderIdentityStep();
     else if (meta.key.startsWith("apc")) renderApcStep(Number(meta.key.slice(3)) - 1);
@@ -749,13 +756,14 @@
         </div>
         <div class="helper-card">
           <span>Live checklist</span>
+          ${rallyGateWaitingNoteHtml()}
           <div class="summary-stack">
             <div class="summary-line"><span>Name entered</span><b data-checklist="name">${state.name.trim() ? "Yes" : "No"}</b></div>
             <div class="summary-line"><span>Level selected</span><b data-checklist="level">${formatLevel(state.level)}</b></div>
             <div class="summary-line"><span>Rank selected</span><b data-checklist="rank">${state.rank}</b></div>
             <div class="summary-line"><span>Plaza capacity</span><b data-checklist="plaza">${state.rallyCapacity ? formatTroops(state.rallyCapacity) : "—"}</b></div>
             <div class="summary-line"><span>Rally role</span><b data-checklist="role" data-live-rally-role class="${role.assigned_role === "RL" ? "gap-met" : "gap-short"}">${role.assigned_role === "RL" ? "Rally Leader" : "Rally Joiner"}</b></div>
-            <div class="summary-line"><span>Role gate</span><b data-live-rally-reason>${escapeHtml(getRallyGateReasonFromState())}</b></div>
+            <div class="summary-line"><span>Role gate</span><b data-live-rally-reason>${escapeHtml(formatRallyGateReasonForChecklist())}</b></div>
             <div class="summary-line"><span>Main gap</span><b data-checklist="gap">${formatGap(getFrontlineGap(state.level, state.apcs[0].cp))}</b></div>
           </div>
         </div>
@@ -803,9 +811,10 @@
               <input class="input" id="rallyCapacityInput" type="number" min="0" step="1000" inputmode="numeric" placeholder="Example: 400000" value="${state.rallyCapacity || ""}">
             </div>
             <div class="plaza-live">
+              ${rallyGateWaitingNoteHtml()}
               <div class="summary-line"><span>Plaza entered</span><b data-checklist="plaza">${state.rallyCapacity ? formatTroops(state.rallyCapacity) : "—"}</b></div>
               <div class="summary-line"><span>Rally role</span><b data-live-rally-role class="${role.assigned_role === "RL" ? "gap-met" : "gap-short"}">${role.assigned_role === "RL" ? "Rally Leader" : "Rally Joiner"}</b></div>
-              <div class="summary-line"><span>Role gate</span><b data-live-rally-reason>${escapeHtml(getRallyGateReasonFromState())}</b></div>
+              <div class="summary-line"><span>Role gate</span><b data-live-rally-reason>${escapeHtml(formatRallyGateReasonForChecklist())}</b></div>
             </div>
           </div>` : ""}
           <div class="apc-footer">
@@ -2540,8 +2549,12 @@
       node.classList.toggle("gap-met", role.assigned_role === "RL");
       node.classList.toggle("gap-short", role.assigned_role !== "RL");
     });
+    const thresholdsReady = getAllianceRallyThresholds().ready;
+    el.wizardContent.querySelectorAll("[data-live-rally-waiting]").forEach(node => {
+      node.hidden = thresholdsReady;
+    });
     el.wizardContent.querySelectorAll("[data-live-rally-reason]").forEach(node => {
-      node.textContent = getRallyGateReasonFromState();
+      node.textContent = formatRallyGateReasonForChecklist();
     });
     el.wizardContent.querySelectorAll("[data-live-plaza], [data-checklist='plaza']").forEach(node => {
       node.textContent = state.rallyCapacity ? formatTroops(state.rallyCapacity) : "—";
@@ -4687,6 +4700,17 @@
       rallyCapacity: state.rallyCapacity,
       apcs: state.apcs
     });
+  }
+
+  function rallyGateWaitingNoteHtml() {
+    const ready = getAllianceRallyThresholds().ready;
+    return `<div class="rally-gate-note" data-live-rally-waiting role="status"${ready ? " hidden" : ""}>Waiting for uploaded alliance CP</div>`;
+  }
+
+  function formatRallyGateReasonForChecklist() {
+    const thresholds = getAllianceRallyThresholds();
+    if (!thresholds.ready) return "—";
+    return getRallyGateReasonFromState();
   }
 
   function getRallyGateReason(member) {
