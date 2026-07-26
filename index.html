@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Teko:wght@500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=69" />
+  <link rel="stylesheet" href="styles.css?v=70" />
 </head>
 <body>
   <a class="skip-link" href="#operatorConsole">Skip to form</a>
@@ -97,8 +97,52 @@
   </header>
 
   <main class="shell">
+    <nav class="mobile-shell-tabs" id="mobileShellTabs" aria-label="Mobile views" hidden>
+      <button type="button" class="mobile-shell-tab is-active" data-mobile-tab="preview" aria-selected="true">Times / Events</button>
+      <button type="button" class="mobile-shell-tab" data-mobile-tab="push" aria-selected="false">Push Data</button>
+    </nav>
+
     <section class="dashboard-grid">
-      <section class="panel scan-panel" data-tilt id="scanPanel">
+      <section class="panel times-events-panel" data-mobile-pane="preview" id="timesEventsPanel">
+        <div class="panel-head compact">
+          <div>
+            <span class="eyebrow"><span></span>Dark War schedule</span>
+            <h2>Times &amp; events</h2>
+            <p>Server clock, local conversion, and common event windows.</p>
+          </div>
+        </div>
+        <div class="times-events-body">
+          <div class="times-events-clocks" aria-label="Server and local time">
+            <div class="te-clock te-server">
+              <span class="time-block-kicker">Server</span>
+              <strong id="teServerClock">--:--:--</strong>
+              <em class="time-block-badge" id="teServerBadge">UTC-3</em>
+            </div>
+            <div class="te-clock te-local">
+              <span class="time-block-kicker">Local</span>
+              <strong id="teLocalClock">--:--:--</strong>
+              <em class="time-block-badge" id="teLocalBadge">auto</em>
+            </div>
+          </div>
+          <div class="te-convert">
+            <span class="time-block-kicker">Event → local</span>
+            <div class="te-convert-row">
+              <input class="input time-block-input" id="teEventInput" type="time" value="15:00" step="60" aria-label="Server event time">
+              <span class="time-block-arrow" aria-hidden="true">→</span>
+              <strong id="teConvertedTime">--:--</strong>
+              <select class="time-block-offset" id="teOffsetSelect" aria-label="Target UTC offset"></select>
+            </div>
+            <small class="time-block-meta" id="teConvertedMeta">Detecting timezone…</small>
+          </div>
+          <div class="te-schedule" id="teScheduleList">
+            <div class="te-event"><b>15:00</b><span>Prime window · check Discord</span></div>
+            <div class="te-event"><b>20:00</b><span>Evening ops · server time</span></div>
+            <div class="te-event"><b>12:00</b><span>Midday rally check</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel scan-panel" data-tilt id="scanPanel" data-mobile-pane="preview">
         <div class="panel-head compact">
           <div>
             <span class="eyebrow"><span></span>PH-L alliance scan</span>
@@ -146,7 +190,7 @@
         </div>
       </section>
 
-      <section class="panel wizard-panel" id="operatorConsole">
+      <section class="panel wizard-panel" id="operatorConsole" data-mobile-pane="push">
         <div class="panel-head">
           <div>
             <span class="eyebrow"><span></span>PH-L member entry</span>
@@ -188,13 +232,13 @@
       </section>
     </section>
 
-    <section class="member-privacy-note" id="memberPrivacyNote">
+    <section class="member-privacy-note" id="memberPrivacyNote" data-mobile-pane="push">
       <div class="privacy-icon" aria-hidden="true">
         <svg viewBox="0 0 24 24"><path d="M17 9h-1V7a4 4 0 1 0-8 0v2H7a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2Zm-3 0h-4V7a2 2 0 1 1 4 0Z"/></svg>
       </div>
       <div>
         <strong>PH-L private analytics</strong>
-        <span>Every submit is saved to the shared Phoenix Legacy cloud roster. Admins unlock to review all alliance uploads. Tip: paste <code>Name i5 820/760/710/655 450000</code>.</span>
+        <span>Every submit is saved to the shared Phoenix Legacy cloud roster. Keep your <em>Personal Code</em> to overwrite your entry later. Without it, updates land as <code>[name]-updt</code> for admin review. Tip: paste <code>Name i5 820/760/710/655 450000</code>.</span>
       </div>
     </section>
 
@@ -225,51 +269,66 @@
             <h2>Member power roster</h2>
             <p>Track, compare and export combat power for PH-L members only.</p>
           </div>
-        </div>
-
-        <div class="toolbar">
-          <label class="searchbox"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 20-4.4-4.4a8 8 0 1 0-1 1L20 21l1-1ZM5 11a6 6 0 1 1 12 0 6 6 0 0 1-12 0Z"/></svg><input id="searchInput" type="search" placeholder="Search player..." autocomplete="off"></label>
-          <select id="levelFilter" aria-label="Filter by level"></select>
-          <select id="rankFilter" aria-label="Filter by rank">
-            <option value="all">All ranks</option>
-            <option value="R1">R1</option>
-            <option value="R2">R2</option>
-            <option value="R3">R3</option>
-            <option value="R4">R4</option>
-            <option value="R5">R5</option>
-          </select>
-          <select id="statusFilter" aria-label="Filter by status">
-            <option value="all">All statuses</option>
-            <option value="apex">Apex</option>
-            <option value="frontline">Frontline</option>
-            <option value="operational">Operational</option>
-            <option value="building">Building</option>
-            <option value="below-frontline">Below frontline</option>
-            <option value="stale">Stale (7d+)</option>
-            <option value="rl">Rally Leader (RL)</option>
-            <option value="rj">Rally Joiner (RJ)</option>
-          </select>
-          <select id="sortSelect" aria-label="Sort roster">
-            <option value="total-desc">Highest total CP</option>
-            <option value="main-desc">Highest main APC</option>
-            <option value="gap-asc">Biggest frontline gap</option>
-            <option value="updated-desc">Most recent</option>
-            <option value="name-asc">Name A-Z</option>
-          </select>
-        </div>
-        <div class="result-text" id="resultText">0 results shown</div>
-        <div class="roster-list" id="rosterList"></div>
-
-        <section class="roster-formations" id="rallyMatchmaking">
-          <div class="roster-formations-head">
-            <div>
-              <span class="eyebrow"><span></span>Matchmaking</span>
-              <h3>Suggested strike teams</h3>
-              <p class="rally-rule">Same faction first · ~100k troops per joiner march · fills each RL plaza</p>
-            </div>
+          <div class="admin-view-tabs" role="tablist" aria-label="Admin registry views">
+            <button type="button" class="admin-view-tab is-active" data-admin-view="roster" role="tab" aria-selected="true">Roster</button>
+            <button type="button" class="admin-view-tab" data-admin-view="history" role="tab" aria-selected="false">History</button>
           </div>
-          <div class="rally-formation-list" id="rallyFormationList"></div>
-        </section>
+        </div>
+
+        <div class="admin-view-pane is-active" id="adminRosterPane" data-admin-pane="roster">
+          <div class="toolbar">
+            <label class="searchbox"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 20-4.4-4.4a8 8 0 1 0-1 1L20 21l1-1ZM5 11a6 6 0 1 1 12 0 6 6 0 0 1-12 0Z"/></svg><input id="searchInput" type="search" placeholder="Search player..." autocomplete="off"></label>
+            <select id="levelFilter" aria-label="Filter by level"></select>
+            <select id="rankFilter" aria-label="Filter by rank">
+              <option value="all">All ranks</option>
+              <option value="R1">R1</option>
+              <option value="R2">R2</option>
+              <option value="R3">R3</option>
+              <option value="R4">R4</option>
+              <option value="R5">R5</option>
+            </select>
+            <select id="statusFilter" aria-label="Filter by status">
+              <option value="all">All statuses</option>
+              <option value="apex">Apex</option>
+              <option value="frontline">Frontline</option>
+              <option value="operational">Operational</option>
+              <option value="building">Building</option>
+              <option value="below-frontline">Below frontline</option>
+              <option value="stale">Stale (7d+)</option>
+              <option value="needs-review">Needs review (-updt)</option>
+              <option value="rl">Rally Leader (RL)</option>
+              <option value="rj">Rally Joiner (RJ)</option>
+            </select>
+            <select id="sortSelect" aria-label="Sort roster">
+              <option value="total-desc">Highest total CP</option>
+              <option value="main-desc">Highest main APC</option>
+              <option value="gap-asc">Biggest frontline gap</option>
+              <option value="updated-desc">Most recent</option>
+              <option value="name-asc">Name A-Z</option>
+            </select>
+          </div>
+          <div class="result-text" id="resultText">0 results shown</div>
+          <div class="roster-list" id="rosterList"></div>
+
+          <section class="roster-formations" id="rallyMatchmaking">
+            <div class="roster-formations-head">
+              <div>
+                <span class="eyebrow"><span></span>Matchmaking</span>
+                <h3>Suggested strike teams</h3>
+                <p class="rally-rule">Same faction first · ~100k troops per joiner march · fills each RL plaza</p>
+              </div>
+            </div>
+            <div class="rally-formation-list" id="rallyFormationList"></div>
+          </section>
+        </div>
+
+        <div class="admin-view-pane" id="adminHistoryPane" data-admin-pane="history" hidden>
+          <div class="history-toolbar">
+            <p class="result-text" id="historyResultText">0 events</p>
+            <button type="button" class="btn btn-ghost" id="historyRefreshBtn">Refresh</button>
+          </div>
+          <div class="history-list" id="historyList" aria-live="polite"></div>
+        </div>
       </section>
 
       <aside class="insights-col">
@@ -442,12 +501,47 @@
     </section>
   </div>
 
+  <div class="member-drawer" id="memberDrawer" aria-hidden="true">
+    <div class="member-drawer-backdrop" data-drawer-close="1"></div>
+    <aside class="member-drawer-sheet" role="dialog" aria-modal="true" aria-labelledby="memberDrawerTitle">
+      <div class="member-drawer-head">
+        <div>
+          <span class="eyebrow"><span></span>Member edit</span>
+          <h2 id="memberDrawerTitle">Edit member</h2>
+          <p id="memberDrawerSub">Update fields directly. Changes sync to the cloud roster.</p>
+        </div>
+        <button type="button" class="icon-btn" id="memberDrawerClose" aria-label="Close editor" data-drawer-close="1">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.4 6.4 12 12l5.6-5.6 1.4 1.4L13.4 13.4l5.6 5.6-1.4 1.4L12 14.8l-5.6 5.6-1.4-1.4 5.6-5.6L5 7.8z"/></svg>
+        </button>
+      </div>
+      <div class="member-drawer-body" id="memberDrawerBody"></div>
+      <div class="member-drawer-actions">
+        <button type="button" class="btn btn-primary" id="memberDrawerSave">Save changes</button>
+        <button type="button" class="btn btn-ghost" data-drawer-close="1">Cancel</button>
+      </div>
+    </aside>
+  </div>
+
+  <div class="admin-modal" id="personalCodeModal" aria-hidden="true">
+    <div class="admin-modal-backdrop" data-modal-close="personalCode"></div>
+    <section class="admin-modal-card confirm-modal-card" role="dialog" aria-modal="true" aria-labelledby="personalCodeModalTitle">
+      <span class="eyebrow"><span></span>Save this code</span>
+      <h2 id="personalCodeModalTitle">Your Personal Code</h2>
+      <p>Use this code next time to overwrite your roster entry directly. Without it, new submits create a <code>[name]-updt</code> review entry.</p>
+      <div class="personal-code-reveal" id="personalCodeReveal">————</div>
+      <div class="admin-modal-actions">
+        <button class="btn btn-primary" id="personalCodeCopyBtn" type="button">Copy code</button>
+        <button class="btn btn-ghost" id="personalCodeCloseBtn" type="button" data-modal-close="personalCode">Got it</button>
+      </div>
+    </section>
+  </div>
+
   <div class="toast-region" id="toastRegion" aria-live="polite"></div>
 
   <script src="config.js?v=50"></script>
   <script src="serverClock.js?v=34"></script>
   <script src="rallyRoles.js?v=28"></script>
   <script src="rallyMatchmaking.js?v=27"></script>
-  <script src="app.js?v=58" defer></script>
+  <script src="app.js?v=59" defer></script>
 </body>
 </html>

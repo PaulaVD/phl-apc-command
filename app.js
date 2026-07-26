@@ -6,9 +6,14 @@
   const PREFS_KEY = "phl_prefs_v1";
   const ADMIN_SESSION_KEY = "phl_admin_session_v2";
   const OUTBOX_KEY = "phl_cloud_outbox_v1";
+  const HISTORY_KEY = "phl_roster_history_v1";
+  const PERSONAL_CODE_PREF_KEY = "phl_my_personal_codes_v1";
   const ADMIN_HEARTBEAT_MS = 10_000;
   const APC_COUNT = 4;
   const STALE_MS = 7 * 24 * 60 * 60 * 1000;
+  const HISTORY_CAP = 300;
+  const MOBILE_MQ = "(max-width: 760px)";
+  const PERSONAL_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   /** One real upload is enough to start live RL/RJ from actual CP. */
   const MIN_RALLY_ROSTER_SAMPLES = 1;
   const ASSETS = { apc: "assets/phl-apc.png?v=2", logo: "assets/phl-logo.png?v=2" };
@@ -34,6 +39,7 @@
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   let roster = loadRoster();
+  let changeHistory = loadHistory();
   let prefs = loadPrefs();
   let editingId = null;
   let currentStep = 0;
@@ -55,6 +61,10 @@
   let audioAvailable = true;
   let pendingDeleteId = null;
   let lastFocusedElement = null;
+  let mobileTab = "preview";
+  let adminView = "roster";
+  let drawerMemberId = null;
+  let pendingPersonalCodeReveal = null;
   const kpiTweens = new WeakMap();
 
   const demoRoster = [
@@ -73,6 +83,7 @@
     level: prefs.lastLevel && BANDS[prefs.lastLevel] ? prefs.lastLevel : "WT30",
     rank: RANKS.includes(prefs.lastRank) ? prefs.lastRank : "R1",
     rallyCapacity: 0,
+    personalCode: "",
     apcs: Array.from({ length: APC_COUNT }, () => ({ cp: 0, faction: "Fighter" }))
   };
 
@@ -198,7 +209,32 @@
       document.getElementById("orbitFaction2"),
       document.getElementById("orbitFaction3"),
       document.getElementById("orbitFaction4")
-    ]
+    ],
+    mobileShellTabs: document.getElementById("mobileShellTabs"),
+    timesEventsPanel: document.getElementById("timesEventsPanel"),
+    teServerClock: document.getElementById("teServerClock"),
+    teServerBadge: document.getElementById("teServerBadge"),
+    teLocalClock: document.getElementById("teLocalClock"),
+    teLocalBadge: document.getElementById("teLocalBadge"),
+    teEventInput: document.getElementById("teEventInput"),
+    teOffsetSelect: document.getElementById("teOffsetSelect"),
+    teConvertedTime: document.getElementById("teConvertedTime"),
+    teConvertedMeta: document.getElementById("teConvertedMeta"),
+    memberDrawer: document.getElementById("memberDrawer"),
+    memberDrawerBody: document.getElementById("memberDrawerBody"),
+    memberDrawerTitle: document.getElementById("memberDrawerTitle"),
+    memberDrawerSub: document.getElementById("memberDrawerSub"),
+    memberDrawerSave: document.getElementById("memberDrawerSave"),
+    memberDrawerClose: document.getElementById("memberDrawerClose"),
+    personalCodeModal: document.getElementById("personalCodeModal"),
+    personalCodeReveal: document.getElementById("personalCodeReveal"),
+    personalCodeCopyBtn: document.getElementById("personalCodeCopyBtn"),
+    personalCodeCloseBtn: document.getElementById("personalCodeCloseBtn"),
+    adminRosterPane: document.getElementById("adminRosterPane"),
+    adminHistoryPane: document.getElementById("adminHistoryPane"),
+    historyList: document.getElementById("historyList"),
+    historyResultText: document.getElementById("historyResultText"),
+    historyRefreshBtn: document.getElementById("historyRefreshBtn")
   };
 
   const audio = {};
@@ -243,6 +279,7 @@
     initLofiPlayer();
     applyAdminMode();
     applyEntryMode();
+    initMobileTabs();
     enhanceSelects(document.querySelector(".toolbar"));
     enhanceSelects(document.getElementById("rallyCriteriaBox"));
     initServerClockPanel();
@@ -250,7 +287,7 @@
     probeAudioAssets();
     if (!reducedMotion) startParticles();
     enableTilt(document.querySelector(".scan-panel[data-tilt]"));
-    if (window.matchMedia("(max-width: 760px)").matches) {
+    if (window.matchMedia(MOBILE_MQ).matches) {
       setScanPanelCollapsed(true);
     }
     if (isCloudConfigured()) {
@@ -307,6 +344,17 @@
     el.deleteCancelBtn.addEventListener("click", () => closeModal("delete"));
     el.scanToggleBtn?.addEventListener("click", toggleScanPanel);
     el.adminCodeInput.addEventListener("keydown", event => { if (event.key === "Enter") attemptAdminLogin(); });
+    el.memberDrawerSave?.addEventListener("click", saveMemberDrawer);
+    el.personalCodeCopyBtn?.addEventListener("click", copyRevealedPersonalCode);
+    el.historyRefreshBtn?.addEventListener("click", () => {
+      pullCloudRoster({ silent: false }).then(() => renderHistory());
+    });
+    document.querySelectorAll("[data-admin-view]").forEach(btn => {
+      btn.addEventListener("click", () => setAdminView(btn.dataset.adminView));
+    });
+    document.querySelectorAll("[data-drawer-close]").forEach(node => {
+      node.addEventListener("click", closeMemberDrawer);
+    });
     document.addEventListener("click", onDynamicClick);
     document.addEventListener("input", onDynamicInput);
     document.addEventListener("click", closeUiSelectsOnOutsideClick);
@@ -316,7 +364,9 @@
   function onGlobalKeydown(event) {
     if (event.key === "Escape") {
       closeAllUiSelects();
-      if (el.deleteModal.classList.contains("open")) closeModal("delete");
+      if (el.memberDrawer?.classList.contains("open")) closeMemberDrawer();
+      else if (el.personalCodeModal?.classList.contains("open")) closeModal("personalCode");
+      else if (el.deleteModal.classList.contains("open")) closeModal("delete");
       else if (el.syncModal?.classList.contains("open")) closeModal("sync");
       else if (el.adminModal.classList.contains("open")) closeModal("admin");
       return;
@@ -329,10 +379,60 @@
     if (tag === "TEXTAREA" || tag === "BUTTON" || tag === "A" || target.isContentEditable) return;
     if (document.querySelector(".ui-select.is-open")) return;
     if (tag !== "INPUT" && tag !== "SELECT") return;
+    if (el.memberDrawer?.classList.contains("open")) return;
 
     event.preventDefault();
     if (entryMode === "quick") saveCurrentMember();
     else nextStep();
+  }
+
+  function initMobileTabs() {
+    const mq = window.matchMedia(MOBILE_MQ);
+    const apply = () => {
+      const isMobile = mq.matches;
+      if (el.mobileShellTabs) el.mobileShellTabs.hidden = !isMobile;
+      if (!isMobile) {
+        document.body.classList.remove("mobile-tab-preview", "mobile-tab-push");
+        return;
+      }
+      setMobileTab(mobileTab || "preview", { silent: true });
+    };
+    el.mobileShellTabs?.querySelectorAll("[data-mobile-tab]").forEach(btn => {
+      btn.addEventListener("click", () => setMobileTab(btn.dataset.mobileTab));
+    });
+    apply();
+    mq.addEventListener?.("change", apply);
+  }
+
+  function setMobileTab(tab, { silent = false } = {}) {
+    mobileTab = tab === "push" ? "push" : "preview";
+    document.body.classList.toggle("mobile-tab-preview", mobileTab === "preview");
+    document.body.classList.toggle("mobile-tab-push", mobileTab === "push");
+    el.mobileShellTabs?.querySelectorAll("[data-mobile-tab]").forEach(btn => {
+      const active = btn.dataset.mobileTab === mobileTab;
+      btn.classList.toggle("is-active", active);
+      btn.setAttribute("aria-selected", String(active));
+    });
+    if (!silent) playSfx("click");
+  }
+
+  function setAdminView(view) {
+    adminView = view === "history" ? "history" : "roster";
+    document.querySelectorAll("[data-admin-view]").forEach(btn => {
+      const active = btn.dataset.adminView === adminView;
+      btn.classList.toggle("is-active", active);
+      btn.setAttribute("aria-selected", String(active));
+    });
+    if (el.adminRosterPane) {
+      el.adminRosterPane.hidden = adminView !== "roster";
+      el.adminRosterPane.classList.toggle("is-active", adminView === "roster");
+    }
+    if (el.adminHistoryPane) {
+      el.adminHistoryPane.hidden = adminView !== "history";
+      el.adminHistoryPane.classList.toggle("is-active", adminView === "history");
+    }
+    if (adminView === "history") renderHistory();
+    playSfx("click");
   }
 
   function setScanPanelCollapsed(collapsed) {
@@ -382,6 +482,7 @@
       renderRallySplit();
       renderRanking();
       renderRefList(true);
+      if (adminView === "history") renderHistory();
     } else {
       clearAdminViews();
     }
@@ -408,6 +509,7 @@
         const clock = document.getElementById("serverClockDisplay");
         if (clock) clock.dataset.mounted = "1";
         enhanceSelects(document.querySelector(".topbar"));
+        mountTimesEventsClock(api);
         return true;
       } catch (error) {
         console.warn("Server clock failed to mount:", error);
@@ -429,6 +531,28 @@
         if (!mount()) console.warn("Server clock API missing after load.");
       })
       .catch(error => console.warn("Could not load serverClock.js:", error));
+  }
+
+  function mountTimesEventsClock(api) {
+    if (!el.teServerClock || !api?.mountServerClock) return;
+    if (el.teServerClock.dataset.mounted === "1") return;
+    try {
+      api.mountServerClock({
+        clockEl: el.teServerClock,
+        serverBadgeEl: el.teServerBadge,
+        localClockEl: el.teLocalClock,
+        localOffsetBadgeEl: el.teLocalBadge,
+        localZoneLabelEl: null,
+        offsetSelect: el.teOffsetSelect,
+        eventInput: el.teEventInput,
+        resultEl: el.teConvertedTime,
+        resultMetaEl: el.teConvertedMeta
+      });
+      el.teServerClock.dataset.mounted = "1";
+      enhanceSelects(el.timesEventsPanel);
+    } catch (error) {
+      console.warn("Times/events clock failed:", error);
+    }
   }
 
   function setEntryMode(mode) {
@@ -528,12 +652,18 @@
   function renderIdentityStep() {
     const band = BANDS[state.level];
     const role = classifyCurrentState();
+    const remembered = recallPersonalCodeHint();
     el.wizardContent.innerHTML = `
       <div class="field-grid identity-grid">
         <div class="field"><label for="memberNameInput">Player name</label><input class="input" id="memberNameInput" type="text" maxlength="30" autocomplete="nickname" placeholder="Example: PlayerOne" value="${escapeHtml(state.name)}"></div>
         <div class="field"><label for="memberLevelInput">Level</label><select id="memberLevelInput">${levelOptionsHtml(state.level)}</select></div>
         <div class="field"><label for="memberRankInput">PH-L rank</label><select id="memberRankInput">${rankOptionsHtml(state.rank)}</select></div>
         <div class="field"><label for="rallyCapacityInput">Rally Plaza capacity</label><input class="input" id="rallyCapacityInput" type="number" min="0" step="1000" inputmode="numeric" placeholder="Troops, e.g. 400000" value="${state.rallyCapacity || ""}"></div>
+        <div class="field personal-code-field" style="grid-column:1/-1">
+          <label for="personalCodeInput">Personal Code (optional — overwrite)</label>
+          <input class="input" id="personalCodeInput" type="text" maxlength="16" autocomplete="off" spellcheck="false" placeholder="e.g. PHL-AB12CD" value="${escapeHtml(state.personalCode)}">
+          <small>${remembered ? `Last code on this device: <strong>${escapeHtml(remembered)}</strong>. ` : ""}Enter your code to overwrite your roster entry. Leave blank to register (or create a <code>[name]-updt</code> review entry).</small>
+        </div>
       </div>
       <div class="helper-grid">
         <div class="helper-card">
@@ -580,6 +710,11 @@
           <div class="field"><label for="memberLevelInput">Watchtower</label><select id="memberLevelInput">${levelOptionsHtml(state.level)}</select></div>
           <div class="field"><label for="memberRankInput">PH-L rank</label><select id="memberRankInput">${rankOptionsHtml(state.rank)}</select></div>
           <div class="field"><label for="rallyCapacityInput">Rally Plaza capacity</label><input class="input" id="rallyCapacityInput" type="number" min="0" step="1000" inputmode="numeric" placeholder="Troops, e.g. 400000" value="${state.rallyCapacity || ""}"></div>
+          <div class="field personal-code-field" style="grid-column:1/-1">
+            <label for="personalCodeInput">Personal Code (optional — overwrite)</label>
+            <input class="input" id="personalCodeInput" type="text" maxlength="16" autocomplete="off" spellcheck="false" placeholder="e.g. PHL-AB12CD" value="${escapeHtml(state.personalCode)}">
+            <small>Enter your code to overwrite. Leave blank to register or create a <code>[name]-updt</code> review entry.</small>
+          </div>
         </div>
         <div class="quick-apc-grid">
           ${state.apcs.map((apc, index) => {
@@ -694,6 +829,7 @@
             <div class="summary-line"><span>Player</span><b>${escapeHtml(state.name || "Unnamed")}</b></div>
             <div class="summary-line"><span>Watchtower</span><b>${formatLevel(state.level)}</b></div>
             <div class="summary-line"><span>PH-L rank</span><b>${state.rank}</b></div>
+            <div class="summary-line"><span>Personal Code</span><b>${state.personalCode ? escapeHtml(state.personalCode) : "Will assign / review"}</b></div>
             <div class="summary-line"><span>Main frontline target</span><b>${band.frontline}M</b></div>
             <div class="summary-line"><span>Main gap</span><b>${formatGap(mainGap)}</b></div>
           </div>
@@ -762,6 +898,11 @@
       return;
     }
 
+    if (target.id === "personalCodeInput") {
+      state.personalCode = normalizePersonalCode(target.value);
+      return;
+    }
+
     if (!target.dataset.apcIndex) return;
 
     const idx = Number(target.dataset.apcIndex);
@@ -815,6 +956,14 @@
 
     const factionBtn = event.target.closest("[data-faction]");
     if (factionBtn) {
+      if (factionBtn.hasAttribute("data-drawer-faction")) {
+        const idx = Number(factionBtn.dataset.drawerFaction);
+        el.memberDrawerBody?.querySelectorAll(`[data-drawer-faction="${idx}"]`).forEach(node => {
+          node.classList.toggle("active", node.dataset.faction === factionBtn.dataset.faction);
+        });
+        playSfx("click");
+        return;
+      }
       const idx = Number(factionBtn.dataset.apcIndex);
       state.apcs[idx].faction = factionBtn.dataset.faction;
       el.wizardContent.querySelectorAll(`[data-faction][data-apc-index="${idx}"]`).forEach(node => {
@@ -845,11 +994,25 @@
 
     const action = event.target.closest("[data-action]");
     if (action?.dataset.action === "edit") {
-      editMember(action.dataset.id);
+      openMemberDrawer(action.dataset.id);
       return;
     }
     if (action?.dataset.action === "delete") {
       deleteMember(action.dataset.id);
+      return;
+    }
+    if (action?.dataset.action === "copy-code") {
+      const code = action.dataset.code || "";
+      if (code) {
+        navigator.clipboard?.writeText(code).then(() => {
+          toast("Personal Code copied.", "success");
+        }).catch(() => toast(`Code: <strong>${escapeHtml(code)}</strong>`, "success"));
+      }
+      playSfx("click");
+      return;
+    }
+    if (action?.dataset.action === "clear-review") {
+      clearNeedsReviewFlag(action.dataset.id);
       return;
     }
 
@@ -857,6 +1020,7 @@
     if (emptyAction?.dataset.emptyAction === "start") {
       currentStep = 0;
       wizardRailDirty = true;
+      if (window.matchMedia(MOBILE_MQ).matches) setMobileTab("push", { silent: true });
       document.getElementById("operatorConsole")?.scrollIntoView({ behavior: "smooth", block: "start" });
       renderWizard(true);
       renderNonDestructive();
@@ -1014,12 +1178,49 @@
     return roster.find(member => member.name.trim().toLowerCase() === normalized && member.id !== excludeId);
   }
 
+  function findMemberByPersonalCode(code) {
+    const normalized = normalizePersonalCode(code);
+    if (!normalized) return null;
+    return roster.find(member => normalizePersonalCode(member.personalCode) === normalized && !member.isDemo) || null;
+  }
+
+  function normalizePersonalCode(value) {
+    return String(value || "")
+      .trim()
+      .toUpperCase()
+      .replace(/[^A-Z0-9-]/g, "")
+      .slice(0, 16);
+  }
+
+  function generatePersonalCode() {
+    let code = "PHL-";
+    for (let i = 0; i < 6; i += 1) {
+      code += PERSONAL_CODE_CHARS[Math.floor(Math.random() * PERSONAL_CODE_CHARS.length)];
+    }
+    if (findMemberByPersonalCode(code)) return generatePersonalCode();
+    return code;
+  }
+
+  function makeUpdateReviewName(baseName) {
+    const clean = String(baseName || "member").trim().replace(/\[|\]/g, "").replace(/-updt\d*$/i, "").slice(0, 18);
+    const tagged = `[${clean}]-updt`;
+    return tagged.slice(0, 30);
+  }
+
+  function memberNeedsReview(member) {
+    if (!member) return false;
+    if (member.needsReview) return true;
+    return /\]-updt$/i.test(member.name || "") || /-updt$/i.test(member.name || "");
+  }
+
   async function saveCurrentMember() {
     // Flush visible identity selects in case UI and state drifted.
     const levelEl = document.getElementById("memberLevelInput");
     const rankEl = document.getElementById("memberRankInput");
+    const codeEl = document.getElementById("personalCodeInput");
     if (levelEl?.value && BANDS[levelEl.value]) state.level = levelEl.value;
     if (rankEl?.value && RANKS.includes(rankEl.value)) state.rank = rankEl.value;
+    if (codeEl) state.personalCode = normalizePersonalCode(codeEl.value);
 
     if (!state.name.trim()) {
       toast("Please enter a player name first.", "error");
@@ -1038,25 +1239,84 @@
       return;
     }
 
-    const existing = findMemberByName(state.name, editingId);
-    const isDuplicateUpdate = Boolean(existing && !editingId);
-    if (isDuplicateUpdate) {
-      const confirmed = window.confirm(
-        `"${state.name.trim()}" is already on the roster. Update that entry with these APC values?`
-      );
-      if (!confirmed) return;
-      editingId = existing.id;
+    const enteredCode = normalizePersonalCode(state.personalCode);
+    const codeMatch = enteredCode ? findMemberByPersonalCode(enteredCode) : null;
+    if (enteredCode && !codeMatch && !editingId) {
+      toast("Personal Code not found. Check the code or leave it blank to create a review entry.", "error");
+      playSfx("error");
+      return;
     }
 
-    const member = {
-      id: editingId || cryptoId(),
-      name: state.name.trim(),
+    const baseName = state.name.trim();
+    let targetId = editingId;
+    let personalCode = enteredCode || null;
+    let needsReview = false;
+    let displayName = baseName;
+    let actionLabel = "create";
+    let previous = null;
+    let revealCode = false;
+
+    if (isAdmin && editingId) {
+      previous = roster.find(m => m.id === editingId) || null;
+      targetId = editingId;
+      personalCode = previous?.personalCode || generatePersonalCode();
+      needsReview = false;
+      displayName = baseName;
+      actionLabel = "admin-update";
+    } else if (codeMatch) {
+      previous = codeMatch;
+      targetId = codeMatch.id;
+      personalCode = codeMatch.personalCode || enteredCode;
+      needsReview = false;
+      displayName = baseName;
+      actionLabel = "code-overwrite";
+    } else if (editingId && isAdmin) {
+      previous = roster.find(m => m.id === editingId) || null;
+      targetId = editingId;
+      personalCode = previous?.personalCode || generatePersonalCode();
+      actionLabel = "admin-update";
+    } else {
+      // No personal code: first-time register OR create -updt review copy
+      const existingSameName = findMemberByName(baseName);
+      if (existingSameName && existingSameName.personalCode) {
+        displayName = makeUpdateReviewName(baseName);
+        needsReview = true;
+        targetId = cryptoId();
+        personalCode = generatePersonalCode();
+        actionLabel = "needs-review";
+        previous = null;
+      } else if (existingSameName && !existingSameName.personalCode) {
+        // Legacy entry without code — claim it and assign a code
+        previous = existingSameName;
+        targetId = existingSameName.id;
+        personalCode = generatePersonalCode();
+        needsReview = false;
+        displayName = baseName;
+        actionLabel = "claim-legacy";
+        revealCode = true;
+      } else {
+        targetId = cryptoId();
+        personalCode = generatePersonalCode();
+        needsReview = false;
+        displayName = baseName;
+        actionLabel = "create";
+        revealCode = true;
+      }
+    }
+
+    let member = {
+      id: targetId || cryptoId(),
+      name: displayName,
       level: state.level,
       rank: state.rank,
       rallyCapacity: Math.max(0, Math.floor(Number(state.rallyCapacity || 0))),
       updated: Date.now(),
+      personalCode,
+      needsReview,
       apcs: state.apcs.map(apc => ({ ...apc }))
     };
+
+    const fields = diffMemberFields(previous, member);
     const idx = roster.findIndex(item => item.id === member.id);
     if (idx >= 0) roster[idx] = member;
     else roster.unshift(member);
@@ -1065,6 +1325,15 @@
     prefs.lastLevel = member.level;
     prefs.lastRank = member.rank;
     savePrefs();
+    rememberPersonalCode(member.name, member.personalCode);
+    appendHistoryEvent({
+      action: actionLabel,
+      memberId: member.id,
+      memberName: member.name,
+      actor: isAdmin ? (adminSession?.name || "admin") : "member",
+      fields,
+      note: needsReview ? "Submitted without Personal Code" : (revealCode ? "Personal Code assigned" : "")
+    });
     queueCloudOutbox(member);
     renderAll();
     setSavingUi(true);
@@ -1077,10 +1346,15 @@
       const synced = await pushCloudRosterWithRetry({ silent: true });
       if (synced) {
         clearCloudOutboxMember(member.id);
+        if (revealCode || actionLabel === "claim-legacy" || actionLabel === "needs-review") {
+          pendingPersonalCodeReveal = member.personalCode;
+          openPersonalCodeModal(member.personalCode);
+        }
+        const reviewNote = needsReview ? " Flagged for admin review." : "";
         toast(
-          isDuplicateUpdate || idx >= 0
-            ? `<strong>${escapeHtml(member.name)}</strong> updated in the shared cloud roster.`
-            : `<strong>${escapeHtml(member.name)}</strong> saved to the shared cloud roster for all admins.`,
+          actionLabel === "code-overwrite" || actionLabel === "admin-update" || actionLabel === "claim-legacy"
+            ? `<strong>${escapeHtml(member.name)}</strong> updated in the shared cloud roster.${reviewNote}`
+            : `<strong>${escapeHtml(member.name)}</strong> saved to the shared cloud roster.${reviewNote}`,
           "success"
         );
         playSfx("success");
@@ -1129,34 +1403,187 @@
     state.level = prefs.lastLevel && BANDS[prefs.lastLevel] ? prefs.lastLevel : "WT30";
     state.rank = RANKS.includes(prefs.lastRank) ? prefs.lastRank : "R1";
     state.rallyCapacity = 0;
+    state.personalCode = "";
     state.apcs = Array.from({ length: APC_COUNT }, () => ({ cp: 0, faction: "Fighter" }));
     renderAll();
     if (play) playSfx("click");
   }
 
   function editMember(id) {
+    // Admin interactive edit uses the drawer; keep wizard path only as fallback.
+    openMemberDrawer(id);
+  }
+
+  function openMemberDrawer(id) {
     if (!isAdmin) {
       openAdminModal();
       return;
     }
     const member = roster.find(item => item.id === id);
-    if (!member) return;
+    if (!member || !el.memberDrawer || !el.memberDrawerBody) return;
 
-    editingId = member.id;
-    currentStep = 0;
-    state.name = member.name;
-    state.level = member.level;
-    state.rank = member.rank;
-    state.rallyCapacity = Number(member.rallyCapacity || 0);
-    state.apcs = Array.from({ length: APC_COUNT }, (_, i) => ({
-      cp: Number(member.apcs?.[i]?.cp || 0),
-      faction: member.apcs?.[i]?.faction || "Fighter"
-    }));
+    drawerMemberId = member.id;
+    lastFocusedElement = document.activeElement;
+    if (el.memberDrawerTitle) el.memberDrawerTitle.textContent = member.name;
+    if (el.memberDrawerSub) {
+      el.memberDrawerSub.textContent = member.personalCode
+        ? `Personal Code ${member.personalCode} · tap fields to edit`
+        : "No Personal Code yet · save to assign one";
+    }
 
-    renderAll();
-    document.getElementById("operatorConsole")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    toast(`Editing <strong>${escapeHtml(member.name)}</strong>.`, "success");
+    el.memberDrawerBody.innerHTML = `
+      <div class="field"><label for="drawerName">Player name</label><input class="input" id="drawerName" maxlength="30" value="${escapeHtml(member.name)}"></div>
+      <div class="field"><label for="drawerLevel">Level</label><select id="drawerLevel">${levelOptionsHtml(member.level)}</select></div>
+      <div class="field"><label for="drawerRank">PH-L rank</label><select id="drawerRank">${rankOptionsHtml(member.rank)}</select></div>
+      <div class="field"><label for="drawerPlaza">Rally Plaza capacity</label><input class="input" id="drawerPlaza" type="number" min="0" step="1000" value="${member.rallyCapacity || 0}"></div>
+      <div class="field personal-code-field"><label for="drawerCode">Personal Code</label><input class="input" id="drawerCode" maxlength="16" value="${escapeHtml(member.personalCode || "")}"><small>Admins can set or rotate codes. Leave blank to keep / auto-assign on save.</small></div>
+      <label class="field" style="display:flex;align-items:center;gap:10px;flex-direction:row">
+        <input type="checkbox" id="drawerNeedsReview" ${memberNeedsReview(member) ? "checked" : ""}>
+        <span>Needs review (-updt)</span>
+      </label>
+      <div class="drawer-apc-grid">
+        ${Array.from({ length: APC_COUNT }, (_, i) => {
+          const apc = member.apcs?.[i] || { cp: 0, faction: "Fighter" };
+          return `
+            <div class="drawer-apc-card">
+              <strong>APC ${i + 1}${i === 0 ? " · Main" : ""}</strong>
+              <div class="faction-row compact">
+                ${FACTIONS.map(f => `<button class="seg-btn ${apc.faction === f ? "active" : ""}" type="button" data-drawer-faction="${i}" data-faction="${f}">${f}</button>`).join("")}
+              </div>
+              <div class="value-wrap">
+                <input class="cp-input input" id="drawerCp${i}" type="number" min="0" step="1" value="${Number(apc.cp || 0)}" aria-label="APC ${i + 1} CP">
+                <b>M CP</b>
+              </div>
+            </div>`;
+        }).join("")}
+      </div>`;
+
+    enhanceSelects(el.memberDrawerBody);
+    el.memberDrawer.classList.add("open");
+    el.memberDrawer.setAttribute("aria-hidden", "false");
+    document.body.classList.add("modal-open");
+    document.getElementById("drawerName")?.focus();
     playSfx("transition");
+  }
+
+  function closeMemberDrawer() {
+    if (!el.memberDrawer) return;
+    el.memberDrawer.classList.remove("open");
+    el.memberDrawer.setAttribute("aria-hidden", "true");
+    drawerMemberId = null;
+    if (!el.adminModal?.classList.contains("open") && !el.deleteModal?.classList.contains("open") && !el.syncModal?.classList.contains("open") && !el.personalCodeModal?.classList.contains("open")) {
+      document.body.classList.remove("modal-open");
+    }
+    if (lastFocusedElement?.focus) lastFocusedElement.focus();
+  }
+
+  async function saveMemberDrawer() {
+    if (!isAdmin || !drawerMemberId) return;
+    const previous = roster.find(m => m.id === drawerMemberId);
+    if (!previous) {
+      closeMemberDrawer();
+      return;
+    }
+
+    const name = String(document.getElementById("drawerName")?.value || "").trim().slice(0, 30);
+    const level = document.getElementById("drawerLevel")?.value;
+    const rank = document.getElementById("drawerRank")?.value;
+    const plaza = Math.max(0, Math.floor(Number(document.getElementById("drawerPlaza")?.value || 0)));
+    let code = normalizePersonalCode(document.getElementById("drawerCode")?.value || "");
+    const needsReview = Boolean(document.getElementById("drawerNeedsReview")?.checked);
+    if (!name) {
+      toast("Name is required.", "error");
+      playSfx("error");
+      return;
+    }
+    if (!BANDS[level] || !RANKS.includes(rank)) {
+      toast("Invalid level or rank.", "error");
+      playSfx("error");
+      return;
+    }
+    if (!code) code = previous.personalCode || generatePersonalCode();
+    const codeOwner = findMemberByPersonalCode(code);
+    if (codeOwner && codeOwner.id !== previous.id) {
+      toast("That Personal Code belongs to another member.", "error");
+      playSfx("error");
+      return;
+    }
+
+    const max = getMaxForLevel(level);
+    const apcs = Array.from({ length: APC_COUNT }, (_, i) => {
+      const factionBtn = el.memberDrawerBody.querySelector(`[data-drawer-faction="${i}"].active`);
+      const cp = clamp(Number(document.getElementById(`drawerCp${i}`)?.value || 0), 0, max);
+      return {
+        cp,
+        faction: factionBtn?.dataset.faction || previous.apcs?.[i]?.faction || "Fighter"
+      };
+    });
+
+    const member = {
+      ...previous,
+      name,
+      level,
+      rank,
+      rallyCapacity: plaza,
+      personalCode: code,
+      needsReview,
+      updated: Date.now(),
+      apcs
+    };
+
+    const fields = diffMemberFields(previous, member);
+    const idx = roster.findIndex(m => m.id === member.id);
+    if (idx >= 0) roster[idx] = member;
+    saveRoster();
+    appendHistoryEvent({
+      action: "admin-drawer",
+      memberId: member.id,
+      memberName: member.name,
+      actor: adminSession?.name || "admin",
+      fields,
+      note: "Edited via member drawer"
+    });
+    queueCloudOutbox(member);
+    closeMemberDrawer();
+    renderAll();
+    const ok = await pushCloudRosterWithRetry({ silent: true });
+    toast(
+      ok
+        ? `<strong>${escapeHtml(member.name)}</strong> updated.`
+        : `<strong>${escapeHtml(member.name)}</strong> saved locally. Cloud sync will retry.`,
+      ok ? "success" : "error"
+    );
+    playSfx(ok ? "success" : "error");
+  }
+
+  async function clearNeedsReviewFlag(id) {
+    if (!isAdmin) {
+      openAdminModal();
+      return;
+    }
+    const member = roster.find(m => m.id === id);
+    if (!member) return;
+    const previous = { ...member };
+    let cleanName = member.name.replace(/^\[(.+?)\]-updt$/i, "$1").replace(/-updt$/i, "");
+    cleanName = cleanName.trim().slice(0, 30) || member.name;
+    member.name = cleanName;
+    member.needsReview = false;
+    member.updated = Date.now();
+    if (!member.personalCode) member.personalCode = generatePersonalCode();
+    saveRoster();
+    appendHistoryEvent({
+      action: "clear-review",
+      memberId: member.id,
+      memberName: member.name,
+      actor: adminSession?.name || "admin",
+      fields: diffMemberFields(previous, member),
+      note: "Cleared needs-review flag"
+    });
+    queueCloudOutbox(member);
+    renderAll();
+    await pushCloudRosterWithRetry({ silent: true });
+    toast(`<strong>${escapeHtml(member.name)}</strong> marked reviewed.`, "success");
+    playSfx("success");
   }
 
   function deleteMember(id) {
@@ -1181,6 +1608,15 @@
     roster = roster.filter(item => item.id !== pendingDeleteId);
     pendingDeletedIds.add(pendingDeleteId);
     if (editingId === pendingDeleteId) resetForm(false);
+    if (drawerMemberId === pendingDeleteId) closeMemberDrawer();
+    appendHistoryEvent({
+      action: "delete",
+      memberId: member.id,
+      memberName: member.name,
+      actor: adminSession?.name || "admin",
+      fields: [{ field: "removed", from: member.name, to: "" }],
+      note: "Member removed"
+    });
     saveRoster();
     renderAll();
     pushCloudRosterWithRetry({ silent: true }).then(ok => {
@@ -1381,13 +1817,15 @@
     const statusFilter = el.statusFilter.value;
     const sort = el.sortSelect.value;
 
-    if (query) filtered = filtered.filter(member => member.name.toLowerCase().includes(query));
+    if (query) filtered = filtered.filter(member => member.name.toLowerCase().includes(query) || normalizePersonalCode(member.personalCode).includes(query.toUpperCase()));
     if (level !== "all") filtered = filtered.filter(member => member.level === level);
     if (rank !== "all") filtered = filtered.filter(member => member.rank === rank);
     if (statusFilter === "below-frontline") {
       filtered = filtered.filter(member => !getFrontlineGap(member.level, getMain(member)).met);
     } else if (statusFilter === "stale") {
       filtered = filtered.filter(member => Date.now() - Number(member.updated || 0) >= STALE_MS);
+    } else if (statusFilter === "needs-review") {
+      filtered = filtered.filter(member => memberNeedsReview(member));
     } else if (statusFilter === "rl" || statusFilter === "rj") {
       filtered = filtered.filter(member => getMemberRallyRole(member).assigned_role === statusFilter.toUpperCase());
     } else if (statusFilter !== "all") {
@@ -1417,8 +1855,9 @@
       const gap = getFrontlineGap(member.level, main);
       const stale = Date.now() - Number(member.updated || 0) >= STALE_MS;
       const rally = getMemberRallyRole(member);
+      const review = memberNeedsReview(member);
       return `
-        <article class="member-card" style="--status:${st.color}">
+        <article class="member-card${review ? " is-needs-review" : ""}" style="--status:${st.color}">
           <div>
             <div class="member-tags">
               <span class="tag level">${formatLevel(member.level)}</span>
@@ -1428,6 +1867,8 @@
               <span class="tag">${rally.specialty_faction}</span>
               <span class="tag ${gap.met ? "gap-ok" : "gap-bad"}">${formatGap(gap)}</span>
               ${stale ? '<span class="tag stale">Stale</span>' : ""}
+              ${review ? '<span class="tag needs-review">Needs review</span>' : ""}
+              ${member.personalCode ? `<span class="tag personal-code" title="Personal Code">${escapeHtml(member.personalCode)}</span>` : ""}
             </div>
             <div class="member-name">${escapeHtml(member.name)}</div>
             <div class="member-sub">${escapeHtml(getRallyGateReason(member))} · Plaza ${formatTroops(member.rallyCapacity || 0)} · Updated ${timeAgo(member.updated)}</div>
@@ -1443,9 +1884,12 @@
           </div>
           <div class="score-box"><span>Total APC CP</span><strong>${formatNumber(total)}<small>M</small></strong></div>
           <div class="card-actions">
-            <button class="card-action" type="button" data-action="edit" data-id="${member.id}" title="Edit">
+            <button class="card-action edit-primary" type="button" data-action="edit" data-id="${member.id}" title="Edit in drawer">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17.25V21h3.75L17.8 9.94l-3.75-3.75L3 17.25Zm18-11.5a1 1 0 0 0 0-1.41l-1.34-1.34a1 1 0 0 0-1.41 0l-1.05 1.05 3.75 3.75L21 5.75Z"/></svg>
+              Edit
             </button>
+            ${member.personalCode ? `<button class="card-action" type="button" data-action="copy-code" data-code="${escapeHtml(member.personalCode)}" title="Copy Personal Code">Code</button>` : ""}
+            ${review ? `<button class="card-action" type="button" data-action="clear-review" data-id="${member.id}" title="Mark reviewed">OK</button>` : ""}
             <button class="card-action delete" type="button" data-action="delete" data-id="${member.id}" title="Delete">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 7h12l-1 14H7L6 7Zm3-4h6l1 2h4v2H4V5h4l1-2Z"/></svg>
             </button>
@@ -1872,14 +2316,23 @@
       return;
     }
 
-    const headers = ["Player", "Level", "PH-L Rank", "Plaza Capacity", "Rally Role", "Specialty"];
+    const headers = ["Player", "Level", "PH-L Rank", "Plaza Capacity", "Rally Role", "Specialty", "Personal Code", "Needs Review"];
     for (let i = 1; i <= APC_COUNT; i += 1) headers.push(`APC ${i} CP (M)`, `APC ${i} Faction`);
     headers.push("Total CP (M)", "Balance (%)", "Status", "Updated");
 
     const rows = [headers];
     roster.forEach(member => {
       const rally = getMemberRallyRole(member);
-      const row = [member.name, formatLevel(member.level), member.rank, member.rallyCapacity || 0, rally.assigned_role, rally.specialty_faction];
+      const row = [
+        member.name,
+        formatLevel(member.level),
+        member.rank,
+        member.rallyCapacity || 0,
+        rally.assigned_role,
+        rally.specialty_faction,
+        member.personalCode || "",
+        memberNeedsReview(member) ? "yes" : "no"
+      ];
       member.apcs.forEach(apc => {
         row.push(apc.cp, apc.faction);
       });
@@ -1943,7 +2396,14 @@
   }
 
   function openModal(name, focusTarget) {
-    const modal = name === "delete" ? el.deleteModal : name === "sync" ? el.syncModal : el.adminModal;
+    const modal = name === "delete"
+      ? el.deleteModal
+      : name === "sync"
+        ? el.syncModal
+        : name === "personalCode"
+          ? el.personalCodeModal
+          : el.adminModal;
+    if (!modal) return;
     lastFocusedElement = document.activeElement;
     modal.classList.add("open");
     modal.setAttribute("aria-hidden", "false");
@@ -1952,16 +2412,46 @@
   }
 
   function closeModal(name) {
-    const modal = name === "delete" ? el.deleteModal : name === "sync" ? el.syncModal : el.adminModal;
+    const modal = name === "delete"
+      ? el.deleteModal
+      : name === "sync"
+        ? el.syncModal
+        : name === "personalCode"
+          ? el.personalCodeModal
+          : el.adminModal;
+    if (!modal) return;
     modal.classList.remove("open");
     modal.setAttribute("aria-hidden", "true");
-    if (!el.adminModal.classList.contains("open") && !el.deleteModal.classList.contains("open") && !el.syncModal?.classList.contains("open")) {
+    if (
+      !el.adminModal.classList.contains("open")
+      && !el.deleteModal.classList.contains("open")
+      && !el.syncModal?.classList.contains("open")
+      && !el.personalCodeModal?.classList.contains("open")
+      && !el.memberDrawer?.classList.contains("open")
+    ) {
       document.body.classList.remove("modal-open");
     }
     if (name === "admin") el.adminError.textContent = "";
     if (name === "delete") pendingDeleteId = null;
     if (name === "sync" && el.syncError) el.syncError.textContent = "";
+    if (name === "personalCode") pendingPersonalCodeReveal = null;
     if (lastFocusedElement?.focus) lastFocusedElement.focus();
+  }
+
+  function openPersonalCodeModal(code) {
+    if (el.personalCodeReveal) el.personalCodeReveal.textContent = code || "————";
+    openModal("personalCode", el.personalCodeCopyBtn || el.personalCodeCloseBtn);
+  }
+
+  function copyRevealedPersonalCode() {
+    const code = pendingPersonalCodeReveal || el.personalCodeReveal?.textContent || "";
+    if (!code || code === "————") return;
+    navigator.clipboard?.writeText(code).then(() => {
+      toast("Personal Code copied. Keep it safe.", "success");
+      playSfx("success");
+    }).catch(() => {
+      toast(`Your code: <strong>${escapeHtml(code)}</strong>`, "success");
+    });
   }
 
   async function attemptAdminLogin() {
@@ -2284,6 +2774,8 @@
     el.rankingList.innerHTML = "";
     if (el.factionCoverage) el.factionCoverage.innerHTML = "";
     el.refList.innerHTML = "";
+    if (el.historyList) el.historyList.innerHTML = "";
+    if (el.historyResultText) el.historyResultText.textContent = "0 events";
     animateKpi(el.kpiMembers, 0, { decimals: 0, duration: 280 });
     animateKpi(el.kpiAlliancePower, 0, { suffixHtml: "<small>M</small>", duration: 280 });
     animateKpi(el.kpiAvgMain, 0, { suffixHtml: "<small>M</small>", duration: 280 });
@@ -3119,7 +3611,11 @@
       const key = member.id;
       const prev = map.get(key);
       if (!prev || Number(member.updated || 0) >= Number(prev.updated || 0)) {
-        map.set(key, member);
+        const merged = { ...member };
+        if (!merged.personalCode && prev?.personalCode) merged.personalCode = prev.personalCode;
+        map.set(key, merged);
+      } else if (prev && !prev.personalCode && member.personalCode) {
+        map.set(key, { ...prev, personalCode: member.personalCode });
       }
     }
     const byName = new Map();
@@ -3127,7 +3623,9 @@
       const nameKey = member.name.toLowerCase();
       const prev = byName.get(nameKey);
       if (!prev || Number(member.updated || 0) >= Number(prev.updated || 0)) {
-        byName.set(nameKey, member);
+        const merged = { ...member };
+        if (!merged.personalCode && prev?.personalCode) merged.personalCode = prev.personalCode;
+        byName.set(nameKey, merged);
       }
     }
     return [...byName.values()].sort((a, b) => Number(b.updated || 0) - Number(a.updated || 0));
@@ -3143,12 +3641,14 @@
     }
     try {
       let remoteMembers = [];
+      let remoteHistory = [];
       let remoteUpdatedAt = null;
       if (usesNetlifyCloud()) {
         const response = await fetch(getConfig().cloudApiUrl, { cache: "no-store" });
         if (!response.ok) throw new Error(`Pull failed (${response.status})`);
         const data = await response.json();
         remoteMembers = Array.isArray(data.members) ? data.members : [];
+        remoteHistory = Array.isArray(data.history) ? data.history : [];
         remoteUpdatedAt = data.updated_at || null;
       } else {
         const response = await fetch(getCloudUrl(), { headers: getCloudHeaders() });
@@ -3163,6 +3663,7 @@
           return false;
         }
         remoteMembers = Array.isArray(row.members) ? row.members : [];
+        remoteHistory = Array.isArray(row.history) ? row.history : [];
         remoteUpdatedAt = row.updated_at || null;
       }
 
@@ -3177,7 +3678,9 @@
           .filter(member => !pendingDeletedIds.has(member.id)),
         ...demos
       ];
+      changeHistory = mergeHistoryLists(changeHistory, remoteHistory);
       saveRoster();
+      saveHistory();
       renderAll();
 
       if (pendingDeletedIds.size) {
@@ -3225,6 +3728,7 @@
           body: JSON.stringify({
             alliance_id: getAllianceId(),
             members,
+            history: changeHistory,
             deleted_ids: deletedIds,
             updated_at: new Date().toISOString()
           })
@@ -3237,6 +3741,10 @@
           roster = [...mergeRosterLists(members, data.members), ...demos];
           for (const id of deletedIds) {
             if (!roster.some(member => member.id === id)) pendingDeletedIds.delete(id);
+          }
+          if (Array.isArray(data.history)) {
+            changeHistory = mergeHistoryLists(changeHistory, data.history);
+            saveHistory();
           }
           lastCloudFingerprint = rosterFingerprint(data.members, data.updated_at);
           saveRoster();
@@ -3445,6 +3953,8 @@
     const level = BANDS[item.level] ? item.level : "WT30";
     const rank = RANKS.includes(item.rank) ? item.rank : "R1";
     const max = getMaxForLevel(level);
+    const personalCode = normalizePersonalCode(item.personalCode);
+    const needsReview = Boolean(item.needsReview) || /\]-updt$/i.test(name) || /-updt$/i.test(name);
     return {
       id: String(item.id || cryptoId()),
       name,
@@ -3453,11 +3963,155 @@
       rallyCapacity: Math.max(0, Math.floor(Number(item.rallyCapacity || 0))),
       updated: Number(item.updated) || Date.now(),
       isDemo: Boolean(item.isDemo),
+      personalCode: personalCode || undefined,
+      needsReview,
       apcs: Array.from({ length: APC_COUNT }, (_, i) => ({
         cp: clamp(Number(item.apcs?.[i]?.cp || 0), 0, max),
         faction: FACTIONS.includes(item.apcs?.[i]?.faction) ? item.apcs[i].faction : "Fighter"
       }))
     };
+  }
+
+  function loadHistory() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+      return normalizeHistoryList(raw);
+    } catch {
+      return [];
+    }
+  }
+
+  function saveHistory() {
+    try {
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(changeHistory.slice(0, HISTORY_CAP)));
+    } catch {
+      /* ignore quota */
+    }
+  }
+
+  function normalizeHistoryList(list) {
+    if (!Array.isArray(list)) return [];
+    return list
+      .filter(item => item && typeof item === "object")
+      .map(item => ({
+        id: String(item.id || cryptoId()),
+        at: Number(item.at) || Date.now(),
+        action: String(item.action || "update").slice(0, 40),
+        memberId: String(item.memberId || "").slice(0, 64),
+        memberName: String(item.memberName || "").trim().slice(0, 40),
+        actor: String(item.actor || "member").trim().slice(0, 40),
+        fields: Array.isArray(item.fields)
+          ? item.fields.slice(0, 24).map(f => ({
+              field: String(f?.field || "").slice(0, 40),
+              from: String(f?.from ?? "").slice(0, 80),
+              to: String(f?.to ?? "").slice(0, 80)
+            }))
+          : [],
+        note: String(item.note || "").slice(0, 160)
+      }))
+      .filter(item => item.id)
+      .sort((a, b) => Number(b.at || 0) - Number(a.at || 0))
+      .slice(0, HISTORY_CAP);
+  }
+
+  function mergeHistoryLists(a, b) {
+    const map = new Map();
+    for (const event of [...normalizeHistoryList(a), ...normalizeHistoryList(b)]) {
+      map.set(event.id, event);
+    }
+    return [...map.values()]
+      .sort((x, y) => Number(y.at || 0) - Number(x.at || 0))
+      .slice(0, HISTORY_CAP);
+  }
+
+  function appendHistoryEvent(partial) {
+    const event = {
+      id: cryptoId(),
+      at: Date.now(),
+      action: partial.action || "update",
+      memberId: partial.memberId || "",
+      memberName: partial.memberName || "",
+      actor: partial.actor || "member",
+      fields: Array.isArray(partial.fields) ? partial.fields : [],
+      note: partial.note || ""
+    };
+    changeHistory = [event, ...changeHistory].slice(0, HISTORY_CAP);
+    saveHistory();
+    if (isAdmin && adminView === "history") renderHistory();
+    return event;
+  }
+
+  function diffMemberFields(previous, next) {
+    const fields = [];
+    if (!previous) {
+      fields.push({ field: "created", from: "", to: next?.name || "" });
+      return fields;
+    }
+    const watch = ["name", "level", "rank", "rallyCapacity", "personalCode", "needsReview"];
+    for (const key of watch) {
+      const from = previous[key];
+      const to = next[key];
+      if (String(from ?? "") !== String(to ?? "")) {
+        fields.push({ field: key, from: String(from ?? ""), to: String(to ?? "") });
+      }
+    }
+    for (let i = 0; i < APC_COUNT; i += 1) {
+      const fromCp = Number(previous.apcs?.[i]?.cp || 0);
+      const toCp = Number(next.apcs?.[i]?.cp || 0);
+      const fromFac = previous.apcs?.[i]?.faction || "";
+      const toFac = next.apcs?.[i]?.faction || "";
+      if (fromCp !== toCp) fields.push({ field: `apc${i + 1}.cp`, from: String(fromCp), to: String(toCp) });
+      if (fromFac !== toFac) fields.push({ field: `apc${i + 1}.faction`, from: fromFac, to: toFac });
+    }
+    return fields;
+  }
+
+  function renderHistory() {
+    if (!el.historyList) return;
+    const list = changeHistory;
+    if (el.historyResultText) el.historyResultText.textContent = `${list.length} event${list.length === 1 ? "" : "s"}`;
+    if (!list.length) {
+      el.historyList.innerHTML = `<div class="empty"><strong>No history yet</strong><p>Member creates, overwrites, and admin edits will appear here.</p></div>`;
+      return;
+    }
+    el.historyList.innerHTML = list.map(event => {
+      const when = new Date(event.at).toLocaleString();
+      const fieldText = (event.fields || []).length
+        ? event.fields.map(f => `<b>${escapeHtml(f.field)}</b>: ${escapeHtml(f.from || "—")} → ${escapeHtml(f.to || "—")}`).join(" · ")
+        : escapeHtml(event.note || "—");
+      return `
+        <article class="history-item">
+          <div class="history-meta">
+            <span class="history-action">${escapeHtml(event.action)}</span>
+            <span>${escapeHtml(event.actor || "member")}</span>
+            <span>${escapeHtml(when)}</span>
+          </div>
+          <div class="history-name">${escapeHtml(event.memberName || "Unknown")}</div>
+          <div class="history-fields">${fieldText}</div>
+        </article>`;
+    }).join("");
+  }
+
+  function rememberPersonalCode(name, code) {
+    if (!code) return;
+    try {
+      const map = JSON.parse(localStorage.getItem(PERSONAL_CODE_PREF_KEY) || "{}");
+      const key = String(name || "").trim().toLowerCase() || "_last";
+      map[key] = code;
+      map._last = code;
+      localStorage.setItem(PERSONAL_CODE_PREF_KEY, JSON.stringify(map));
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function recallPersonalCodeHint() {
+    try {
+      const map = JSON.parse(localStorage.getItem(PERSONAL_CODE_PREF_KEY) || "{}");
+      return map._last || "";
+    } catch {
+      return "";
+    }
   }
 
   function saveRoster() {

@@ -2,6 +2,7 @@ import { getStore } from "@netlify/blobs";
 
 const STORE_NAME = "phl-roster";
 const KEY = "alliance-phl";
+const HISTORY_CAP = 300;
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -23,14 +24,59 @@ function normalizeMembers(list) {
   if (!Array.isArray(list)) return [];
   return list
     .filter(item => item && typeof item === "object" && String(item.name || "").trim())
-    .map(item => ({
-      ...item,
-      id: String(item.id || ""),
-      name: String(item.name || "").trim().slice(0, 30),
-      updated: Number(item.updated) || Date.now(),
-      isDemo: Boolean(item.isDemo)
-    }))
+    .map(item => {
+      const personalCode = String(item.personalCode || "")
+        .trim()
+        .toUpperCase()
+        .replace(/[^A-Z0-9-]/g, "")
+        .slice(0, 16);
+      const needsReview = Boolean(item.needsReview) || /\]-updt$/i.test(String(item.name || "")) || /-updt$/i.test(String(item.name || ""));
+      return {
+        ...item,
+        id: String(item.id || ""),
+        name: String(item.name || "").trim().slice(0, 30),
+        updated: Number(item.updated) || Date.now(),
+        isDemo: Boolean(item.isDemo),
+        personalCode: personalCode || undefined,
+        needsReview
+      };
+    })
     .filter(item => item.id && !item.isDemo);
+}
+
+function normalizeHistory(list) {
+  if (!Array.isArray(list)) return [];
+  return list
+    .filter(item => item && typeof item === "object")
+    .map(item => ({
+      id: String(item.id || ""),
+      at: Number(item.at) || Date.now(),
+      action: String(item.action || "update").slice(0, 40),
+      memberId: String(item.memberId || "").slice(0, 64),
+      memberName: String(item.memberName || "").trim().slice(0, 40),
+      actor: String(item.actor || "member").trim().slice(0, 40),
+      fields: Array.isArray(item.fields)
+        ? item.fields.slice(0, 24).map(f => ({
+            field: String(f?.field || "").slice(0, 40),
+            from: String(f?.from ?? "").slice(0, 80),
+            to: String(f?.to ?? "").slice(0, 80)
+          }))
+        : [],
+      note: String(item.note || "").slice(0, 160)
+    }))
+    .filter(item => item.id)
+    .sort((a, b) => Number(b.at || 0) - Number(a.at || 0))
+    .slice(0, HISTORY_CAP);
+}
+
+function mergeHistory(existing, incoming) {
+  const map = new Map();
+  for (const event of [...normalizeHistory(existing), ...normalizeHistory(incoming)]) {
+    map.set(event.id, event);
+  }
+  return [...map.values()]
+    .sort((a, b) => Number(b.at || 0) - Number(a.at || 0))
+    .slice(0, HISTORY_CAP);
 }
 
 function normalizeTombstones(input) {
@@ -62,7 +108,10 @@ function mergeMembers(existing, incoming) {
   for (const member of normalizeMembers(incoming)) {
     const prev = map.get(member.id);
     if (!prev || Number(member.updated || 0) >= Number(prev.updated || 0)) {
-      map.set(member.id, member);
+      // Preserve personalCode if incoming omits it but previous had one
+      const merged = { ...member };
+      if (!merged.personalCode && prev?.personalCode) merged.personalCode = prev.personalCode;
+      map.set(member.id, merged);
     }
   }
   const byName = new Map();
@@ -73,7 +122,21 @@ function mergeMembers(existing, incoming) {
       byName.set(key, member);
     }
   }
-  return [...byName.values()].sort((a, b) => Number(b.updated || 0) - Number(a.updated || 0));
+  // Keep personalCode uniqueness — newer wins
+  const byCode = new Map();
+  const withoutCode = [];
+  for (const member of byName.values()) {
+    const code = String(member.personalCode || "").toUpperCase();
+    if (!code) {
+      withoutCode.push(member);
+      continue;
+    }
+    const prev = byCode.get(code);
+    if (!prev || Number(member.updated || 0) >= Number(prev.updated || 0)) {
+      byCode.set(code, member);
+    }
+  }
+  return [...byCode.values(), ...withoutCode].sort((a, b) => Number(b.updated || 0) - Number(a.updated || 0));
 }
 
 function applyTombstones(members, tombstones) {
@@ -95,18 +158,19 @@ function getRosterStore() {
 
 async function readRoster(store) {
   const raw = await store.get(KEY, { type: "text" });
-  if (!raw) return { alliance_id: "phl", members: [], tombstones: {}, updated_at: null };
+  if (!raw) return { alliance_id: "phl", members: [], history: [], tombstones: {}, updated_at: null };
   try {
     const data = JSON.parse(raw);
     const tombstones = normalizeTombstones(data.tombstones);
     return {
       alliance_id: "phl",
       members: applyTombstones(data.members, tombstones),
+      history: normalizeHistory(data.history),
       tombstones,
       updated_at: data.updated_at || null
     };
   } catch {
-    return { alliance_id: "phl", members: [], tombstones: {}, updated_at: null };
+    return { alliance_id: "phl", members: [], history: [], tombstones: {}, updated_at: null };
   }
 }
 
@@ -132,7 +196,7 @@ export default async (req) => {
       }
 
       const existingRaw = await store.get(KEY, { type: "text" });
-      let existing = { members: [], tombstones: {} };
+      let existing = { members: [], history: [], tombstones: {} };
       if (existingRaw) {
         try { existing = JSON.parse(existingRaw); } catch { /* ignore */ }
       }
@@ -140,9 +204,11 @@ export default async (req) => {
       const tombstones = mergeTombstones(existing.tombstones, body.tombstones, body.deleted_ids);
       const merged = mergeMembers(existing.members, body.members);
       const members = applyTombstones(merged, tombstones);
+      const history = mergeHistory(existing.history, body.history);
       const payload = {
         alliance_id: "phl",
         members,
+        history,
         tombstones,
         updated_at: new Date().toISOString()
       };
