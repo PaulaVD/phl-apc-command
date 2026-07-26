@@ -1,5 +1,5 @@
 import { getStore } from "@netlify/blobs";
-import { AUTH_CORS_HEADERS, resolveCallerAuth, verifyAdminCredentials } from "./_auth.mjs";
+import { AUTH_CORS_HEADERS, resolveCallerAuth, verifyAdminCredentials } from "../lib/auth.mjs";
 
 const STORE = "phl-admin-realtime";
 const PRESENCE_KEY = "presence";

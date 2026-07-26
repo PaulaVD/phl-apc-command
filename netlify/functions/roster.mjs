@@ -3,7 +3,7 @@ import {
   AUTH_CORS_HEADERS,
   normalizePersonalCode,
   resolveCallerAuth
-} from "./_auth.mjs";
+} from "../lib/auth.mjs";
 
 const STORE_NAME = "phl-roster";
 const KEY = "alliance-phl";
