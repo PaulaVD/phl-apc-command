@@ -1,0 +1,9 @@
+{
+  "name": "phl-apc-command",
+  "private": true,
+  "description": "PH-L Alliance APC Console — static site",
+  "scripts": {
+    "start": "python3 -m http.server 5500",
+    "deploy": "npx --yes netlify-cli deploy --dir=. --prod"
+  }
+}

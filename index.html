@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0b0404" />
+  <title>PH-L Alliance APC Console</title>
+  <meta name="description" content="PH-L internal APC combat power console for member submissions and admin roster analytics." />
+  <link rel="icon" href="assets/phl-logo.png?v=2" type="image/png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Teko:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css?v=39" />
+</head>
+<body>
+  <a class="skip-link" href="#operatorConsole">Skip to form</a>
+  <canvas id="fxCanvas" class="fx-canvas" aria-hidden="true"></canvas>
+  <div class="noise" aria-hidden="true"></div>
+  <div class="vignette" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark"><img class="game-asset" src="assets/phl-logo.png?v=2" alt="PH-L Phoenix Legacy logo" width="64" height="64" decoding="async"></div>
+      <div>
+        <strong>PH-L</strong>
+        <small>Dark War · Season 4 · APC Console</small>
+      </div>
+    </div>
+
+    <div class="top-pills">
+      <div class="top-pill"><span class="dot"></span><span>Alliance scope</span><b>PH-L only</b></div>
+      <div class="top-pill"><span class="mini-cube"></span><span>Watchtower bands</span><b>1–30 · i1–i12</b></div>
+      <div class="top-pill season-pill"><span class="map-dot"></span><span>Theater</span><b>Season 4</b></div>
+    </div>
+
+    <div class="lofi-player" id="lofiPlayer" data-playing="0">
+      <div class="lofi-yt" aria-hidden="true"><div id="lofiYtMount"></div></div>
+      <div class="lofi-eq" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+      <button class="lofi-now" id="lofiNowBtn" type="button" aria-expanded="false" aria-controls="lofiPlaylist" title="Open Lofi Girl playlist">
+        <span class="lofi-kicker">Lofi Girl</span>
+        <strong id="lofiTrackTitle">beats to relax/study to</strong>
+        <small id="lofiTrackArtist">Lofi Girl · live radio</small>
+      </button>
+      <div class="lofi-controls">
+        <button class="lofi-btn" id="lofiPrevBtn" type="button" title="Previous station" aria-label="Previous station">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
+        </button>
+        <button class="lofi-btn lofi-play" id="lofiPlayBtn" type="button" title="Play / pause" aria-label="Play Lofi Girl radio">
+          <svg class="lofi-icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+          <svg class="lofi-icon-pause" viewBox="0 0 24 24" aria-hidden="true" hidden><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>
+        </button>
+        <button class="lofi-btn" id="lofiNextBtn" type="button" title="Next station" aria-label="Next station">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 6h2v12h-2zM6 18l8.5-6L6 6z"/></svg>
+        </button>
+      </div>
+      <label class="lofi-vol" title="Volume">
+        <span class="sr-only">Volume</span>
+        <input id="lofiVolume" type="range" min="0" max="100" value="55" aria-label="Lofi volume">
+      </label>
+      <div class="lofi-playlist" id="lofiPlaylist" hidden role="listbox" aria-label="Lofi Girl playlist"></div>
+    </div>
+
+    <div class="top-actions">
+      <button class="icon-btn active" id="sfxBtn" title="Toggle sound effects" aria-label="Toggle sound effects">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3.23v17.54a1 1 0 0 1-1.64.77L7.56 17H4a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2h3.56l4.8-4.54A1 1 0 0 1 14 3.23Zm3.54 4.05a1 1 0 0 1 1.41 0 6.98 6.98 0 0 1 0 9.9 1 1 0 1 1-1.41-1.42 4.98 4.98 0 0 0 0-7.06 1 1 0 0 1 0-1.42Zm-2.83 2.83a1 1 0 0 1 1.41 0 2.98 2.98 0 0 1 0 4.22 1 1 0 1 1-1.41-1.42.98.98 0 0 0 0-1.38 1 1 0 0 1 0-1.42Z"/></svg>
+      </button>
+      <button class="btn btn-ghost admin-only" id="demoBtn">Load demo</button>
+      <button class="btn btn-ghost admin-only" id="copyDiscordBtn">Copy Discord</button>
+      <button class="btn btn-ghost admin-only" id="exportBtn">Export CSV</button>
+      <button class="btn btn-ghost admin-only" id="syncBtn">Sync</button>
+      <button class="btn btn-admin" id="adminAccessBtn"><span class="lock-dot"></span><span id="adminAccessLabel">Admin access</span></button>
+    </div>
+  </header>
+
+  <main class="shell">
+  <section class="server-clock-panel" id="serverClockPanel" aria-label="Dark War server time">
+    <div class="server-clock-live">
+      <div class="server-clock-label">
+        <span class="eyebrow"><span></span>Dark War server</span>
+        <strong>Server time</strong>
+      </div>
+      <div class="server-clock-face" aria-live="polite">
+        <time id="serverClockDisplay">--:--:--</time>
+        <span class="server-clock-badge" id="serverClockBadge">Asunción +1h</span>
+      </div>
+      <div class="server-clock-local">
+        <span>Your local</span>
+        <b id="localClockDisplay">--:--:--</b>
+        <em id="localOffsetBadge">auto</em>
+        <small id="localZoneLabel">Detecting…</small>
+      </div>
+    </div>
+
+    <div class="server-clock-converter">
+      <div class="server-clock-label">
+        <span class="eyebrow"><span></span>Event converter</span>
+        <strong>Server → local</strong>
+      </div>
+      <div class="server-clock-fields">
+        <label class="field">
+          <span>Server event</span>
+          <input class="input" id="serverEventInput" type="time" value="15:00" step="60" aria-label="Server event time">
+        </label>
+        <label class="field">
+          <span>Your timezone</span>
+          <select id="localOffsetSelect" aria-label="Target UTC offset"></select>
+        </label>
+        <div class="server-clock-result">
+          <span>Local event</span>
+          <strong id="localConvertedTime">--:--</strong>
+          <small id="localConvertedMeta">Detecting timezone…</small>
+        </div>
+      </div>
+    </div>
+  </section>
+
+    <section class="dashboard-grid">
+      <section class="panel scan-panel" data-tilt id="scanPanel">
+        <div class="panel-head compact">
+          <div>
+            <span class="eyebrow"><span></span>PH-L alliance scan</span>
+            <h2>Alliance APC bay</h2>
+          </div>
+          <div class="scan-head-actions">
+            <button class="btn btn-ghost scan-toggle" id="scanToggleBtn" type="button" aria-expanded="true" aria-controls="scanBody">Hide scan</button>
+            <div class="badge live" id="liveBadge" hidden>LIVE</div>
+          </div>
+        </div>
+
+        <div class="scan-body" id="scanBody">
+          <div class="scan-stage">
+            <img class="scan-watermark game-asset" src="assets/phl-logo.png?v=2" alt="" width="320" height="320" decoding="async" loading="lazy">
+            <div class="radar-ring ring-1"></div>
+            <div class="radar-ring ring-2"></div>
+            <div class="grid-overlay"></div>
+            <div class="scan-line"></div>
+            <div class="crosshair-x"></div>
+            <div class="crosshair-y"></div>
+            <div class="scan-floor"></div>
+            <div class="apc-glow"></div>
+            <img class="scan-apc game-asset" src="assets/phl-apc.png?v=2" alt="APC scan preview" width="340" height="260" decoding="async">
+            <div class="orbit-chip orbit-a"><strong id="orbit1">0M</strong><span id="orbitFaction1">Fighter</span></div>
+            <div class="orbit-chip orbit-b"><strong id="orbit2">0M</strong><span id="orbitFaction2">Fighter</span></div>
+            <div class="orbit-chip orbit-c"><strong id="orbit3">0M</strong><span id="orbitFaction3">Fighter</span></div>
+            <div class="orbit-chip orbit-d"><strong id="orbit4">0M</strong><span id="orbitFaction4">Fighter</span></div>
+            <div class="scan-chip top-left">APC scan</div>
+            <div class="scan-chip bottom-left" id="scanModeTag">Awaiting input</div>
+            <div class="scan-chip bottom-right" id="statusTag">Building</div>
+          </div>
+
+          <div class="scan-metrics" id="scanMetrics">
+            <div class="status-tile"><span>Main APC CP</span><strong id="scanMain">0M</strong></div>
+            <div class="status-tile"><span>Total APC CP</span><strong id="scanTotal">0M</strong></div>
+            <div class="status-tile"><span>Average APC</span><strong id="scanAverage">0M</strong></div>
+            <div class="status-tile" title="How far main APC is from frontline benchmark"><span>Gap to frontline</span><strong id="scanGap">—</strong></div>
+            <div class="status-tile" title="RL vs RJ from alliance APC1 + Plaza criteria"><span>Rally role</span><strong id="scanRallyRole">RJ</strong></div>
+          </div>
+          <div class="scan-footer" id="scanFooter">
+            <div><span>Current category</span><strong id="scanLevelLabel">30</strong></div>
+            <div><span>Available levels</span><strong>1–30 · i1–i12</strong></div>
+            <div><span>Tracker scope</span><strong class="scope-mark">PH-L alliance only</strong></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel wizard-panel" id="operatorConsole">
+        <div class="panel-head">
+          <div>
+            <span class="eyebrow"><span></span>PH-L member entry</span>
+            <h2 id="entryTitle">Guided APC setup</h2>
+            <p id="entrySubtitle">Register one PH-L member at a time. Only the field you need is shown.</p>
+          </div>
+          <div class="entry-mode-wrap">
+            <div class="mode-toggle" role="group" aria-label="Entry mode">
+              <button class="mode-btn active" type="button" id="guidedModeBtn" data-entry-mode="guided">Guided</button>
+              <button class="mode-btn" type="button" id="quickModeBtn" data-entry-mode="quick">Quick submit</button>
+            </div>
+            <div class="step-pill" id="stepPill">Step 1 / 6</div>
+          </div>
+        </div>
+
+        <div class="wizard-shell" id="wizardShell">
+          <aside class="wizard-rail" id="wizardRail" aria-label="Wizard steps"></aside>
+
+          <div class="wizard-main">
+            <div class="wizard-card" id="wizardCard">
+              <div class="wizard-card-head" id="wizardCardHead">
+                <div>
+                  <span class="tiny-label" id="wizardLabel">Step 1</span>
+                  <h3 id="wizardTitle">Operator identity</h3>
+                  <p id="wizardHint">Start with the member name, level and alliance rank.</p>
+                </div>
+                <div class="wizard-icon" id="wizardIcon">01</div>
+              </div>
+              <div class="wizard-content" id="wizardContent"></div>
+            </div>
+
+            <div class="wizard-actions">
+              <button class="btn btn-primary" id="primaryBtn">Continue</button>
+              <button class="btn btn-ghost" id="backBtn">Back</button>
+              <button class="btn btn-ghost" id="resetBtn">Reset</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </section>
+
+    <section class="member-privacy-note" id="memberPrivacyNote">
+      <div class="privacy-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M17 9h-1V7a4 4 0 1 0-8 0v2H7a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2Zm-3 0h-4V7a2 2 0 1 1 4 0Z"/></svg>
+      </div>
+      <div>
+        <strong>PH-L private analytics</strong>
+        <span>Submit Garage APC CP + Rally Plaza capacity here. Roster, rankings and war readiness unlock with admin access. Tip: paste <code>Name i5 820/760/710/655 450000</code>.</span>
+      </div>
+    </section>
+
+    <section class="summary-strip admin-only" id="summaryStrip">
+      <div class="sum-item">
+        <span class="summary-label">Registered members</span>
+        <strong id="kpiMembers">0</strong>
+      </div>
+      <div class="sum-item">
+        <span class="summary-label">Alliance total power</span>
+        <strong id="kpiAlliancePower">0<small>M</small></strong>
+      </div>
+      <div class="sum-item">
+        <span class="summary-label">Average main APC</span>
+        <strong id="kpiAvgMain">0<small>M</small></strong>
+      </div>
+      <div class="sum-item">
+        <span class="summary-label">Apex operators</span>
+        <strong id="kpiApex"><span id="kpiApexCount">0</span><small> / <span id="kpiApexTotal">0</span></small></strong>
+      </div>
+    </section>
+
+    <section class="lower-grid admin-only" id="adminDashboard">
+      <section class="panel roster-panel">
+        <div class="panel-head">
+          <div>
+            <span class="eyebrow"><span></span>PH-L alliance registry</span>
+            <h2>Member power roster</h2>
+            <p>Track, compare and export combat power for PH-L members only.</p>
+          </div>
+        </div>
+
+        <div class="toolbar">
+          <label class="searchbox"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 20-4.4-4.4a8 8 0 1 0-1 1L20 21l1-1ZM5 11a6 6 0 1 1 12 0 6 6 0 0 1-12 0Z"/></svg><input id="searchInput" type="search" placeholder="Search player..." autocomplete="off"></label>
+          <select id="levelFilter" aria-label="Filter by level"></select>
+          <select id="rankFilter" aria-label="Filter by rank">
+            <option value="all">All ranks</option>
+            <option value="R1">R1</option>
+            <option value="R2">R2</option>
+            <option value="R3">R3</option>
+            <option value="R4">R4</option>
+            <option value="R5">R5</option>
+          </select>
+          <select id="statusFilter" aria-label="Filter by status">
+            <option value="all">All statuses</option>
+            <option value="apex">Apex</option>
+            <option value="frontline">Frontline</option>
+            <option value="operational">Operational</option>
+            <option value="building">Building</option>
+            <option value="below-frontline">Below frontline</option>
+            <option value="stale">Stale (7d+)</option>
+            <option value="rl">Rally Leader (RL)</option>
+            <option value="rj">Rally Joiner (RJ)</option>
+          </select>
+          <select id="sortSelect" aria-label="Sort roster">
+            <option value="total-desc">Highest total CP</option>
+            <option value="main-desc">Highest main APC</option>
+            <option value="gap-asc">Biggest frontline gap</option>
+            <option value="updated-desc">Most recent</option>
+            <option value="name-asc">Name A-Z</option>
+          </select>
+        </div>
+        <div class="result-text" id="resultText">0 results shown</div>
+        <div class="roster-list" id="rosterList"></div>
+
+        <section class="roster-formations" id="rallyMatchmaking">
+          <div class="roster-formations-head">
+            <div>
+              <span class="eyebrow"><span></span>Matchmaking</span>
+              <h3>Suggested strike teams</h3>
+              <p class="rally-rule">Same faction first · ~100k troops per joiner march · fills each RL plaza</p>
+            </div>
+          </div>
+          <div class="rally-formation-list" id="rallyFormationList"></div>
+        </section>
+      </section>
+
+      <aside class="insights-col">
+        <section class="panel insight-panel season-map-panel">
+          <div class="panel-head compact">
+            <div>
+              <span class="eyebrow"><span></span>Dark War theater</span>
+              <h2>Season 4 map</h2>
+            </div>
+            <div class="badge">Active</div>
+          </div>
+          <figure class="season-map-frame">
+            <img src="assets/season4-map.jpg?v=1" alt="Dark War Survival Season 4 territory map" width="1024" height="768" decoding="async" loading="lazy">
+            <figcaption>
+              <span>Central square = core objective</span>
+              <b>PH-L war room</b>
+            </figcaption>
+          </figure>
+        </section>
+
+        <section class="panel insight-panel">
+          <div class="panel-head compact">
+            <div>
+              <span class="eyebrow"><span></span>Readiness</span>
+              <h2>Overall readiness</h2>
+            </div>
+          </div>
+          <div class="gauge-wrap">
+            <div class="gauge" id="readinessGauge"><div class="gauge-core"><strong id="readinessValue">0%</strong><span>Ready</span></div></div>
+            <div class="gauge-copy" id="readinessCopy">Start adding members to calculate alliance readiness.</div>
+          </div>
+        </section>
+
+        <section class="panel insight-panel">
+          <div class="panel-head compact">
+            <div>
+              <span class="eyebrow"><span></span>Rally ops</span>
+              <h2>RL / RJ split</h2>
+            </div>
+          </div>
+          <div class="rally-split" id="rallySplit">
+            <div class="rally-criteria" id="rallyCriteriaBox">
+              <label class="rally-mode">
+                <span>Criteria source</span>
+                <select id="rallyCriteriaMode" aria-label="Rally criteria source">
+                  <option value="roster">Alliance roster (median)</option>
+                  <option value="manual">Manual alliance policy</option>
+                </select>
+              </label>
+              <div class="rally-roster-readout" id="rallyRosterReadout">
+                <div class="rally-chip"><span>Min APC1</span><b id="rallyReadoutApc">—</b></div>
+                <div class="rally-chip"><span>Min Plaza</span><b id="rallyReadoutPlaza">—</b></div>
+              </div>
+              <div class="rally-manual-fields" id="rallyManualFields" hidden>
+                <label>Min APC1 (M)<input id="rallyMinApc1Input" type="number" min="0" step="1" class="input"></label>
+                <label>Min Plaza<input id="rallyMinPlazaInput" type="number" min="0" step="1000" class="input"></label>
+              </div>
+              <p class="rally-rule" id="rallyRuleCopy">Criteria come from loaded alliance member APC1 + Plaza.</p>
+            </div>
+            <div class="rally-kpis">
+              <div class="rally-stat rl"><span>Rally Leaders</span><strong id="kpiRl">0</strong></div>
+              <div class="rally-stat rj"><span>Rally Joiners</span><strong id="kpiRj">0</strong></div>
+            </div>
+            <div class="rally-leader-list" id="rallyLeaderList" hidden></div>
+          </div>
+        </section>
+
+        <section class="panel insight-panel">
+          <div class="panel-head compact">
+            <div>
+              <span class="eyebrow"><span></span>War composition</span>
+              <h2>Faction coverage</h2>
+            </div>
+          </div>
+          <div class="faction-coverage" id="factionCoverage"></div>
+        </section>
+
+        <section class="panel insight-panel">
+          <div class="panel-head compact">
+            <div>
+              <span class="eyebrow"><span></span>Top operators</span>
+              <h2>Power ranking</h2>
+            </div>
+          </div>
+          <div class="rank-list" id="rankingList"></div>
+        </section>
+
+        <section class="panel insight-panel">
+          <div class="panel-head compact">
+            <div>
+              <span class="eyebrow"><span></span>PH-L internal guide</span>
+              <h2>Selected level benchmark</h2>
+            </div>
+          </div>
+          <div class="ref-list" id="refList"></div>
+        </section>
+      </aside>
+    </section>
+  </main>
+
+  <div class="admin-modal" id="adminModal" aria-hidden="true">
+    <div class="admin-modal-backdrop" data-modal-close="admin"></div>
+    <section class="admin-modal-card" role="dialog" aria-modal="true" aria-labelledby="adminModalTitle">
+      <div class="admin-lock-visual">
+        <div class="lock-cube"><span></span></div>
+      </div>
+      <span class="eyebrow"><span></span>Restricted PH-L access</span>
+      <h2 id="adminModalTitle">Admin authentication</h2>
+      <p>Enter the shared PH-L admin access code to view the roster, rankings, readiness data and exports.</p>
+      <label class="admin-code-field">
+        <span>Admin access code</span>
+        <input id="adminCodeInput" type="password" autocomplete="current-password" placeholder="Enter access code">
+      </label>
+      <div class="admin-error" id="adminError" aria-live="polite"></div>
+      <div class="admin-modal-actions">
+        <button class="btn btn-primary" id="adminLoginBtn">Unlock dashboard</button>
+        <button class="btn btn-ghost" id="adminCancelBtn">Cancel</button>
+      </div>
+      <small class="admin-security-note">Admin access is remembered only for the current browser session.</small>
+    </section>
+  </div>
+
+  <div class="admin-modal" id="deleteModal" aria-hidden="true">
+    <div class="admin-modal-backdrop" data-modal-close="delete"></div>
+    <section class="admin-modal-card confirm-modal-card" role="dialog" aria-modal="true" aria-labelledby="deleteModalTitle">
+      <span class="eyebrow"><span></span>Confirm action</span>
+      <h2 id="deleteModalTitle">Remove member</h2>
+      <p id="deleteModalText">Are you sure you want to remove this member from the PH-L roster?</p>
+      <div class="admin-modal-actions">
+        <button class="btn btn-primary danger-btn" id="deleteConfirmBtn">Remove</button>
+        <button class="btn btn-ghost" id="deleteCancelBtn">Cancel</button>
+      </div>
+    </section>
+  </div>
+
+  <div class="admin-modal" id="syncModal" aria-hidden="true">
+    <div class="admin-modal-backdrop" data-modal-close="sync"></div>
+    <section class="admin-modal-card sync-modal-card" role="dialog" aria-modal="true" aria-labelledby="syncModalTitle">
+      <span class="eyebrow"><span></span>Multi-device roster</span>
+      <h2 id="syncModalTitle">Alliance sync</h2>
+      <p id="syncStatusText">Export JSON for officers, import on another device, or connect Supabase in <code>config.js</code> for live shared roster.</p>
+      <div class="sync-actions">
+        <button class="btn btn-primary" id="syncPullBtn" type="button">Pull from cloud</button>
+        <button class="btn btn-ghost" id="syncPushBtn" type="button">Push to cloud</button>
+        <button class="btn btn-ghost" id="exportJsonBtn" type="button">Export JSON</button>
+        <label class="btn btn-ghost file-btn">Import JSON<input id="importJsonInput" type="file" accept="application/json,.json" hidden></label>
+      </div>
+      <div class="admin-error" id="syncError" aria-live="polite"></div>
+      <div class="admin-modal-actions">
+        <button class="btn btn-ghost" id="syncCloseBtn">Close</button>
+      </div>
+    </section>
+  </div>
+
+  <div class="toast-region" id="toastRegion" aria-live="polite"></div>
+
+  <script src="config.js"></script>
+  <script src="rallyRoles.js?v=27"></script>
+  <script src="app.js?v=39" defer></script>
+</body>
+</html>
