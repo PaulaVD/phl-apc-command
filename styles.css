@@ -1252,6 +1252,11 @@ button.row-val.field-tap.is-muted{color:var(--soft);font-weight:700}
   color:#2a1208;font-size:.68rem;font-weight:800;letter-spacing:0
 }
 .events-tab-count[hidden]{display:none!important}
+.roster-jump-btn{
+  min-height:var(--tb-chip-h);padding:0 14px;border-radius:14px;
+  font-size:.78rem;letter-spacing:.1em
+}
+body.admin-mode .roster-jump-btn.admin-only{display:inline-flex!important}
 .events-popover{
   position:absolute;top:calc(100% + 8px);right:0;z-index:40;
   width:min(92vw,380px);max-height:min(72vh,560px);overflow:auto;

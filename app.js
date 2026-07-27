@@ -238,6 +238,8 @@
     eventsPopover: document.getElementById("eventsPopover"),
     eventsPopoverClose: document.getElementById("eventsPopoverClose"),
     eventsTabCount: document.getElementById("eventsTabCount"),
+    rosterJumpBtn: document.getElementById("rosterJumpBtn"),
+    adminDashboard: document.getElementById("adminDashboard"),
     teScheduleList: document.getElementById("teScheduleList"),
     teScheduleEmpty: document.getElementById("teScheduleEmpty"),
     teAdminSchedule: document.getElementById("teAdminSchedule"),
@@ -386,6 +388,7 @@
       toggleEventsPopover();
     });
     el.eventsPopoverClose?.addEventListener("click", () => setEventsPopoverOpen(false));
+    el.rosterJumpBtn?.addEventListener("click", () => jumpToAdminRoster());
     document.addEventListener("click", event => {
       if (!el.eventsPopover || el.eventsPopover.hidden) return;
       if (el.eventsMenu?.contains(event.target)) return;
@@ -481,6 +484,20 @@
   function toggleEventsPopover() {
     const open = el.eventsPopover?.hidden !== false;
     setEventsPopoverOpen(open);
+  }
+
+  function jumpToAdminRoster({ silent = false } = {}) {
+    if (!isAdmin) {
+      openAuthModal();
+      toast("Sign in as leadership to view the member power roster.", "error");
+      playSfx("error");
+      return;
+    }
+    setAdminView("roster");
+    setEventsPopoverOpen(false);
+    const target = el.adminDashboard || document.getElementById("adminDashboard");
+    target?.scrollIntoView({ behavior: silent ? "auto" : "smooth", block: "start" });
+    if (!silent) playSfx("click");
   }
 
   function updateEventsTabCount() {
@@ -3247,6 +3264,7 @@
     await pullCloudRoster({ silent: true });
     await pullScheduledEvents({ silent: true });
     renderAll();
+    window.requestAnimationFrame(() => jumpToAdminRoster({ silent: true }));
     toast(`Welcome, <strong>${escapeHtml(account.name)}</strong>.`, "success");
     playSfx("success");
   }
