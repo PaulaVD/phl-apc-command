@@ -235,7 +235,8 @@
     mobileShellTabs: document.getElementById("mobileShellTabs"),
     eventsMenu: document.getElementById("eventsMenu"),
     eventsTabBtn: document.getElementById("eventsTabBtn"),
-    eventsPopover: document.getElementById("eventsPopover"),
+    eventsModal: document.getElementById("eventsModal"),
+    eventsPopover: document.getElementById("eventsModal"),
     eventsPopoverClose: document.getElementById("eventsPopoverClose"),
     eventsTabCount: document.getElementById("eventsTabCount"),
     rosterJumpBtn: document.getElementById("rosterJumpBtn"),
@@ -383,17 +384,11 @@
     });
     el.teEventForm?.addEventListener("submit", onScheduledEventSubmit);
     el.teEventCancelBtn?.addEventListener("click", resetScheduledEventForm);
-    el.eventsTabBtn?.addEventListener("click", event => {
-      event.stopPropagation();
+    el.eventsTabBtn?.addEventListener("click", () => {
       toggleEventsPopover();
     });
     el.eventsPopoverClose?.addEventListener("click", () => setEventsPopoverOpen(false));
     el.rosterJumpBtn?.addEventListener("click", () => jumpToAdminRoster());
-    document.addEventListener("click", event => {
-      if (!el.eventsPopover || el.eventsPopover.hidden) return;
-      if (el.eventsMenu?.contains(event.target)) return;
-      setEventsPopoverOpen(false);
-    });
     document.querySelectorAll("[data-admin-view]").forEach(btn => {
       btn.addEventListener("click", () => setAdminView(btn.dataset.adminView));
     });
@@ -412,7 +407,7 @@
   function onGlobalKeydown(event) {
     if (event.key === "Escape") {
       closeAllUiSelects();
-      if (el.eventsPopover && !el.eventsPopover.hidden) setEventsPopoverOpen(false);
+      if (el.eventsModal?.classList.contains("open")) setEventsPopoverOpen(false);
       else if (el.memberDrawer?.classList.contains("open")) closeMemberDrawer();
       else if (el.personalCodeModal?.classList.contains("open")) closeModal("personalCode");
       else if (el.authModal?.classList.contains("open")) closeModal("auth");
@@ -469,20 +464,23 @@
   }
 
   function setEventsPopoverOpen(open) {
-    if (!el.eventsPopover || !el.eventsTabBtn) return;
+    if (!el.eventsModal || !el.eventsTabBtn) return;
     const next = Boolean(open);
-    el.eventsPopover.hidden = !next;
-    el.eventsTabBtn.setAttribute("aria-expanded", String(next));
-    el.eventsTabBtn.classList.toggle("is-open", next);
-    el.eventsMenu?.classList.toggle("is-open", next);
     if (next) {
       if (el.teEventDate && !el.teEventDate.value) el.teEventDate.value = todayServerDate();
+      openModal("events", el.teScheduleList);
+      el.eventsTabBtn.setAttribute("aria-expanded", "true");
+      el.eventsTabBtn.classList.add("is-open");
       playSfx("click");
+      return;
     }
+    closeModal("events");
+    el.eventsTabBtn.setAttribute("aria-expanded", "false");
+    el.eventsTabBtn.classList.remove("is-open");
   }
 
   function toggleEventsPopover() {
-    const open = el.eventsPopover?.hidden !== false;
+    const open = !el.eventsModal?.classList.contains("open");
     setEventsPopoverOpen(open);
   }
 
@@ -3186,6 +3184,7 @@
     if (name === "delete") return el.deleteModal;
     if (name === "sync") return el.syncModal;
     if (name === "personalCode") return el.personalCodeModal;
+    if (name === "events") return el.eventsModal;
     if (name === "auth" || name === "admin" || name === "member") return el.authModal;
     return el.authModal;
   }
@@ -3210,12 +3209,17 @@
       && !el.deleteModal?.classList.contains("open")
       && !el.syncModal?.classList.contains("open")
       && !el.personalCodeModal?.classList.contains("open")
+      && !el.eventsModal?.classList.contains("open")
       && !el.memberDrawer?.classList.contains("open")
     ) {
       document.body.classList.remove("modal-open");
     }
     if (name === "admin" || name === "member" || name === "auth") {
       if (el.authError) el.authError.textContent = "";
+    }
+    if (name === "events") {
+      el.eventsTabBtn?.setAttribute("aria-expanded", "false");
+      el.eventsTabBtn?.classList.remove("is-open");
     }
     if (name === "delete") pendingDeleteId = null;
     if (name === "sync" && el.syncError) el.syncError.textContent = "";

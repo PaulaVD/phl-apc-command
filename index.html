@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Teko:wght@500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=151" />
+  <link rel="stylesheet" href="styles.css?v=152" />
 </head>
 <body class="mobile-tab-push">
   <a class="skip-link" href="#operatorConsole">Skip to form</a>
@@ -83,40 +83,10 @@
       </div>
 
       <div class="top-actions">
-        <div class="events-menu" id="eventsMenu">
-          <button class="btn btn-ghost events-tab" id="eventsTabBtn" type="button" aria-expanded="false" aria-controls="eventsPopover" aria-haspopup="dialog">
-            Events
-            <span class="events-tab-count" id="eventsTabCount" hidden>0</span>
-          </button>
-          <div class="events-popover" id="eventsPopover" hidden role="dialog" aria-label="Game events">
-            <div class="events-popover-head">
-              <div>
-                <span class="time-block-kicker">Dark War</span>
-                <strong>Game events</strong>
-              </div>
-              <button class="icon-btn events-popover-close" id="eventsPopoverClose" type="button" aria-label="Close events">×</button>
-            </div>
-            <div class="te-schedule" id="teScheduleList" aria-live="polite">
-              <p class="te-empty" id="teScheduleEmpty">No events scheduled yet.</p>
-            </div>
-            <div class="te-admin-schedule admin-only" id="teAdminSchedule">
-              <span class="time-block-kicker">Schedule event</span>
-              <form class="te-event-form" id="teEventForm">
-                <div class="te-event-form-row">
-                  <input class="input" id="teEventDate" type="date" required aria-label="Event date">
-                  <input class="input" id="teEventTime" type="time" value="15:00" step="60" required aria-label="Server time">
-                </div>
-                <input class="input" id="teEventTitle" type="text" maxlength="80" placeholder="Title" required aria-label="Event title">
-                <input class="input" id="teEventNote" type="text" maxlength="120" placeholder="Note (optional)" aria-label="Optional note">
-                <div class="te-event-form-actions">
-                  <button class="btn btn-primary" id="teEventSaveBtn" type="submit">Add event</button>
-                  <button class="btn btn-ghost" id="teEventCancelBtn" type="button" hidden>Cancel</button>
-                </div>
-              </form>
-              <p class="te-admin-hint">Server time (UTC-3). Members accept or decline only.</p>
-            </div>
-          </div>
-        </div>
+        <button class="btn btn-ghost events-tab" id="eventsTabBtn" type="button" aria-expanded="false" aria-controls="eventsModal" aria-haspopup="dialog">
+          Events
+          <span class="events-tab-count" id="eventsTabCount" hidden>0</span>
+        </button>
         <button class="btn btn-ghost admin-only roster-jump-btn" id="rosterJumpBtn" type="button" title="Jump to member power roster">
           Roster
         </button>
@@ -448,6 +418,38 @@
     </section>
   </main>
 
+  <div class="admin-modal events-modal" id="eventsModal" aria-hidden="true">
+    <div class="admin-modal-backdrop" data-modal-close="events"></div>
+    <section class="admin-modal-card events-modal-card" role="dialog" aria-modal="true" aria-labelledby="eventsModalTitle">
+      <div class="events-modal-head">
+        <div>
+          <span class="eyebrow"><span></span>Dark War</span>
+          <h2 id="eventsModalTitle">Game events</h2>
+        </div>
+        <button class="icon-btn" id="eventsPopoverClose" type="button" aria-label="Close events" data-modal-close="events">×</button>
+      </div>
+      <div class="te-schedule" id="teScheduleList" aria-live="polite">
+        <p class="te-empty" id="teScheduleEmpty">No events scheduled yet.</p>
+      </div>
+      <div class="te-admin-schedule admin-only" id="teAdminSchedule">
+        <span class="time-block-kicker">Schedule event</span>
+        <form class="te-event-form" id="teEventForm">
+          <div class="te-event-form-row">
+            <input class="input" id="teEventDate" type="date" required aria-label="Event date">
+            <input class="input" id="teEventTime" type="time" value="15:00" step="60" required aria-label="Server time">
+          </div>
+          <input class="input" id="teEventTitle" type="text" maxlength="80" placeholder="Title" required aria-label="Event title">
+          <input class="input" id="teEventNote" type="text" maxlength="120" placeholder="Note (optional)" aria-label="Optional note">
+          <div class="te-event-form-actions">
+            <button class="btn btn-primary" id="teEventSaveBtn" type="submit">Add event</button>
+            <button class="btn btn-ghost" id="teEventCancelBtn" type="button" hidden>Cancel</button>
+          </div>
+        </form>
+        <p class="te-admin-hint">Server time (UTC-3). Members accept or decline only.</p>
+      </div>
+    </section>
+  </div>
+
   <div class="admin-modal" id="authModal" aria-hidden="true">
     <div class="admin-modal-backdrop" data-modal-close="auth"></div>
     <section class="admin-modal-card auth-modal-card" role="dialog" aria-modal="true" aria-labelledby="authModalTitle">
@@ -543,6 +545,6 @@
   <script src="serverClock.js?v=35"></script>
   <script src="rallyRoles.js?v=31"></script>
   <script src="rallyMatchmaking.js?v=28"></script>
-  <script src="app.js?v=151" defer></script>
+  <script src="app.js?v=152" defer></script>
 </body>
 </html>
