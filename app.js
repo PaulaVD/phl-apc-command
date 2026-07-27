@@ -88,6 +88,7 @@
     rank: RANKS.includes(prefs.lastRank) ? prefs.lastRank : "R1",
     rallyCapacity: 0,
     personalCode: "",
+    hasApc4: false,
     apcs: Array.from({ length: APC_COUNT }, () => ({ cp: 0, faction: "Fighter" }))
   };
 
@@ -96,7 +97,7 @@
     { key: "apc1", title: "APC 1 setup", hint: "Configure your main APC CP, faction and Rally Plaza capacity.", railTitle: "APC 1", railHint: "Main + Plaza", icon: "A1" },
     { key: "apc2", title: "APC 2 setup", hint: "Add the second APC and keep your loadout balanced.", railTitle: "APC 2", railHint: "Second APC", icon: "A2" },
     { key: "apc3", title: "APC 3 setup", hint: "Set the third APC power and faction focus.", railTitle: "APC 3", railHint: "Third APC", icon: "A3" },
-    { key: "apc4", title: "APC 4 setup (optional)", hint: "Add a fourth APC if you have one, or leave CP at 0 and continue.", railTitle: "APC 4", railHint: "Optional", icon: "A4" },
+    { key: "apc4", title: "APC 4 setup (optional)", hint: "Tick the box if you have a 4th APC. Leave it unchecked to skip.", railTitle: "APC 4", railHint: "Optional", icon: "A4" },
     { key: "review", title: "Review & save", hint: "Check the summary and save the member into the roster.", railTitle: "Review", railHint: "Finalize", icon: "06" }
   ];
 
@@ -1038,6 +1039,7 @@
     const band = BANDS[state.level];
     const role = classifyCurrentState();
     const optional = index >= REQUIRED_APC_COUNT;
+    const apc4On = !optional || Boolean(state.hasApc4);
     el.wizardContent.innerHTML = `
       <div class="apc-focus">
         <div class="apc-preview" data-tilt>
@@ -1046,24 +1048,32 @@
           <img class="game-asset" src="${ASSETS.apc}" alt="APC ${index + 1} preview" width="240" height="180" decoding="async">
         </div>
         <div class="apc-editor">
+          ${optional ? `
+          <label class="apc4-enable-row">
+            <input type="checkbox" id="wizardHasApc4" ${state.hasApc4 ? "checked" : ""}>
+            <span>
+              <strong>I have a 4th APC</strong>
+              <small>Uncheck to skip APC 4. Totals and RL/RJ will ignore it.</small>
+            </span>
+          </label>` : ""}
+          <div class="apc4-editor-body${!apc4On ? " is-disabled" : ""}" ${!apc4On ? 'aria-disabled="true"' : ""}>
           <div class="field"><span>Faction focus${optional ? " <em class=\"optional-tag\">optional</em>" : ""}</span></div>
           <div class="faction-row">
-            ${FACTIONS.map(f => `<button class="seg-btn ${apc.faction === f ? "active" : ""}" type="button" data-apc-index="${index}" data-faction="${f}">${f}</button>`).join("")}
+            ${FACTIONS.map(f => `<button class="seg-btn ${apc.faction === f ? "active" : ""}" type="button" data-apc-index="${index}" data-faction="${f}" ${!apc4On ? "disabled" : ""}>${f}</button>`).join("")}
           </div>
           <div class="cp-control">
-            <button class="mini-btn" type="button" data-apc-index="${index}" data-step="-10">-10</button>
+            <button class="mini-btn" type="button" data-apc-index="${index}" data-step="-10" ${!apc4On ? "disabled" : ""}>-10</button>
             <div class="value-wrap">
-              <input class="cp-input" id="cpInput${index}" data-apc-index="${index}" type="number" min="0" max="${APC_CP_STORE_MAX}" step="any" value="${apc.cp}" aria-label="APC ${index + 1} CP${optional ? " (optional)" : ""}">
+              <input class="cp-input" id="cpInput${index}" data-apc-index="${index}" type="number" min="0" max="${APC_CP_STORE_MAX}" step="any" value="${apc.cp}" aria-label="APC ${index + 1} CP${optional ? " (optional)" : ""}" ${!apc4On ? "disabled" : ""}>
               <b>M CP</b>
             </div>
-            <button class="mini-btn" type="button" data-apc-index="${index}" data-step="10">+10</button>
+            <button class="mini-btn" type="button" data-apc-index="${index}" data-step="10" ${!apc4On ? "disabled" : ""}>+10</button>
           </div>
-          <input class="slider" id="slider${index}" data-apc-index="${index}" type="range" min="0" max="${max}" step="1" value="${apc.cp}" aria-label="APC ${index + 1} combat power">
+          <input class="slider" id="slider${index}" data-apc-index="${index}" type="range" min="0" max="${max}" step="1" value="${apc.cp}" aria-label="APC ${index + 1} combat power" ${!apc4On ? "disabled" : ""}>
           <div class="preset-row">
-            ${PRESETS.map(value => `<button class="preset${value > max ? " is-disabled" : ""}${apc.cp === value ? " is-active" : ""}" type="button" data-apc-index="${index}" data-preset="${value}" ${value > max ? "disabled" : ""}>${value}M</button>`).join("")}
-            <button class="preset" type="button" data-apc-index="${index}" data-preset="${band.frontline}">Frontline ${band.frontline}M</button>
-            <button class="preset" type="button" data-apc-index="${index}" data-preset="${band.apex}">Apex ${band.apex}M</button>
-            ${optional ? `<button class="preset" type="button" data-apc-index="${index}" data-preset="0">Skip / empty</button>` : ""}
+            ${PRESETS.map(value => `<button class="preset${value > max ? " is-disabled" : ""}${apc.cp === value ? " is-active" : ""}" type="button" data-apc-index="${index}" data-preset="${value}" ${value > max || !apc4On ? "disabled" : ""}>${value}M</button>`).join("")}
+            <button class="preset" type="button" data-apc-index="${index}" data-preset="${band.frontline}" ${!apc4On ? "disabled" : ""}>Frontline ${band.frontline}M</button>
+            <button class="preset" type="button" data-apc-index="${index}" data-preset="${band.apex}" ${!apc4On ? "disabled" : ""}>Apex ${band.apex}M</button>
           </div>
           ${index === 0 ? `
           <div class="plaza-block">
@@ -1083,6 +1093,8 @@
             <div class="apc-stat"><span>Status band</span><strong data-apc-stat="band">${getBandLabel(state.level, apc.cp)}</strong></div>
             <div class="apc-stat"><span>Gap to frontline</span><strong data-apc-stat="gap" class="${gap.met ? "gap-met" : "gap-short"}">${formatGap(gap)}</strong></div>
           </div>
+          </div>
+          ${optional && !apc4On ? `<p class="apc4-skip-note">APC 4 is off. Tick the box above to enter CP and faction, or continue to Review.</p>` : ""}
         </div>
       </div>`;
     enableTilt(el.wizardContent.querySelector("[data-tilt]"));
@@ -1119,6 +1131,9 @@
             ${state.apcs.map((apc, i) => {
               const gap = i === 0 ? getFrontlineGap(state.level, apc.cp) : null;
               const optional = i >= REQUIRED_APC_COUNT;
+              if (optional && !state.hasApc4) {
+                return `<div class="summary-line apc-review-line"><span>APC 4 · Optional</span><b class="apc-review-values"><em class="apc-cp">Off <small>skipped</small></em></b></div>`;
+              }
               const cpLabel = Number(apc.cp) > 0
                 ? `${formatNumber(apc.cp)}M <small>entered</small>`
                 : (optional ? "Empty <small>optional</small>" : `${formatNumber(apc.cp)}M <small>entered</small>`);
@@ -1169,6 +1184,17 @@
       return;
     }
 
+    if (target.id === "wizardHasApc4") {
+      state.hasApc4 = Boolean(target.checked);
+      if (!state.hasApc4) {
+        state.apcs[REQUIRED_APC_COUNT].cp = 0;
+      }
+      renderWizard(true);
+      syncLiveRallyClassification();
+      playSfx("click");
+      return;
+    }
+
     if (target.id === "rallyCapacityInput") {
       state.rallyCapacity = Math.max(0, Math.floor(Number(target.value || 0)));
       const plaza = el.wizardContent.querySelector('[data-checklist="plaza"]');
@@ -1188,12 +1214,14 @@
 
     if (target.classList.contains("cp-input")) {
       state.apcs[idx].cp = normalizeApcCp(target.value || 0);
+      if (idx >= REQUIRED_APC_COUNT && state.apcs[idx].cp > 0) state.hasApc4 = true;
       const slider = document.getElementById(`slider${idx}`);
       if (slider) slider.value = String(Math.min(Number(slider.max || state.apcs[idx].cp), state.apcs[idx].cp));
     }
 
     if (target.classList.contains("slider")) {
       state.apcs[idx].cp = normalizeApcCp(target.value);
+      if (idx >= REQUIRED_APC_COUNT && state.apcs[idx].cp > 0) state.hasApc4 = true;
       const input = document.getElementById(`cpInput${idx}`);
       if (input) input.value = target.value;
     }
@@ -1281,6 +1309,11 @@
       openMemberDrawer(fieldTap.dataset.id, fieldTap.dataset.editField);
       return;
     }
+    if (action?.dataset.action === "toggle-apc4" && action.dataset.id) {
+      event.preventDefault();
+      void toggleMemberApc4(action.dataset.id, action.dataset.enabled === "1");
+      return;
+    }
     if (action?.dataset.action === "delete") {
       deleteMember(action.dataset.id);
       return;
@@ -1332,7 +1365,9 @@
   }
 
   function applyApcDelta(index, delta) {
+    if (index >= REQUIRED_APC_COUNT && !state.hasApc4) return;
     state.apcs[index].cp = normalizeApcCp(state.apcs[index].cp + delta);
+    if (index >= REQUIRED_APC_COUNT && state.apcs[index].cp > 0) state.hasApc4 = true;
     syncApcControls(index);
     updateApcLiveStats(index);
     syncLiveRallyClassification();
@@ -1341,6 +1376,8 @@
   }
 
   function applyApcValue(index, value) {
+    if (index >= REQUIRED_APC_COUNT && !state.hasApc4 && Number(value) > 0) state.hasApc4 = true;
+    if (index >= REQUIRED_APC_COUNT && !state.hasApc4) return;
     state.apcs[index].cp = normalizeApcCp(value);
     syncApcControls(index);
     updateApcLiveStats(index);
@@ -1668,9 +1705,9 @@
       updated: Date.now(),
       personalCode,
       needsReview,
-      hasApc4: Number(state.apcs?.[REQUIRED_APC_COUNT]?.cp || 0) > 0,
-      apcs: state.apcs.map(apc => ({
-        cp: normalizeApcCp(apc.cp),
+      hasApc4: Boolean(state.hasApc4),
+      apcs: state.apcs.map((apc, i) => ({
+        cp: i >= REQUIRED_APC_COUNT && !state.hasApc4 ? 0 : normalizeApcCp(apc.cp),
         faction: FACTIONS.includes(apc.faction) ? apc.faction : "Fighter"
       }))
     };
@@ -1803,6 +1840,7 @@
     state.rank = RANKS.includes(prefs.lastRank) ? prefs.lastRank : "R1";
     state.rallyCapacity = 0;
     state.personalCode = "";
+    state.hasApc4 = false;
     state.apcs = Array.from({ length: APC_COUNT }, () => ({ cp: 0, faction: "Fighter" }));
     renderAll();
     if (play) playSfx("click");
@@ -1830,6 +1868,52 @@
     if (!member) return false;
     if (typeof member.hasApc4 === "boolean") return member.hasApc4;
     return Number(member.apcs?.[REQUIRED_APC_COUNT]?.cp || 0) > 0;
+  }
+
+  async function toggleMemberApc4(id, enabled) {
+    const previous = roster.find(m => m.id === id);
+    if (!previous) return;
+    const canEdit =
+      isAdmin ||
+      (isMember &&
+        memberSession &&
+        (previous.id === memberSession.memberId ||
+          normalizePersonalCode(previous.personalCode) === normalizePersonalCode(memberSession.personalCode)));
+    if (!canEdit) {
+      if (!isAdmin && !isMember) openMemberModal();
+      else if (!isAdmin) openAdminModal();
+      return;
+    }
+    if (Boolean(memberHasApc4(previous)) === Boolean(enabled)) return;
+
+    const member = {
+      ...previous,
+      apcs: previous.apcs.map(apc => ({ ...apc })),
+      hasApc4: Boolean(enabled),
+      updated: Date.now()
+    };
+    const fields = diffMemberFields(previous, member);
+    const idx = roster.findIndex(m => m.id === member.id);
+    if (idx >= 0) roster[idx] = member;
+    saveRoster();
+    appendHistoryEvent({
+      action: "field-edit",
+      memberId: member.id,
+      memberName: member.name,
+      actor: isAdmin ? (adminSession?.name || "admin") : "member",
+      fields,
+      note: enabled ? "Enabled 4th APC" : "Disabled 4th APC"
+    });
+    queueCloudOutbox(member);
+    renderAll();
+    const ok = await pushCloudRosterWithRetry({ silent: true });
+    toast(
+      ok
+        ? `4th APC ${enabled ? "enabled" : "turned off"} for <strong>${escapeHtml(member.name)}</strong>.`
+        : `<strong>${escapeHtml(member.name)}</strong> saved locally. Cloud sync will retry.`,
+      ok ? "success" : "error"
+    );
+    playSfx(ok ? "success" : "error");
   }
 
   function normalizeApcCp(value) {
@@ -1905,7 +1989,10 @@
     } else if (drawerField === "needsReview") {
       body = `<label class="field drawer-check-row"><input type="checkbox" id="drawerFieldInput" ${memberNeedsReview(member) ? "checked" : ""}><span>Flag for admin review (-updt)</span></label>`;
     } else if (drawerField === "hasApc4") {
-      body = `<label class="field drawer-check-row"><input type="checkbox" id="drawerFieldInput" ${memberHasApc4(member) ? "checked" : ""}><span>This member has a 4th APC</span></label>
+      body = `<label class="field drawer-check-row" for="drawerFieldInput">
+          <input type="checkbox" id="drawerFieldInput" ${memberHasApc4(member) ? "checked" : ""}>
+          <span>This member has a 4th APC</span>
+        </label>
         <small>Turn off if they only run 3 APCs. Totals and RL/RJ ignore APC 4 while it is off.</small>`;
     } else {
       const apcMatch = /^apc(\d)\.(cp|faction)$/.exec(drawerField);
@@ -2472,17 +2559,23 @@
               if (isApc4 && !apc4On) {
                 return `
               <div class="apc-row is-optional is-apc4-off">
-                <button type="button" class="apc-slot-toggle field-tap" data-edit-field="hasApc4" data-id="${member.id}" title="Enable 4th APC">A4</button>
-                <button type="button" class="apc4-toggle field-tap" data-edit-field="hasApc4" data-id="${member.id}" title="Enable 4th APC">Off</button>
+                <label class="apc4-inline-check" data-action="toggle-apc4" data-id="${member.id}" data-enabled="1" title="Enable 4th APC">
+                  <input type="checkbox" tabindex="-1">
+                  <b>A4</b>
+                </label>
+                <span class="apc4-toggle">Off</span>
                 <div class="bar"><div class="fill" style="--w:0%"></div></div>
-                <button type="button" class="row-val field-tap is-muted" data-edit-field="hasApc4" data-id="${member.id}" title="Enable 4th APC">—</button>
+                <span class="row-val is-muted">—</span>
               </div>`;
               }
               const barMax = Math.max(getMaxForLevel(member.level), Number(apc.cp || 0), 1);
               return `
               <div class="apc-row${isApc4 ? " is-optional" : ""}">
                 ${isApc4
-                  ? `<button type="button" class="apc-slot-toggle is-on field-tap" data-edit-field="hasApc4" data-id="${member.id}" title="Turn 4th APC on/off">A4</button>`
+                  ? `<label class="apc4-inline-check is-on" data-action="toggle-apc4" data-id="${member.id}" data-enabled="0" title="Turn 4th APC off">
+                       <input type="checkbox" checked tabindex="-1">
+                       <b>A4</b>
+                     </label>`
                   : `<b title="APC ${i + 1}">A${i + 1}</b>`}
                 <button type="button" class="faction ${apc.faction.toLowerCase()} field-tap" data-edit-field="apc${i}.faction" data-id="${member.id}" title="Edit APC ${i + 1} faction">${apc.faction}</button>
                 <div class="bar"><div class="fill" style="--w:${Math.min(100, (Number(apc.cp || 0) / barMax) * 100).toFixed(1)}%"></div></div>
@@ -4158,12 +4251,18 @@
   }
 
   function getTotalFromState() {
-    return state.apcs.reduce((sum, apc) => sum + Number(apc.cp || 0), 0);
+    return state.apcs.reduce((sum, apc, i) => {
+      if (i >= REQUIRED_APC_COUNT && !state.hasApc4) return sum;
+      return sum + Number(apc.cp || 0);
+    }, 0);
   }
 
   /** Count APCs with CP > 0 for averages (empty optional APC4 does not dilute). */
   function getActiveApcCount(apcs) {
-    const filled = (apcs || []).filter(apc => Number(apc.cp || 0) > 0).length;
+    const filled = (apcs || []).filter((apc, i) => {
+      if (i >= REQUIRED_APC_COUNT && !state.hasApc4) return false;
+      return Number(apc.cp || 0) > 0;
+    }).length;
     return Math.max(1, filled);
   }
 
