@@ -735,7 +735,10 @@ body.admin-mode .member-privacy-note{display:none}
 .admin-error{min-height:22px;margin-top:8px;color:var(--danger);font-size:.84rem}
 .admin-modal-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
 .admin-security-note{display:block;margin-top:16px;color:var(--soft);line-height:1.5}
-body.modal-open{overflow:hidden}
+body.modal-open{overflow:hidden;touch-action:none}
+body.modal-open .member-drawer,
+body.modal-open .member-drawer-sheet,
+body.modal-open .member-drawer-body{touch-action:pan-y}
 @media(max-width:640px){.member-privacy-note{align-items:flex-start}.admin-modal-actions{display:grid}.admin-modal-actions .btn{width:100%}}
 
 .entry-mode-wrap{display:grid;gap:10px;justify-items:end}
@@ -1112,39 +1115,48 @@ button.row-val.field-tap small{font-size:.62em;color:var(--soft)}
 
 /* Member drawer / side-sheet */
 .member-drawer{
-  position:fixed;inset:0;z-index:80;display:grid;justify-items:end;
-  visibility:hidden;pointer-events:none
+  position:fixed;inset:0;z-index:80;display:block;
+  visibility:hidden;pointer-events:none;
+  overflow:hidden
 }
 .member-drawer.open{visibility:visible;pointer-events:auto}
 .member-drawer-backdrop{
-  position:absolute;inset:0;background:rgba(6,2,2,.72);backdrop-filter:blur(4px);
+  position:absolute;inset:0;z-index:0;background:rgba(6,2,2,.72);backdrop-filter:blur(4px);
   opacity:0;transition:opacity .22s ease
 }
 .member-drawer.open .member-drawer-backdrop{opacity:1}
 .member-drawer-sheet{
-  position:relative;z-index:1;width:min(100%,440px);height:100%;
-  display:grid;grid-template-rows:auto minmax(0,1fr) auto;
+  position:absolute;top:0;right:0;bottom:0;z-index:1;
+  width:min(100%,440px);height:100%;max-height:100vh;max-height:100dvh;
+  display:flex;flex-direction:column;min-height:0;overflow:hidden;
   background:linear-gradient(180deg,#1a0b0b,#120707 40%,#0d0505);
   border-left:1px solid var(--line);box-shadow:-20px 0 60px rgba(0,0,0,.45);
   transform:translateX(104%);transition:transform .28s cubic-bezier(.2,.8,.2,1);
-  padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)
+  padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0);
+  box-sizing:border-box
 }
 .member-drawer.open .member-drawer-sheet{transform:translateX(0)}
-.member-drawer-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:20px 20px 8px}
+.member-drawer-head{
+  flex:0 0 auto;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:20px 20px 8px
+}
 .member-drawer-head h2{margin:6px 0 0;font-family:var(--font-display);font-size:1.7rem;letter-spacing:.06em;text-transform:uppercase}
 .member-drawer-head p{margin:6px 0 0;color:var(--muted);font-size:.88rem;line-height:1.4}
-.member-drawer-body{overflow:auto;padding:8px 20px 16px;display:grid;gap:14px}
+.member-drawer-body{
+  flex:1 1 auto;min-height:0;overflow-x:hidden;overflow-y:auto;
+  -webkit-overflow-scrolling:touch;overscroll-behavior:contain;
+  padding:8px 20px 16px;display:grid;gap:14px;align-content:start
+}
 .member-drawer-body .field{display:grid;gap:6px}
 .member-drawer-body label,.member-drawer-body .field-label{
   font-size:var(--label-size);font-weight:700;letter-spacing:var(--label-track);text-transform:uppercase;color:var(--gold);line-height:1.35
 }
 .member-drawer-actions{
-  display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px 20px 20px;
+  flex:0 0 auto;display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px 20px 20px;
   border-top:1px solid var(--line);background:rgba(0,0,0,.25)
 }
 .member-drawer-actions .btn-primary{grid-column:1/-1}
 .member-drawer-actions .btn-primary[hidden]{display:none!important}
-.drawer-overview{display:grid;gap:8px}
+.drawer-overview{display:grid;gap:8px;padding-bottom:8px}
 .drawer-field-row{
   display:flex;align-items:center;justify-content:space-between;gap:12px;
   width:100%;padding:14px 16px;border-radius:14px;border:1px solid var(--line);
@@ -1465,8 +1477,12 @@ body.admin-mode .te-admin-schedule.admin-only{display:grid!important}
     scroll-margin-bottom:calc(96px + env(safe-area-inset-bottom,0px))
   }
 
-  .member-drawer-sheet{width:100%;border-left:0;border-radius:22px 22px 0 0;height:min(92vh,100%);align-self:end}
-  .member-drawer{align-content:end}
+  .member-drawer-sheet{
+    left:0;right:0;top:auto;bottom:0;width:100%;
+    border-left:0;border-radius:22px 22px 0 0;
+    height:min(92dvh,92vh);max-height:min(92dvh,92vh);
+    align-self:auto
+  }
   .member-drawer-sheet{transform:translateY(104%)}
   .member-drawer.open .member-drawer-sheet{transform:translateY(0)}
   .history-list{padding:0 14px 16px}

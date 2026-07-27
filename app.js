@@ -1894,8 +1894,8 @@
         el.memberDrawerCancel.setAttribute("data-drawer-close", "1");
       }
 
-      const apcRows = Array.from({ length: APC_COUNT }, (_, i) => {
-        const apc = member.apcs?.[i] || { cp: 0, faction: "Fighter" };
+      const apcs = Array.from({ length: APC_COUNT }, (_, i) => member.apcs?.[i] || { cp: 0, faction: "Fighter" });
+      const apcRows = apcs.map((apc, i) => {
         return `
           <button type="button" class="drawer-field-row" data-edit-field="apc${i}.cp" data-id="${member.id}">
             <span>APC ${i + 1}${i === 0 ? " · Main" : i >= REQUIRED_APC_COUNT ? " · Optional" : ""} CP</span>
@@ -1903,7 +1903,7 @@
           </button>
           <button type="button" class="drawer-field-row" data-edit-field="apc${i}.faction" data-id="${member.id}">
             <span>APC ${i + 1} faction</span>
-            <strong>${escapeHtml(apc.faction)}</strong>
+            <strong>${escapeHtml(apc.faction || "Fighter")}</strong>
           </button>`;
       }).join("");
 
@@ -1937,6 +1937,7 @@
           ${member.personalCode ? `<div class="drawer-code-actions"><button class="btn btn-ghost" type="button" data-action="copy-code" data-code="${escapeHtml(member.personalCode)}">Copy code</button></div>` : ""}`}
           ${apcRows}
         </div>`;
+      el.memberDrawerBody.scrollTop = 0;
       return;
     }
 
@@ -1993,6 +1994,7 @@
     }
 
     el.memberDrawerBody.innerHTML = body || `<p class="empty">Unknown field.</p>`;
+    el.memberDrawerBody.scrollTop = 0;
     enhanceSelects(el.memberDrawerBody);
     const focusEl = document.getElementById("drawerFieldInput") || el.memberDrawerBody.querySelector(".seg-btn.active");
     focusEl?.focus?.();
