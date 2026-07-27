@@ -1859,7 +1859,12 @@
     const eyebrow = el.memberDrawerEyebrow;
     if (eyebrow) eyebrow.innerHTML = "<span></span>Edit field";
     if (el.memberDrawerTitle) el.memberDrawerTitle.textContent = fieldLabel(drawerField);
-    if (el.memberDrawerSub) el.memberDrawerSub.textContent = member.name;
+    if (el.memberDrawerSub) {
+      const levelLabel = formatLevel(member.level);
+      el.memberDrawerSub.textContent = drawerField?.endsWith?.(".cp")
+        ? `${member.name} · Level ${levelLabel} · max ${formatNumber(getMaxForLevel(member.level))}M`
+        : `${member.name} · Level ${levelLabel}`;
+    }
 
     let body = "";
     if (drawerField === "name") {
@@ -1885,7 +1890,8 @@
         const i = Number(apcMatch[1]);
         const apc = member.apcs?.[i] || { cp: 0, faction: "Fighter" };
         if (apcMatch[2] === "cp") {
-          body = `<div class="field"><label for="drawerFieldInput">APC ${i + 1} CP (M)</label><input class="input" id="drawerFieldInput" type="number" min="0" step="any" value="${Number(apc.cp || 0)}"></div>`;
+          const max = getMaxForLevel(member.level);
+          body = `<div class="field"><label for="drawerFieldInput">APC ${i + 1} CP (M)</label><input class="input" id="drawerFieldInput" type="number" min="0" max="${max}" step="any" value="${Number(apc.cp || 0)}"><small>Max for level ${escapeHtml(formatLevel(member.level))}: <strong>${formatNumber(max)}M</strong>. Raise HQ level first if you need a higher CP.</small></div>`;
         } else {
           body = `<div class="field"><span class="field-label">APC ${i + 1} faction</span><div class="faction-row compact" id="drawerFactionRow">
             ${FACTIONS.map(f => `<button class="seg-btn ${apc.faction === f ? "active" : ""}" type="button" data-drawer-faction="${i}" data-faction="${f}">${f}</button>`).join("")}
@@ -2029,7 +2035,27 @@
 
     const fields = diffMemberFields(previous, member);
     const editedLabel = fieldLabel(drawerField);
+    const editedFieldKey = drawerField;
+    let clampNote = "";
+    let savedCp = null;
+    if (editedFieldKey?.endsWith?.(".cp")) {
+      const apcMatch = /^apc(\d)\.cp$/.exec(editedFieldKey);
+      if (apcMatch) {
+        const i = Number(apcMatch[1]);
+        const raw = Number(document.getElementById("drawerFieldInput")?.value || 0);
+        const max = getMaxForLevel(member.level);
+        savedCp = Number(member.apcs[i]?.cp || 0);
+        if (raw > max) {
+          clampNote = ` Capped at ${formatNumber(max)}M for level ${formatLevel(member.level)}.`;
+        }
+      }
+    }
     if (!fields.length) {
+      if (clampNote) {
+        toast(`<strong>${escapeHtml(editedLabel)}</strong> stays at ${formatNumber(getMaxForLevel(member.level))}M.${clampNote}`, "error");
+        playSfx("error");
+        return;
+      }
       closeMemberDrawer();
       return;
     }
@@ -2044,7 +2070,7 @@
       memberName: member.name,
       actor: isAdmin ? (adminSession?.name || "admin") : "member",
       fields,
-      note: `Edited ${editedLabel}`
+      note: `Edited ${editedLabel}${clampNote ? " (capped)" : ""}`
     });
     queueCloudOutbox(member);
 
@@ -2063,13 +2089,14 @@
     renderAll();
     const ok = await pushCloudRosterWithRetry({ silent: true });
     drawerSaving = false;
+    const valueNote = savedCp != null ? ` → <strong>${formatNumber(savedCp)}M</strong>` : "";
     toast(
       ok
-        ? `<strong>${escapeHtml(editedLabel)}</strong> updated for ${escapeHtml(member.name)}.`
+        ? `<strong>${escapeHtml(editedLabel)}</strong> updated for ${escapeHtml(member.name)}${valueNote}.${clampNote}`
         : `<strong>${escapeHtml(member.name)}</strong> saved locally. Cloud sync will retry.`,
-      ok ? "success" : "error"
+      ok ? (clampNote ? "error" : "success") : "error"
     );
-    playSfx(ok ? "success" : "error");
+    playSfx(ok ? (clampNote ? "error" : "success") : "error");
   }
 
   async function clearNeedsReviewFlag(id) {
@@ -2400,8 +2427,8 @@
           </div>
           <div class="apc-bars">
             ${member.apcs.map((apc, i) => `
-              <div class="apc-row">
-                <b>A${i + 1}</b>
+              <div class="apc-row${i >= REQUIRED_APC_COUNT ? " is-optional" : ""}">
+                <b title="${i >= REQUIRED_APC_COUNT ? "Optional APC" : `APC ${i + 1}`}">A${i + 1}</b>
                 <button type="button" class="faction ${apc.faction.toLowerCase()} field-tap" data-edit-field="apc${i}.faction" data-id="${member.id}" title="Edit APC ${i + 1} faction">${apc.faction}</button>
                 <div class="bar"><div class="fill" style="--w:${Math.min(100, (apc.cp / Math.max(getMaxForLevel(member.level), 1)) * 100).toFixed(1)}%"></div></div>
                 <button type="button" class="row-val field-tap" data-edit-field="apc${i}.cp" data-id="${member.id}" title="Edit APC ${i + 1} CP">${formatNumber(apc.cp)}<small>M</small></button>
