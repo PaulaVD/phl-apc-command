@@ -2564,7 +2564,7 @@
                   <b>A4</b>
                 </label>
                 <span class="apc4-toggle">Off</span>
-                <div class="bar"><div class="fill" style="--w:0%"></div></div>
+                <div class="bar"><div class="fill ${String(apc.faction || "fighter").toLowerCase()}" style="--w:0%"></div></div>
                 <span class="row-val is-muted">—</span>
               </div>`;
               }
@@ -2578,7 +2578,7 @@
                      </label>`
                   : `<b title="APC ${i + 1}">A${i + 1}</b>`}
                 <button type="button" class="faction ${apc.faction.toLowerCase()} field-tap" data-edit-field="apc${i}.faction" data-id="${member.id}" title="Edit APC ${i + 1} faction">${apc.faction}</button>
-                <div class="bar"><div class="fill" style="--w:${Math.min(100, (Number(apc.cp || 0) / barMax) * 100).toFixed(1)}%"></div></div>
+                <div class="bar"><div class="fill ${String(apc.faction || "fighter").toLowerCase()}" style="--w:${Math.min(100, (Number(apc.cp || 0) / barMax) * 100).toFixed(1)}%"></div></div>
                 <button type="button" class="row-val field-tap" data-edit-field="apc${i}.cp" data-id="${member.id}" title="Edit APC ${i + 1} CP">${formatNumber(apc.cp)}<small>M</small></button>
               </div>`;
             }).join("")}

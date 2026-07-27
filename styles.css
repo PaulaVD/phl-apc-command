@@ -1539,3 +1539,170 @@ body.admin-mode .te-admin-schedule.admin-only{display:grid!important}
   .wizard-actions .btn-primary{grid-column:1/-1}
   .wizard-actions .btn-ghost{grid-column:auto}
 }
+
+/* ===== Roster card typography & rhythm (v147) ===== */
+.roster-list{gap:14px}
+.member-card{
+  padding:18px 18px 16px;
+  gap:16px 18px;
+  align-items:center;
+  grid-template-columns:minmax(200px,.95fr) minmax(0,1.55fr) minmax(118px,.5fr) auto
+}
+.member-tags{gap:6px}
+.tag,
+button.tag.field-tap{
+  min-height:22px;
+  padding:0 9px;
+  border-radius:999px;
+  font-size:.62rem;
+  font-weight:800;
+  letter-spacing:.1em;
+  line-height:1
+}
+.tag.role-rl,
+.tag.role-rj{
+  border-radius:999px;
+  min-width:2.1rem
+}
+.member-name,
+button.member-name.field-tap{
+  margin:10px 0 6px;
+  font-size:clamp(1.28rem,1.6vw,1.48rem);
+  font-weight:600;
+  letter-spacing:.03em;
+  line-height:1.05
+}
+.member-sub{
+  font-size:.78rem;
+  line-height:1.45;
+  color:rgba(232,214,196,.72)
+}
+.member-sub .inline-field-tap{
+  font-size:inherit;
+  font-weight:700;
+  color:var(--gold);
+  text-decoration:underline;
+  text-decoration-style:dotted;
+  text-underline-offset:3px
+}
+.apc-bars{gap:7px;min-width:0}
+.apc-row{
+  grid-template-columns:42px 68px minmax(0,1fr) 70px;
+  gap:8px;
+  min-height:22px;
+  align-items:center
+}
+.apc-row b,
+.apc4-inline-check b{
+  font-size:.68rem;
+  font-weight:800;
+  letter-spacing:.11em;
+  color:rgba(232,214,196,.58)
+}
+.faction,
+button.faction.field-tap{
+  font-size:.64rem;
+  font-weight:800;
+  letter-spacing:.08em;
+  justify-self:start;
+  text-align:left
+}
+.bar{height:8px;border-radius:999px}
+.fill{
+  box-shadow:none;
+  background:linear-gradient(90deg,#f6cf90,#ff6d42)
+}
+.fill.fighter{background:linear-gradient(90deg,#ffd2a8,#ff8a4a)}
+.fill.shooter{background:linear-gradient(90deg,#b7e7ff,#5eb8ef)}
+.fill.rider{background:linear-gradient(90deg,#d8c8ff,#9a7dff)}
+.fill.mixed{background:linear-gradient(90deg,#dceb9f,#a8c45a)}
+.row-val,
+button.row-val.field-tap{
+  font-size:.88rem;
+  font-weight:800;
+  letter-spacing:.01em;
+  line-height:1
+}
+.row-val small,
+button.row-val.field-tap small{
+  font-size:.58em;
+  font-weight:700;
+  margin-left:1px;
+  color:rgba(232,214,196,.55)
+}
+.apc4-inline-check{
+  gap:5px;
+  align-items:center;
+  min-height:22px
+}
+.apc4-inline-check input{
+  width:14px;
+  height:14px
+}
+.apc4-toggle{
+  font-size:.64rem;
+  font-weight:800;
+  letter-spacing:.08em;
+  min-height:22px;
+  padding:0 8px;
+  border-radius:8px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center
+}
+.score-box{
+  padding-left:14px;
+  gap:2px;
+  justify-content:center
+}
+.score-box span{
+  font-size:.62rem;
+  font-weight:800;
+  letter-spacing:.14em;
+  color:rgba(232,214,196,.55)
+}
+.score-box strong{
+  margin-top:2px;
+  font-size:clamp(1.35rem,1.8vw,1.6rem);
+  font-weight:600;
+  letter-spacing:.03em;
+  line-height:1
+}
+.score-box strong small{
+  font-size:.4em;
+  margin-left:1px
+}
+.member-card .card-action{
+  height:36px;
+  min-height:36px;
+  min-width:36px;
+  border-radius:11px;
+  font-size:.68rem;
+  font-weight:800;
+  letter-spacing:.08em
+}
+.member-card .card-action.code-action{
+  width:auto;
+  padding:0 12px
+}
+
+@media (max-width:900px){
+  .member-card{
+    grid-template-columns:1fr;
+    gap:14px;
+    padding:16px
+  }
+  .member-name,
+  button.member-name.field-tap{font-size:1.32rem;white-space:normal}
+  .apc-row{grid-template-columns:40px 64px minmax(0,1fr) 64px;gap:7px}
+  .score-box{
+    border-left:0;
+    border-top:1px solid var(--line);
+    padding:12px 0 0;
+    flex-direction:row;
+    align-items:baseline;
+    justify-content:space-between;
+    gap:12px
+  }
+  .score-box strong{font-size:1.4rem}
+}
