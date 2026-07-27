@@ -233,15 +233,11 @@
       document.getElementById("orbitFaction4")
     ],
     mobileShellTabs: document.getElementById("mobileShellTabs"),
-    timesEventsPanel: document.getElementById("timesEventsPanel"),
-    teServerClock: document.getElementById("teServerClock"),
-    teServerBadge: document.getElementById("teServerBadge"),
-    teLocalClock: document.getElementById("teLocalClock"),
-    teLocalBadge: document.getElementById("teLocalBadge"),
-    teEventInput: document.getElementById("teEventInput"),
-    teOffsetSelect: document.getElementById("teOffsetSelect"),
-    teConvertedTime: document.getElementById("teConvertedTime"),
-    teConvertedMeta: document.getElementById("teConvertedMeta"),
+    eventsMenu: document.getElementById("eventsMenu"),
+    eventsTabBtn: document.getElementById("eventsTabBtn"),
+    eventsPopover: document.getElementById("eventsPopover"),
+    eventsPopoverClose: document.getElementById("eventsPopoverClose"),
+    eventsTabCount: document.getElementById("eventsTabCount"),
     teScheduleList: document.getElementById("teScheduleList"),
     teScheduleEmpty: document.getElementById("teScheduleEmpty"),
     teAdminSchedule: document.getElementById("teAdminSchedule"),
@@ -385,6 +381,16 @@
     });
     el.teEventForm?.addEventListener("submit", onScheduledEventSubmit);
     el.teEventCancelBtn?.addEventListener("click", resetScheduledEventForm);
+    el.eventsTabBtn?.addEventListener("click", event => {
+      event.stopPropagation();
+      toggleEventsPopover();
+    });
+    el.eventsPopoverClose?.addEventListener("click", () => setEventsPopoverOpen(false));
+    document.addEventListener("click", event => {
+      if (!el.eventsPopover || el.eventsPopover.hidden) return;
+      if (el.eventsMenu?.contains(event.target)) return;
+      setEventsPopoverOpen(false);
+    });
     document.querySelectorAll("[data-admin-view]").forEach(btn => {
       btn.addEventListener("click", () => setAdminView(btn.dataset.adminView));
     });
@@ -403,7 +409,8 @@
   function onGlobalKeydown(event) {
     if (event.key === "Escape") {
       closeAllUiSelects();
-      if (el.memberDrawer?.classList.contains("open")) closeMemberDrawer();
+      if (el.eventsPopover && !el.eventsPopover.hidden) setEventsPopoverOpen(false);
+      else if (el.memberDrawer?.classList.contains("open")) closeMemberDrawer();
       else if (el.personalCodeModal?.classList.contains("open")) closeModal("personalCode");
       else if (el.authModal?.classList.contains("open")) closeModal("auth");
       else if (el.deleteModal.classList.contains("open")) closeModal("delete");
@@ -431,24 +438,8 @@
     nextStep();
   }
 
-  function syncMobileLofiHost(isMobile) {
-    const player = document.getElementById("lofiPlayer");
-    const slot = document.getElementById("teLofiSlot");
-    const topMain = document.querySelector(".topbar-main");
-    if (!player || !slot || !topMain) return;
-    if (isMobile) {
-      if (player.parentElement !== slot) {
-        slot.appendChild(player);
-        slot.removeAttribute("aria-hidden");
-      }
-      return;
-    }
-    if (player.parentElement !== topMain) {
-      const actions = topMain.querySelector(".top-actions");
-      if (actions) topMain.insertBefore(player, actions);
-      else topMain.appendChild(player);
-    }
-    slot.setAttribute("aria-hidden", "true");
+  function syncMobileLofiHost() {
+    /* Lofi stays in the header; Times panel host removed. */
   }
 
   function initMobileTabs() {
@@ -456,59 +447,52 @@
     const apply = () => {
       const isMobile = mq.matches;
       document.documentElement.classList.toggle("is-mobile-shell", isMobile);
-      syncMobileLofiHost(isMobile);
-      if (!isMobile) {
-        document.body.classList.remove("mobile-tab-times", "mobile-tab-push", "mobile-tab-preview");
-        const hint = document.getElementById("mobileTabHint");
-        if (hint) hint.hidden = true;
-        return;
-      }
-      setMobileTab(mobileTab === "push" ? "push" : "times", { silent: true });
-      maybeShowMobileTabHint();
+      document.body.classList.remove("mobile-tab-times", "mobile-tab-preview");
+      document.body.classList.toggle("mobile-tab-push", isMobile);
+      const hint = document.getElementById("mobileTabHint");
+      if (hint) hint.hidden = true;
     };
-    el.mobileShellTabs?.querySelectorAll("[data-mobile-tab]").forEach(btn => {
-      btn.addEventListener("click", () => setMobileTab(btn.dataset.mobileTab));
-    });
     apply();
     if (mq.addEventListener) mq.addEventListener("change", apply);
     else if (mq.addListener) mq.addListener(apply);
   }
 
   function maybeShowMobileTabHint() {
-    const hint = document.getElementById("mobileTabHint");
-    if (!hint || !window.matchMedia(MOBILE_MQ).matches) return;
-    try {
-      if (localStorage.getItem(MOBILE_HINT_KEY) === "1") {
-        hint.hidden = true;
-        return;
-      }
-    } catch {
-      /* ignore */
-    }
-    hint.hidden = false;
-    window.setTimeout(() => {
-      hint.hidden = true;
-      try { localStorage.setItem(MOBILE_HINT_KEY, "1"); } catch { /* ignore */ }
-    }, 7000);
+    /* Mobile Times tab removed — Events lives in the header. */
   }
 
-  function setMobileTab(tab, { silent = false } = {}) {
-    mobileTab = tab === "push" ? "push" : "times";
-    document.body.classList.remove("mobile-tab-preview");
-    document.body.classList.toggle("mobile-tab-times", mobileTab === "times");
-    document.body.classList.toggle("mobile-tab-push", mobileTab === "push");
-    el.mobileShellTabs?.querySelectorAll("[data-mobile-tab]").forEach(btn => {
-      const active = btn.dataset.mobileTab === mobileTab;
-      btn.classList.toggle("is-active", active);
-      btn.setAttribute("aria-selected", String(active));
-      btn.setAttribute("tabindex", active ? "0" : "-1");
-    });
-    if (mobileTab === "push") {
-      document.getElementById("operatorConsole")?.scrollIntoView({ block: "nearest" });
-    } else {
-      document.getElementById("timesEventsPanel")?.scrollIntoView({ block: "nearest" });
+  function setMobileTab() {
+    /* no-op: schedule is header Events popover */
+  }
+
+  function setEventsPopoverOpen(open) {
+    if (!el.eventsPopover || !el.eventsTabBtn) return;
+    const next = Boolean(open);
+    el.eventsPopover.hidden = !next;
+    el.eventsTabBtn.setAttribute("aria-expanded", String(next));
+    el.eventsTabBtn.classList.toggle("is-open", next);
+    el.eventsMenu?.classList.toggle("is-open", next);
+    if (next) {
+      if (el.teEventDate && !el.teEventDate.value) el.teEventDate.value = todayServerDate();
+      playSfx("click");
     }
-    if (!silent) playSfx("click");
+  }
+
+  function toggleEventsPopover() {
+    const open = el.eventsPopover?.hidden !== false;
+    setEventsPopoverOpen(open);
+  }
+
+  function updateEventsTabCount() {
+    if (!el.eventsTabCount) return;
+    const n = scheduledEvents.length;
+    if (!n) {
+      el.eventsTabCount.hidden = true;
+      el.eventsTabCount.textContent = "0";
+      return;
+    }
+    el.eventsTabCount.hidden = false;
+    el.eventsTabCount.textContent = String(n);
   }
 
   function setSessionBanner(message, { actionLabel = "Sign in", onAction = null } = {}) {
@@ -684,7 +668,6 @@
         const clock = document.getElementById("serverClockDisplay");
         if (clock) clock.dataset.mounted = "1";
         enhanceSelects(document.querySelector(".topbar"));
-        mountTimesEventsClock(api);
         return true;
       } catch (error) {
         console.warn("Server clock failed to mount:", error);
@@ -706,28 +689,6 @@
         if (!mount()) console.warn("Server clock API missing after load.");
       })
       .catch(error => console.warn("Could not load serverClock.js:", error));
-  }
-
-  function mountTimesEventsClock(api) {
-    if (!el.teServerClock || !api?.mountServerClock) return;
-    if (el.teServerClock.dataset.mounted === "1") return;
-    try {
-      api.mountServerClock({
-        clockEl: el.teServerClock,
-        serverBadgeEl: el.teServerBadge,
-        localClockEl: el.teLocalClock,
-        localOffsetBadgeEl: el.teLocalBadge,
-        localZoneLabelEl: null,
-        offsetSelect: el.teOffsetSelect,
-        eventInput: el.teEventInput,
-        resultEl: el.teConvertedTime,
-        resultMetaEl: el.teConvertedMeta
-      });
-      el.teServerClock.dataset.mounted = "1";
-      enhanceSelects(el.timesEventsPanel);
-    } catch (error) {
-      console.warn("Times/events clock failed:", error);
-    }
   }
 
   function getEventsApiUrl() {
@@ -863,6 +824,7 @@
   }
 
   function renderScheduledEvents() {
+    updateEventsTabCount();
     if (!el.teScheduleList) return;
     const list = sortScheduledEvents(scheduledEvents);
     const nextFp = scheduledEventsFingerprint(list);
@@ -870,8 +832,8 @@
     el.teScheduleList.dataset.eventsFp = nextFp;
     if (!list.length) {
       const emptyHint = isAdmin
-        ? "No events yet — use Schedule event below to add one."
-        : "No events scheduled yet. Officers post game times here; you can accept or decline when they appear.";
+        ? "No events yet — schedule one below."
+        : "No events yet. Officers post times here.";
       el.teScheduleList.innerHTML = `<p class="te-empty" id="teScheduleEmpty">${escapeHtml(emptyHint)}</p>`;
       el.teScheduleEmpty = document.getElementById("teScheduleEmpty");
       return;
