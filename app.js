@@ -12,8 +12,10 @@
   const PERSONAL_CODE_PREF_KEY = "phl_my_personal_codes_v1";
   const ADMIN_HEARTBEAT_MS = 10_000;
   const APC_COUNT = 4;
-  /** APC1–APC3 required on submit; APC4 may be left at 0. */
+  /** APC1–APC3 required on submit; APC4 is optional and can be toggled off per member. */
   const REQUIRED_APC_COUNT = 3;
+  /** Soft ceiling only — never use HQ band max to block real saved CP values. */
+  const APC_CP_STORE_MAX = 99999;
   const STALE_MS = 7 * 24 * 60 * 60 * 1000;
   const HISTORY_CAP = 300;
   const MOBILE_MQ = "(max-width: 900px)";
@@ -1183,16 +1185,15 @@
     if (!target.dataset.apcIndex) return;
 
     const idx = Number(target.dataset.apcIndex);
-    const max = getMaxForLevel(state.level);
 
     if (target.classList.contains("cp-input")) {
-      state.apcs[idx].cp = clamp(Number(target.value || 0), 0, max);
+      state.apcs[idx].cp = normalizeApcCp(target.value || 0);
       const slider = document.getElementById(`slider${idx}`);
-      if (slider) slider.value = String(state.apcs[idx].cp);
+      if (slider) slider.value = String(Math.min(Number(slider.max || state.apcs[idx].cp), state.apcs[idx].cp));
     }
 
     if (target.classList.contains("slider")) {
-      state.apcs[idx].cp = Number(target.value);
+      state.apcs[idx].cp = normalizeApcCp(target.value);
       const input = document.getElementById(`cpInput${idx}`);
       if (input) input.value = target.value;
     }
@@ -1331,8 +1332,7 @@
   }
 
   function applyApcDelta(index, delta) {
-    const max = getMaxForLevel(state.level);
-    state.apcs[index].cp = clamp(state.apcs[index].cp + delta, 0, max);
+    state.apcs[index].cp = normalizeApcCp(state.apcs[index].cp + delta);
     syncApcControls(index);
     updateApcLiveStats(index);
     syncLiveRallyClassification();
@@ -1341,7 +1341,7 @@
   }
 
   function applyApcValue(index, value) {
-    state.apcs[index].cp = clamp(value, 0, getMaxForLevel(state.level));
+    state.apcs[index].cp = normalizeApcCp(value);
     syncApcControls(index);
     updateApcLiveStats(index);
     syncLiveRallyClassification();
@@ -1419,10 +1419,7 @@
   }
 
   function clampStateApcsToLevel() {
-    const max = getMaxForLevel(state.level);
-    state.apcs.forEach(apc => {
-      apc.cp = clamp(apc.cp, 0, max);
-    });
+    // HQ level no longer caps stored APC CP — keep values as entered.
   }
 
   function validateStep(stepIndex) {
@@ -1671,7 +1668,11 @@
       updated: Date.now(),
       personalCode,
       needsReview,
-      apcs: state.apcs.map(apc => ({ ...apc }))
+      hasApc4: Number(state.apcs?.[REQUIRED_APC_COUNT]?.cp || 0) > 0,
+      apcs: state.apcs.map(apc => ({
+        cp: normalizeApcCp(apc.cp),
+        faction: FACTIONS.includes(apc.faction) ? apc.faction : "Fighter"
+      }))
     };
 
     const fields = diffMemberFields(previous, member);
@@ -1815,6 +1816,7 @@
     if (field === "plaza") return "Rally Plaza capacity";
     if (field === "personalCode") return "Personal Code";
     if (field === "needsReview") return "Needs review";
+    if (field === "hasApc4") return "4th APC";
     const apcMatch = /^apc(\d)\.(cp|faction)$/.exec(field);
     if (apcMatch) {
       const n = Number(apcMatch[1]) + 1;
@@ -1822,6 +1824,18 @@
       return apcMatch[2] === "cp" ? `APC ${n} CP${optional}` : `APC ${n} faction${optional}`;
     }
     return field;
+  }
+
+  function memberHasApc4(member) {
+    if (!member) return false;
+    if (typeof member.hasApc4 === "boolean") return member.hasApc4;
+    return Number(member.apcs?.[REQUIRED_APC_COUNT]?.cp || 0) > 0;
+  }
+
+  function normalizeApcCp(value) {
+    const n = Number(value || 0);
+    if (!Number.isFinite(n)) return 0;
+    return clamp(n, 0, APC_CP_STORE_MAX);
   }
 
   function openMemberDrawer(id, field) {
@@ -1861,10 +1875,12 @@
     if (el.memberDrawerTitle) el.memberDrawerTitle.textContent = fieldLabel(drawerField);
     if (el.memberDrawerSub) {
       const levelLabel = formatLevel(member.level);
-      if (drawerField?.endsWith?.(".cp")) {
-        el.memberDrawerSub.textContent = `${member.name} · Level ${levelLabel} · max ${formatNumber(getMaxForLevel(member.level))}M`;
+      if (drawerField === "hasApc4") {
+        el.memberDrawerSub.textContent = `${member.name} · turn 4th APC on or off`;
+      } else if (drawerField?.endsWith?.(".cp")) {
+        el.memberDrawerSub.textContent = `${member.name} · Level ${levelLabel}`;
       } else if (drawerField === "level") {
-        el.memberDrawerSub.textContent = `${member.name} · APC CP max follows this HQ level`;
+        el.memberDrawerSub.textContent = `${member.name} · HQ level (does not cap APC CP)`;
       } else {
         el.memberDrawerSub.textContent = `${member.name} · Level ${levelLabel}`;
       }
@@ -1874,8 +1890,7 @@
     if (drawerField === "name") {
       body = `<div class="field"><label for="drawerFieldInput">Player name</label><input class="input" id="drawerFieldInput" maxlength="30" value="${escapeHtml(member.name)}"></div>`;
     } else if (drawerField === "level") {
-      const max = getMaxForLevel(member.level);
-      body = `<div class="field"><label for="drawerFieldInput">Level</label><select id="drawerFieldInput">${levelOptionsHtml(member.level)}</select><small id="drawerLevelMaxHint">APC CP max for this level: <strong>${formatNumber(max)}M</strong>. Same rule for every member.</small></div>`;
+      body = `<div class="field"><label for="drawerFieldInput">Level</label><select id="drawerFieldInput">${levelOptionsHtml(member.level)}</select><small>HQ level is for benchmarks only — it does not limit the APC CP you save.</small></div>`;
     } else if (drawerField === "rank") {
       body = `<div class="field"><label for="drawerFieldInput">PH-L rank</label><select id="drawerFieldInput">${rankOptionsHtml(member.rank)}</select></div>`;
     } else if (drawerField === "plaza") {
@@ -1889,14 +1904,19 @@
       </div>`;
     } else if (drawerField === "needsReview") {
       body = `<label class="field drawer-check-row"><input type="checkbox" id="drawerFieldInput" ${memberNeedsReview(member) ? "checked" : ""}><span>Flag for admin review (-updt)</span></label>`;
+    } else if (drawerField === "hasApc4") {
+      body = `<label class="field drawer-check-row"><input type="checkbox" id="drawerFieldInput" ${memberHasApc4(member) ? "checked" : ""}><span>This member has a 4th APC</span></label>
+        <small>Turn off if they only run 3 APCs. Totals and RL/RJ ignore APC 4 while it is off.</small>`;
     } else {
       const apcMatch = /^apc(\d)\.(cp|faction)$/.exec(drawerField);
       if (apcMatch) {
         const i = Number(apcMatch[1]);
         const apc = member.apcs?.[i] || { cp: 0, faction: "Fighter" };
-        if (apcMatch[2] === "cp") {
-          const max = getMaxForLevel(member.level);
-          body = `<div class="field"><label for="drawerFieldInput">APC ${i + 1} CP (M)</label><input class="input" id="drawerFieldInput" type="number" min="0" max="${max}" step="any" value="${Number(apc.cp || 0)}"><small>Max for <strong>${escapeHtml(member.name)}</strong> at level ${escapeHtml(formatLevel(member.level))}: <strong>${formatNumber(max)}M</strong>. Raise their HQ level first for a higher CP.</small></div>`;
+        if (i >= REQUIRED_APC_COUNT && !memberHasApc4(member)) {
+          body = `<label class="field drawer-check-row"><input type="checkbox" id="drawerFieldInput" data-enable-apc4="1"><span>Enable 4th APC to edit this slot</span></label>
+            <small>APC 4 is currently off for ${escapeHtml(member.name)}.</small>`;
+        } else if (apcMatch[2] === "cp") {
+          body = `<div class="field"><label for="drawerFieldInput">APC ${i + 1} CP (M)</label><input class="input" id="drawerFieldInput" type="number" min="0" max="${APC_CP_STORE_MAX}" step="any" value="${Number(apc.cp || 0)}"><small>Enter the real CP in millions. Saves exactly what you type.</small></div>`;
         } else {
           body = `<div class="field"><span class="field-label">APC ${i + 1} faction</span><div class="faction-row compact" id="drawerFactionRow">
             ${FACTIONS.map(f => `<button class="seg-btn ${apc.faction === f ? "active" : ""}" type="button" data-drawer-faction="${i}" data-faction="${f}">${f}</button>`).join("")}
@@ -1921,20 +1941,9 @@
       return;
     }
     if (input.tagName === "SELECT") {
-      if (drawerField === "level") {
-        const syncLevelHint = () => {
-          const hint = document.getElementById("drawerLevelMaxHint");
-          const level = input.value;
-          if (!hint || !BANDS[level]) return;
-          hint.innerHTML = `APC CP max for this level: <strong>${formatNumber(getMaxForLevel(level))}M</strong>. Same rule for every member.`;
-        };
-        input.addEventListener("change", syncLevelHint);
-        input.addEventListener("input", syncLevelHint);
-      }
       input.addEventListener("change", () => { void saveMemberDrawer(); });
       return;
     }
-    // Enter + Save button are primary; blur still saves when focus leaves the field.
     input.addEventListener("keydown", event => {
       if (event.key === "Enter") {
         event.preventDefault();
@@ -2001,9 +2010,6 @@
         return;
       }
       member.level = level;
-      const max = getMaxForLevel(level);
-      member.apcs = member.apcs.map(apc => ({ ...apc, cp: clamp(Number(apc.cp || 0), 0, max) }));
-      levelMaxNote = ` APC CP max is now ${formatNumber(max)}M for every march.`;
     } else if (drawerField === "rank") {
       const rank = document.getElementById("drawerFieldInput")?.value;
       if (!RANKS.includes(rank)) {
@@ -2026,6 +2032,11 @@
       member.personalCode = code;
     } else if (drawerField === "needsReview") {
       member.needsReview = Boolean(document.getElementById("drawerFieldInput")?.checked);
+    } else if (drawerField === "hasApc4") {
+      member.hasApc4 = Boolean(document.getElementById("drawerFieldInput")?.checked);
+      if (!member.hasApc4 && member.apcs[REQUIRED_APC_COUNT]) {
+        // Keep stored CP/faction so turning it back on restores values; totals ignore while off.
+      }
     } else {
       const apcMatch = /^apc(\d)\.(cp|faction)$/.exec(drawerField);
       if (!apcMatch) {
@@ -2034,15 +2045,32 @@
       }
       const i = Number(apcMatch[1]);
       if (!member.apcs[i]) member.apcs[i] = { cp: 0, faction: "Fighter" };
-      if (apcMatch[2] === "cp") {
-        const max = getMaxForLevel(member.level);
-        const raw = Number(document.getElementById("drawerFieldInput")?.value || 0);
-        const cp = clamp(raw, 0, max);
+      const enableApc4 = document.getElementById("drawerFieldInput")?.hasAttribute("data-enable-apc4");
+      if (enableApc4) {
+        member.hasApc4 = Boolean(document.getElementById("drawerFieldInput")?.checked);
+        if (!member.hasApc4) {
+          // leave as off
+        }
+      } else if (i >= REQUIRED_APC_COUNT) {
+        member.hasApc4 = true;
+        if (apcMatch[2] === "cp") {
+          const cp = normalizeApcCp(document.getElementById("drawerFieldInput")?.value || 0);
+          member.apcs[i] = { ...member.apcs[i], cp };
+          savedCp = cp;
+        } else {
+          const factionBtn = el.memberDrawerBody.querySelector(`[data-drawer-faction="${i}"].active`);
+          const faction = factionBtn?.dataset.faction || member.apcs[i].faction;
+          if (!FACTIONS.includes(faction)) {
+            toast("Pick a faction.", "error");
+            playSfx("error");
+            return;
+          }
+          member.apcs[i] = { ...member.apcs[i], faction };
+        }
+      } else if (apcMatch[2] === "cp") {
+        const cp = normalizeApcCp(document.getElementById("drawerFieldInput")?.value || 0);
         member.apcs[i] = { ...member.apcs[i], cp };
         savedCp = cp;
-        if (raw > max) {
-          clampNote = ` Capped at ${formatNumber(max)}M for level ${formatLevel(member.level)}.`;
-        }
       } else {
         const factionBtn = el.memberDrawerBody.querySelector(`[data-drawer-faction="${i}"].active`);
         const faction = factionBtn?.dataset.faction || member.apcs[i].faction;
@@ -2057,12 +2085,11 @@
 
     const fields = diffMemberFields(previous, member);
     const editedLabel = fieldLabel(drawerField);
+    const editedFieldKey = drawerField;
+    const enablingApc4 =
+      Boolean(document.getElementById("drawerFieldInput")?.hasAttribute("data-enable-apc4")) &&
+      member.hasApc4;
     if (!fields.length) {
-      if (clampNote && savedCp != null) {
-        toast(`<strong>${escapeHtml(editedLabel)}</strong> stays at ${formatNumber(savedCp)}M.${clampNote}`, "error");
-        playSfx("error");
-        return;
-      }
       closeMemberDrawer();
       return;
     }
@@ -2077,7 +2104,7 @@
       memberName: member.name,
       actor: isAdmin ? (adminSession?.name || "admin") : "member",
       fields,
-      note: `Edited ${editedLabel}${clampNote ? " (capped)" : ""}`
+      note: `Edited ${editedLabel}`
     });
     queueCloudOutbox(member);
 
@@ -2096,15 +2123,20 @@
     renderAll();
     const ok = await pushCloudRosterWithRetry({ silent: true });
     drawerSaving = false;
+    if (enablingApc4 && ok) {
+      openMemberDrawer(member.id, /^apc3\./.test(editedFieldKey || "") ? editedFieldKey : "apc3.cp");
+    }
     const valueNote = savedCp != null ? ` → <strong>${formatNumber(savedCp)}M</strong>` : "";
-    const extraNote = `${valueNote}.${clampNote}${levelMaxNote}`;
+    const apc4Note = editedFieldKey === "hasApc4"
+      ? (member.hasApc4 ? " Enabled." : " Turned off.")
+      : "";
     toast(
       ok
-        ? `<strong>${escapeHtml(editedLabel)}</strong> updated for ${escapeHtml(member.name)}${extraNote}`
+        ? `<strong>${escapeHtml(editedLabel)}</strong> updated for ${escapeHtml(member.name)}${valueNote}.${apc4Note}`
         : `<strong>${escapeHtml(member.name)}</strong> saved locally. Cloud sync will retry.`,
-      ok ? (clampNote ? "error" : "success") : "error"
+      ok ? "success" : "error"
     );
-    playSfx(ok ? (clampNote ? "error" : "success") : "error");
+    playSfx(ok ? "success" : "error");
   }
 
   async function clearNeedsReviewFlag(id) {
@@ -2434,13 +2466,29 @@
             <div class="member-sub">${escapeHtml(getRallyGateReason(member))} · <button type="button" class="inline-field-tap" data-edit-field="plaza" data-id="${member.id}" title="Edit Plaza">Plaza ${formatTroops(member.rallyCapacity || 0)}</button> · Updated ${timeAgo(member.updated)}</div>
           </div>
           <div class="apc-bars">
-            ${member.apcs.map((apc, i) => `
-              <div class="apc-row${i >= REQUIRED_APC_COUNT ? " is-optional" : ""}">
-                <b title="${i >= REQUIRED_APC_COUNT ? "Optional APC" : `APC ${i + 1}`}">A${i + 1}</b>
+            ${member.apcs.map((apc, i) => {
+              const isApc4 = i >= REQUIRED_APC_COUNT;
+              const apc4On = !isApc4 || memberHasApc4(member);
+              if (isApc4 && !apc4On) {
+                return `
+              <div class="apc-row is-optional is-apc4-off">
+                <button type="button" class="apc-slot-toggle field-tap" data-edit-field="hasApc4" data-id="${member.id}" title="Enable 4th APC">A4</button>
+                <button type="button" class="apc4-toggle field-tap" data-edit-field="hasApc4" data-id="${member.id}" title="Enable 4th APC">Off</button>
+                <div class="bar"><div class="fill" style="--w:0%"></div></div>
+                <button type="button" class="row-val field-tap is-muted" data-edit-field="hasApc4" data-id="${member.id}" title="Enable 4th APC">—</button>
+              </div>`;
+              }
+              const barMax = Math.max(getMaxForLevel(member.level), Number(apc.cp || 0), 1);
+              return `
+              <div class="apc-row${isApc4 ? " is-optional" : ""}">
+                ${isApc4
+                  ? `<button type="button" class="apc-slot-toggle is-on field-tap" data-edit-field="hasApc4" data-id="${member.id}" title="Turn 4th APC on/off">A4</button>`
+                  : `<b title="APC ${i + 1}">A${i + 1}</b>`}
                 <button type="button" class="faction ${apc.faction.toLowerCase()} field-tap" data-edit-field="apc${i}.faction" data-id="${member.id}" title="Edit APC ${i + 1} faction">${apc.faction}</button>
-                <div class="bar"><div class="fill" style="--w:${Math.min(100, (apc.cp / Math.max(getMaxForLevel(member.level), 1)) * 100).toFixed(1)}%"></div></div>
+                <div class="bar"><div class="fill" style="--w:${Math.min(100, (Number(apc.cp || 0) / barMax) * 100).toFixed(1)}%"></div></div>
                 <button type="button" class="row-val field-tap" data-edit-field="apc${i}.cp" data-id="${member.id}" title="Edit APC ${i + 1} CP">${formatNumber(apc.cp)}<small>M</small></button>
-              </div>`).join("")}
+              </div>`;
+            }).join("")}
           </div>
           <div class="score-box"><span>Total APC CP</span><strong>${formatNumber(total)}<small>M</small></strong></div>
           <div class="card-actions">
@@ -4072,9 +4120,11 @@
   /** Highest APC march CP across APC1–APC4 (skip empty/0). Millions units as stored. */
   function getMaxApcCp(member) {
     const apcs = member?.apcs || [];
+    const has4 = memberHasApc4(member);
     let max = 0;
-    for (const apc of apcs) {
-      const cp = Number(apc?.cp || 0);
+    for (let i = 0; i < apcs.length; i += 1) {
+      if (i >= REQUIRED_APC_COUNT && !has4) continue;
+      const cp = Number(apcs[i]?.cp || 0);
       if (cp > max) max = cp;
     }
     return max;
@@ -4083,8 +4133,10 @@
   /** Best march for classification: highest CP slot + its faction. */
   function getBestApc(member) {
     const apcs = member?.apcs || [];
+    const has4 = memberHasApc4(member);
     let best = { cp: 0, faction: "Fighter", index: 0 };
     for (let i = 0; i < apcs.length; i += 1) {
+      if (i >= REQUIRED_APC_COUNT && !has4) continue;
       const cp = Number(apcs[i]?.cp || 0);
       if (cp > best.cp) {
         best = {
@@ -4098,7 +4150,11 @@
   }
 
   function getTotal(member) {
-    return member.apcs.reduce((sum, apc) => sum + Number(apc.cp || 0), 0);
+    const has4 = memberHasApc4(member);
+    return member.apcs.reduce((sum, apc, i) => {
+      if (i >= REQUIRED_APC_COUNT && !has4) return sum;
+      return sum + Number(apc.cp || 0);
+    }, 0);
   }
 
   function getTotalFromState() {
@@ -4755,9 +4811,14 @@
     if (!name) return null;
     const level = BANDS[item.level] ? item.level : "WT30";
     const rank = RANKS.includes(item.rank) ? item.rank : "R1";
-    const max = getMaxForLevel(level);
     const personalCode = normalizePersonalCode(item.personalCode);
     const needsReview = Boolean(item.needsReview) || /\]-updt$/i.test(name) || /-updt$/i.test(name);
+    const apcs = Array.from({ length: APC_COUNT }, (_, i) => ({
+      cp: normalizeApcCp(item.apcs?.[i]?.cp || 0),
+      faction: FACTIONS.includes(item.apcs?.[i]?.faction) ? item.apcs[i].faction : "Fighter"
+    }));
+    const hasApc4 =
+      typeof item.hasApc4 === "boolean" ? item.hasApc4 : Number(apcs[REQUIRED_APC_COUNT]?.cp || 0) > 0;
     return {
       id: String(item.id || cryptoId()),
       name,
@@ -4768,10 +4829,8 @@
       isDemo: Boolean(item.isDemo),
       personalCode: personalCode || undefined,
       needsReview,
-      apcs: Array.from({ length: APC_COUNT }, (_, i) => ({
-        cp: clamp(Number(item.apcs?.[i]?.cp || 0), 0, max),
-        faction: FACTIONS.includes(item.apcs?.[i]?.faction) ? item.apcs[i].faction : "Fighter"
-      }))
+      hasApc4,
+      apcs
     };
   }
 
@@ -4850,7 +4909,7 @@
       fields.push({ field: "created", from: "", to: next?.name || "" });
       return fields;
     }
-    const watch = ["name", "level", "rank", "rallyCapacity", "personalCode", "needsReview"];
+    const watch = ["name", "level", "rank", "rallyCapacity", "personalCode", "needsReview", "hasApc4"];
     for (const key of watch) {
       const from = previous[key];
       const to = next[key];

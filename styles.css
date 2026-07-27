@@ -1115,7 +1115,22 @@ button.row-val.field-tap{
   font-variant-numeric:tabular-nums;font-size:.95rem;color:var(--text)
 }
 button.row-val.field-tap small{font-size:.62em;color:var(--soft)}
-.apc-row.is-optional b{color:var(--gold)}
+.apc-row.is-optional b,
+.apc-row.is-optional .apc-slot-toggle{color:var(--gold)}
+.apc-slot-toggle{
+  appearance:none;border:0;background:transparent;padding:0;margin:0;
+  font:inherit;font-size:.72rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--soft);cursor:pointer;text-align:left
+}
+.apc-slot-toggle.is-on{color:var(--gold)}
+.apc4-toggle{
+  appearance:none;border:1px solid var(--line);border-radius:8px;padding:4px 6px;
+  background:rgba(255,255,255,.04);color:var(--muted);font-size:.66rem;font-weight:900;
+  letter-spacing:.08em;text-transform:uppercase;cursor:pointer;text-align:center
+}
+.apc-row.is-apc4-off .bar{opacity:.35}
+.row-val.field-tap.is-muted,
+button.row-val.field-tap.is-muted{color:var(--soft);font-weight:700}
 
 /* Member field edit popup */
 .member-field-popup{
