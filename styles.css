@@ -1347,30 +1347,6 @@ body.admin-mode .roster-jump-btn.admin-only{display:inline-flex!important}
 .te-event-body > em{color:var(--soft);font-style:normal;font-size:.78rem;line-height:1.25}
 .te-event-manage{display:flex;flex-direction:column;gap:6px;flex:0 0 auto;margin-left:auto}
 .te-event-manage .btn{min-height:34px;padding:0 10px;font-size:.72rem;letter-spacing:.06em}
-.te-event-rsvp{display:grid;gap:6px}
-.te-event-rsvp-counts{
-  display:flex;flex-wrap:wrap;gap:8px;align-items:center;
-  color:var(--soft);font-size:.75rem;letter-spacing:.04em
-}
-.te-event-rsvp-mine{color:var(--gold);font-weight:600}
-.te-event-rsvp-mine.is-declined{color:var(--muted)}
-.te-event-rsvp-actions{display:flex;flex-wrap:wrap;gap:6px}
-.te-event-rsvp-actions .btn{
-  min-height:34px;padding:0 12px;font-size:.72rem;letter-spacing:.06em
-}
-.te-rsvp-accept.is-active{
-  border-color:rgba(110, 214, 150, .55);
-  color:#9de7b8;
-  background:rgba(70, 160, 110, .16)
-}
-.te-rsvp-decline.is-active{
-  border-color:rgba(220, 120, 110, .5);
-  color:#f0b0a8;
-  background:rgba(160, 70, 60, .14)
-}
-.te-event-rsvp-names{
-  display:block;color:var(--soft);font-size:.72rem;line-height:1.35
-}
 .te-admin-schedule{
   display:none;gap:10px;padding:14px;border-radius:16px;border:1px solid var(--line);
   background:rgba(255,255,255,.03)
