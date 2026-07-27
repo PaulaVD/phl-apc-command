@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Teko:wght@500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=136" />
+  <link rel="stylesheet" href="styles.css?v=137" />
 </head>
 <body class="mobile-tab-times">
   <a class="skip-link" href="#operatorConsole">Skip to form</a>
@@ -198,7 +198,7 @@
             <div class="status-tile"><span>Total APC CP</span><strong id="scanTotal">0M</strong></div>
             <div class="status-tile"><span>Average APC</span><strong id="scanAverage">0M</strong></div>
             <div class="status-tile" title="How far main APC is from frontline benchmark"><span>Gap to frontline</span><strong id="scanGap">—</strong></div>
-            <div class="status-tile" title="RL vs RJ from live uploaded median APC1"><span>Rally role</span><strong id="scanRallyRole">—</strong></div>
+            <div class="status-tile" title="RL vs RJ from live uploaded median of each member's highest APC march"><span>Rally role</span><strong id="scanRallyRole">—</strong></div>
           </div>
           <div class="scan-footer" id="scanFooter">
             <div><span>Current category</span><strong id="scanLevelLabel">30</strong></div>
@@ -424,10 +424,10 @@
           <div class="rally-split" id="rallySplit">
             <div class="rally-criteria" id="rallyCriteriaBox">
               <div class="rally-roster-readout" id="rallyRosterReadout">
-                <div class="rally-chip"><span>Median APC1</span><b id="rallyReadoutApc">—</b></div>
+                <div class="rally-chip"><span>Median highest APC</span><b id="rallyReadoutApc">—</b></div>
                 <div class="rally-chip"><span>Uploads used</span><b id="rallyReadoutSamples">—</b></div>
               </div>
-              <p class="rally-rule" id="rallyRuleCopy">RL = APC1 at or above live uploaded median · RJ = below.</p>
+              <p class="rally-rule" id="rallyRuleCopy">RL = highest APC march at or above live uploaded median · RJ = below.</p>
             </div>
             <div class="rally-kpis">
               <button type="button" class="rally-stat rl" id="kpiRlBtn" aria-expanded="false" aria-controls="rallyTeamRl" disabled title="Expand Rally Leaders">
@@ -578,8 +578,8 @@
 
   <script src="config.js?v=61"></script>
   <script src="serverClock.js?v=35"></script>
-  <script src="rallyRoles.js?v=30"></script>
+  <script src="rallyRoles.js?v=31"></script>
   <script src="rallyMatchmaking.js?v=28"></script>
-  <script src="app.js?v=136" defer></script>
+  <script src="app.js?v=137" defer></script>
 </body>
 </html>

@@ -2600,10 +2600,10 @@
     const saved = roster.map(getMemberRallyRole);
     const leaders = saved
       .filter(m => m.assigned_role === "RL")
-      .sort((a, b) => Number(b.apc1_cp) - Number(a.apc1_cp));
+      .sort((a, b) => Number(b.max_apc_cp) - Number(a.max_apc_cp));
     const joiners = saved
       .filter(m => m.assigned_role === "RJ")
-      .sort((a, b) => Number(b.apc1_cp) - Number(a.apc1_cp));
+      .sort((a, b) => Number(b.max_apc_cp) - Number(a.max_apc_cp));
     const summary = { rl: leaders.length, rj: joiners.length };
     animateKpi(el.kpiRl, summary.rl, { decimals: 0, duration: 420 });
     animateKpi(el.kpiRj, summary.rj, { decimals: 0, duration: 420 });
@@ -2680,10 +2680,11 @@
     }
 
     listEl.innerHTML = members.map(m => {
-      const apc1M = Number(m.apc1_cp) >= 10_000 ? Number(m.apc1_cp) / 1_000_000 : Number(m.apc1_cp);
+      const maxCp = Number(m.max_apc_cp);
+      const maxM = maxCp >= 10_000 ? maxCp / 1_000_000 : maxCp;
       const meta = isRl
-        ? `${m.specialty_faction} · APC1 ${formatNumber(apc1M)}M · Plaza ${formatTroops(m.rally_capacity || 0)}`
-        : `${m.specialty_faction} · APC1 ${formatNumber(apc1M)}M`;
+        ? `${m.specialty_faction} · Highest APC ${formatNumber(maxM)}M · Plaza ${formatTroops(m.rally_capacity || 0)}`
+        : `${m.specialty_faction} · Highest APC ${formatNumber(maxM)}M`;
       return `<div class="${rowClass}" role="listitem"><b>${escapeHtml(m.name)}</b><span>${escapeHtml(meta)}</span></div>`;
     }).join("");
   }
@@ -2696,21 +2697,21 @@
     if (!thresholds?.ready) {
       el.rallyFormationList.innerHTML = `
         <div class="rally-leader-empty">
-          Waiting for real uploads. RL / RJ uses the median APC1 CP from the live roster — counts update as members submit.
+          Waiting for real uploads. RL / RJ uses the median highest APC march CP from the live roster — counts update as members submit.
         </div>`;
       return;
     }
 
     const api = globalThis.PHL_RALLY_MATCHMAKING || globalThis.PHL_RALLY_ROLES;
     if (!api?.suggestRallyFormations) {
-      el.rallyFormationList.innerHTML = `<div class="rally-leader-empty">Matchmaking module not loaded. Hard-refresh (v136).</div>`;
+      el.rallyFormationList.innerHTML = `<div class="rally-leader-empty">Matchmaking module not loaded. Hard-refresh (v137).</div>`;
       return;
     }
 
     const leaders = categorized.filter(m => m.assigned_role === "RL");
     const joiners = categorized.filter(m => m.assigned_role === "RJ");
     if (!leaders.length) {
-      el.rallyFormationList.innerHTML = `<div class="rally-leader-empty">No Rally Leaders yet — need APC1 at or above the live median (${formatNumber(thresholds.minApc1M)}M).</div>`;
+      el.rallyFormationList.innerHTML = `<div class="rally-leader-empty">No Rally Leaders yet — need highest APC at or above the live median (${formatNumber(thresholds.minApcM)}M).</div>`;
       return;
     }
     if (!joiners.length) {
@@ -2764,7 +2765,7 @@
     if (el.rallyRosterReadout) el.rallyRosterReadout.hidden = false;
     if (el.rallyReadoutApc) {
       el.rallyReadoutApc.textContent = live.ready
-        ? `${formatNumber(live.minApc1M)}M`
+        ? `${formatNumber(live.minApcM)}M`
         : "—";
     }
     if (el.rallyReadoutSamples) {
@@ -2774,56 +2775,56 @@
     }
   }
 
-  /** Live uploaded roster median APC1 only — no custom targets. */
+  /** Live uploaded roster median of each member's highest APC march — no custom targets. */
   function getAllianceRallyThresholds() {
     return getAllianceRallyThresholdsFromRoster();
   }
 
   function getAllianceRallyThresholdsFromRoster() {
-    // Same non-demo uploaded members the admin roster shows; skip missing/zero APC1.
+    // Same non-demo uploaded members the admin roster shows; skip missing/zero max APC.
     const samples = roster
       .filter(member => !member.isDemo)
       .map(member => ({
-        apc1_cp: toAbsoluteCp(getMain(member))
+        max_apc_cp: toAbsoluteCp(getMaxApcCp(member))
       }))
-      .filter(sample => Number(sample.apc1_cp) > 0);
+      .filter(sample => Number(sample.max_apc_cp) > 0);
 
     const derived = window.PHL_RALLY_ROLES?.deriveThresholdsFromRoster
       ? window.PHL_RALLY_ROLES.deriveThresholdsFromRoster(samples)
       : deriveThresholdsFromRosterFallback(samples);
 
-    const minApc1Cp = Number(derived.minApc1Cp) || 0;
-    const minApc1M = minApc1Cp >= 10_000 ? minApc1Cp / 1_000_000 : minApc1Cp;
+    const minApcCp = Number(derived.minApcCp ?? derived.minApc1Cp) || 0;
+    const minApcM = minApcCp >= 10_000 ? minApcCp / 1_000_000 : minApcCp;
     const sampleApc = Number(derived.sampleApc) || 0;
-    const ready = sampleApc >= MIN_RALLY_ROSTER_SAMPLES && minApc1Cp > 0;
+    const ready = sampleApc >= MIN_RALLY_ROSTER_SAMPLES && minApcCp > 0;
 
     return {
       ready,
       source: "roster",
-      minApc1M,
-      minApc1Cp,
+      minApcM,
+      minApcCp,
       sampleApc,
       label: !ready
-        ? "Waiting for real uploads (APC1 CP) — median not ready yet."
-        : `Median APC1: ${formatNumber(minApc1M)}M · ≥ median = RL · below = RJ · n=${sampleApc}`
+        ? "Waiting for real uploads (highest APC CP) — median not ready yet."
+        : `Median highest APC: ${formatNumber(minApcM)}M · ≥ median = RL · below = RJ · n=${sampleApc}`
     };
   }
 
   /** Inline median if rallyRoles.js failed to bind (e.g. script load conflict). */
   function deriveThresholdsFromRosterFallback(samples) {
     const apcs = (samples || [])
-      .map(s => Number(s.apc1_cp))
+      .map(s => Number(s.max_apc_cp ?? s.apc1_cp))
       .filter(n => Number.isFinite(n) && n > 0)
       .sort((a, b) => a - b);
-    if (!apcs.length) return { minApc1Cp: 0, sampleApc: 0 };
+    if (!apcs.length) return { minApcCp: 0, sampleApc: 0 };
     const mid = Math.floor(apcs.length / 2);
-    const minApc1Cp = apcs.length % 2 ? apcs[mid] : (apcs[mid - 1] + apcs[mid]) / 2;
-    return { minApc1Cp, sampleApc: apcs.length };
+    const minApcCp = apcs.length % 2 ? apcs[mid] : (apcs[mid - 1] + apcs[mid]) / 2;
+    return { minApcCp, sampleApc: apcs.length };
   }
 
   function formatThresholdSummary(thresholds) {
     if (!thresholds?.ready) return "insufficient alliance data";
-    return `Median APC1 ${formatNumber(thresholds.minApc1M)}M`;
+    return `Median highest APC ${formatNumber(thresholds.minApcM)}M`;
   }
 
   /**
@@ -4131,6 +4132,34 @@
     return Number(member.apcs?.[0]?.cp || 0);
   }
 
+  /** Highest APC march CP across APC1–APC4 (skip empty/0). Millions units as stored. */
+  function getMaxApcCp(member) {
+    const apcs = member?.apcs || [];
+    let max = 0;
+    for (const apc of apcs) {
+      const cp = Number(apc?.cp || 0);
+      if (cp > max) max = cp;
+    }
+    return max;
+  }
+
+  /** Best march for classification: highest CP slot + its faction. */
+  function getBestApc(member) {
+    const apcs = member?.apcs || [];
+    let best = { cp: 0, faction: "Fighter", index: 0 };
+    for (let i = 0; i < apcs.length; i += 1) {
+      const cp = Number(apcs[i]?.cp || 0);
+      if (cp > best.cp) {
+        best = {
+          cp,
+          faction: ["Fighter", "Shooter", "Rider"].includes(apcs[i]?.faction) ? apcs[i].faction : "Fighter",
+          index: i
+        };
+      }
+    }
+    return best;
+  }
+
   function getTotal(member) {
     return member.apcs.reduce((sum, apc) => sum + Number(apc.cp || 0), 0);
   }
@@ -4970,22 +4999,24 @@
   }
 
   function classifyCurrentState() {
+    const best = getBestApc(state);
     return classifyMemberPayload({
       id: editingId || "draft",
       name: state.name || "Draft",
-      apc1_cp: toAbsoluteCp(state.apcs[0].cp),
+      max_apc_cp: toAbsoluteCp(best.cp),
       rally_capacity: Number(state.rallyCapacity || 0),
-      apc1_faction: state.apcs[0].faction
+      apc1_faction: best.faction
     });
   }
 
   function getMemberRallyRole(member) {
+    const best = getBestApc(member);
     return classifyMemberPayload({
       id: member.id,
       name: member.name,
-      apc1_cp: toAbsoluteCp(getMain(member)),
+      max_apc_cp: toAbsoluteCp(best.cp),
       rally_capacity: Number(member.rallyCapacity || 0),
-      apc1_faction: member.apcs?.[0]?.faction || "Fighter"
+      apc1_faction: best.faction
     });
   }
 
@@ -4995,12 +5026,12 @@
     if (!thresholds.ready) {
       return { ...input, assigned_role: "RJ", specialty_faction: faction, pending: true };
     }
-    const gate = { minApc1Cp: thresholds.minApc1Cp };
+    const gate = { minApcCp: thresholds.minApcCp };
     const api = window.PHL_RALLY_ROLES;
     if (api?.classifyMember) {
       return { ...api.classifyMember(input, gate), pending: false };
     }
-    const cpOk = Number(input.apc1_cp) >= gate.minApc1Cp;
+    const cpOk = Number(input.max_apc_cp) >= gate.minApcCp;
     return { ...input, assigned_role: cpOk ? "RL" : "RJ", specialty_faction: faction, pending: false };
   }
 
@@ -5025,11 +5056,11 @@
   function getRallyGateReason(member) {
     const thresholds = getAllianceRallyThresholds();
     if (!thresholds.ready) return "Waiting for uploaded alliance CP";
-    const main = getMain(member);
-    const absCp = toAbsoluteCp(main);
-    const cpOk = absCp >= thresholds.minApc1Cp;
-    if (cpOk) return `RL ≥ median ${formatNumber(thresholds.minApc1M)}M`;
-    return `APC1 ${formatNumber(main)}M < median ${formatNumber(thresholds.minApc1M)}M`;
+    const best = getMaxApcCp(member);
+    const absCp = toAbsoluteCp(best);
+    const cpOk = absCp >= thresholds.minApcCp;
+    if (cpOk) return `RL ≥ median ${formatNumber(thresholds.minApcM)}M`;
+    return `Highest APC ${formatNumber(best)}M < median ${formatNumber(thresholds.minApcM)}M`;
   }
 
   function formatTroops(value) {

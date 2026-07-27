@@ -8,7 +8,7 @@
 const { classifyAllianceMembers, suggestRallyFormations, slotsForCapacity } = require("./rallyRoles");
 
 /** Alliance policy used only to force known RL / RJ labels for matchmaking tests. */
-const GATE = { minApc1Cp: 700_000_000, minRallyCapacity: 350_000 };
+const GATE = { minApcCp: 700_000_000 };
 
 /**
  * Mock roster sized so packing + faction fallback are observable.
@@ -16,23 +16,24 @@ const GATE = { minApc1Cp: 700_000_000, minRallyCapacity: 350_000 };
  *   Nova (Shooter, 450k) → 4 slots
  *   Orion (Fighter, 400k) → 4 slots
  *   Vega (Rider, 380k) → 3 slots
+ * CP values are each member's highest APC march (max of APC1–APC4).
  */
 const MOCK_MEMBERS = [
-  { id: "rl1", name: "Nova", apc1_cp: 820_000_000, rally_capacity: 450_000, apc1_faction: "Shooter" },
-  { id: "rl2", name: "Orion", apc1_cp: 780_000_000, rally_capacity: 400_000, apc1_faction: "Fighter" },
-  { id: "rl3", name: "Vega", apc1_cp: 760_000_000, rally_capacity: 380_000, apc1_faction: "Rider" },
+  { id: "rl1", name: "Nova", max_apc_cp: 820_000_000, rally_capacity: 450_000, apc1_faction: "Shooter" },
+  { id: "rl2", name: "Orion", max_apc_cp: 780_000_000, rally_capacity: 400_000, apc1_faction: "Fighter" },
+  { id: "rl3", name: "Vega", max_apc_cp: 760_000_000, rally_capacity: 380_000, apc1_faction: "Rider" },
   // Same-faction joiners for Nova (Shooter) — only 2 → forces off-faction fill for slots 3–4
-  { id: "rj1", name: "Arrow", apc1_cp: 520_000_000, rally_capacity: 180_000, apc1_faction: "Shooter" },
-  { id: "rj2", name: "Bolt", apc1_cp: 480_000_000, rally_capacity: 160_000, apc1_faction: "Shooter" },
+  { id: "rj1", name: "Arrow", max_apc_cp: 520_000_000, rally_capacity: 180_000, apc1_faction: "Shooter" },
+  { id: "rj2", name: "Bolt", max_apc_cp: 480_000_000, rally_capacity: 160_000, apc1_faction: "Shooter" },
   // Fighter joiners for Orion
-  { id: "rj3", name: "Brick", apc1_cp: 500_000_000, rally_capacity: 200_000, apc1_faction: "Fighter" },
-  { id: "rj4", name: "Anvil", apc1_cp: 455_000_000, rally_capacity: 150_000, apc1_faction: "Fighter" },
-  { id: "rj5", name: "Forge", apc1_cp: 430_000_000, rally_capacity: 140_000, apc1_faction: "Fighter" },
+  { id: "rj3", name: "Brick", max_apc_cp: 500_000_000, rally_capacity: 200_000, apc1_faction: "Fighter" },
+  { id: "rj4", name: "Anvil", max_apc_cp: 455_000_000, rally_capacity: 150_000, apc1_faction: "Fighter" },
+  { id: "rj5", name: "Forge", max_apc_cp: 430_000_000, rally_capacity: 140_000, apc1_faction: "Fighter" },
   // Rider joiner (scarce) + mixed fillers
-  { id: "rj6", name: "Gale", apc1_cp: 510_000_000, rally_capacity: 170_000, apc1_faction: "Rider" },
-  { id: "rj7", name: "Mosaic", apc1_cp: 400_000_000, rally_capacity: 120_000, apc1_faction: "Shooter" },
-  { id: "rj8", name: "Patch", apc1_cp: 390_000_000, rally_capacity: 110_000, apc1_faction: "Fighter" },
-  { id: "rj9", name: "Spare", apc1_cp: 350_000_000, rally_capacity: 100_000, apc1_faction: "Rider" }
+  { id: "rj6", name: "Gale", max_apc_cp: 510_000_000, rally_capacity: 170_000, apc1_faction: "Rider" },
+  { id: "rj7", name: "Mosaic", max_apc_cp: 400_000_000, rally_capacity: 120_000, apc1_faction: "Shooter" },
+  { id: "rj8", name: "Patch", max_apc_cp: 390_000_000, rally_capacity: 110_000, apc1_faction: "Fighter" },
+  { id: "rj9", name: "Spare", max_apc_cp: 350_000_000, rally_capacity: 100_000, apc1_faction: "Rider" }
 ];
 
 function assert(condition, message) {

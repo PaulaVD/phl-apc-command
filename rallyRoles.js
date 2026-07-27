@@ -1,7 +1,8 @@
 /**
  * Dark War Survival — Alliance Rally Role Classifier
- * Pure module: thresholds are injected by the alliance layer (live roster median APC1).
- * Rule: APC1 CP >= median → Rally Leader (RL); below → Rally Joiner (RJ).
+ * Pure module: thresholds are injected by the alliance layer
+ * (live roster median of each member's highest APC march CP).
+ * Rule: max APC CP (APC1–APC4, skip empty/0) >= median → Rally Leader (RL); below → Rally Joiner (RJ).
  */
 
 "use strict";
@@ -11,16 +12,16 @@
 
 /**
  * @typedef {Object} RallyThresholds
- * @property {number} minApc1Cp  Absolute APC1 CP gate (live uploaded median)
+ * @property {number} minApcCp  Absolute max-APC CP gate (live uploaded median of best marches)
  */
 
 /**
  * @typedef {Object} MemberInput
  * @property {string} id
  * @property {string} name
- * @property {number} apc1_cp
+ * @property {number} max_apc_cp  Highest APC march CP across APC1–APC4
  * @property {number} rally_capacity
- * @property {DominantFaction} apc1_faction
+ * @property {DominantFaction} apc1_faction  Faction of the classifying (highest) march
  */
 
 /**
@@ -35,29 +36,41 @@ const VALID_FACTIONS = Object.freeze(new Set(["Fighter", "Shooter", "Rider"]));
 
 /** Test-only fallback — production UI must pass live roster median. */
 const DEFAULT_THRESHOLDS = Object.freeze({
-  minApc1Cp: 1_200_000
+  minApcCp: 1_200_000
 });
 
 /**
- * @param {Partial<RallyThresholds> | null | undefined} thresholds
+ * Read classifying CP from a member payload (max_apc_cp preferred; legacy apc1_cp accepted).
+ * @param {Pick<MemberInput, "max_apc_cp"> | { apc1_cp?: number, max_apc_cp?: number }} member
+ * @returns {number}
+ */
+function memberMaxApcCp(member) {
+  const max = Number(member?.max_apc_cp);
+  if (Number.isFinite(max)) return max;
+  const legacy = Number(member?.apc1_cp);
+  return Number.isFinite(legacy) ? legacy : NaN;
+}
+
+/**
+ * @param {Partial<RallyThresholds> | { minApc1Cp?: number } | null | undefined} thresholds
  * @returns {RallyThresholds}
  */
 function normalizeThresholds(thresholds) {
-  const minApc1Cp = Number(thresholds?.minApc1Cp);
+  const raw = Number(thresholds?.minApcCp ?? thresholds?.minApc1Cp);
   return {
-    minApc1Cp: Number.isFinite(minApc1Cp) && minApc1Cp >= 0 ? minApc1Cp : DEFAULT_THRESHOLDS.minApc1Cp
+    minApcCp: Number.isFinite(raw) && raw >= 0 ? raw : DEFAULT_THRESHOLDS.minApcCp
   };
 }
 
 /**
- * RL if APC1 CP is at or above the alliance median gate.
- * @param {Pick<MemberInput, "apc1_cp" | "rally_capacity">} member
- * @param {Partial<RallyThresholds>} [thresholds]
+ * RL if highest APC CP is at or above the alliance median gate.
+ * @param {Pick<MemberInput, "max_apc_cp" | "rally_capacity"> | { apc1_cp?: number, max_apc_cp?: number, rally_capacity?: number }} member
+ * @param {Partial<RallyThresholds> | { minApc1Cp?: number }} [thresholds]
  * @returns {boolean}
  */
 function meetsRallyLeaderThresholds(member, thresholds) {
   const gate = normalizeThresholds(thresholds);
-  return Number(member.apc1_cp) >= gate.minApc1Cp;
+  return memberMaxApcCp(member) >= gate.minApcCp;
 }
 
 /**
@@ -73,8 +86,8 @@ function normalizeFaction(faction) {
 }
 
 /**
- * @param {MemberInput} member
- * @param {Partial<RallyThresholds>} [thresholds]
+ * @param {MemberInput | (Omit<MemberInput, "max_apc_cp"> & { apc1_cp?: number, max_apc_cp?: number })} member
+ * @param {Partial<RallyThresholds> | { minApc1Cp?: number }} [thresholds]
  * @returns {CategorizedMember}
  */
 function classifyMember(member, thresholds) {
@@ -85,22 +98,22 @@ function classifyMember(member, thresholds) {
     throw new TypeError("MemberInput requires non-empty id and name.");
   }
 
-  const apc1_cp = Number(member.apc1_cp);
+  const max_apc_cp = memberMaxApcCp(member);
   const rally_capacity = Number(member.rally_capacity);
-  if (!Number.isFinite(apc1_cp) || apc1_cp < 0) {
-    throw new TypeError(`Invalid apc1_cp for ${member.name}.`);
+  if (!Number.isFinite(max_apc_cp) || max_apc_cp < 0) {
+    throw new TypeError(`Invalid max_apc_cp for ${member.name}.`);
   }
   if (!Number.isFinite(rally_capacity) || rally_capacity < 0) {
     throw new TypeError(`Invalid rally_capacity for ${member.name}.`);
   }
 
   const apc1_faction = normalizeFaction(member.apc1_faction);
-  const assigned_role = meetsRallyLeaderThresholds({ apc1_cp, rally_capacity }, thresholds) ? "RL" : "RJ";
+  const assigned_role = meetsRallyLeaderThresholds({ max_apc_cp, rally_capacity }, thresholds) ? "RL" : "RJ";
 
   return {
     id: String(member.id),
     name: String(member.name),
-    apc1_cp,
+    max_apc_cp,
     rally_capacity,
     apc1_faction,
     assigned_role,
@@ -110,7 +123,7 @@ function classifyMember(member, thresholds) {
 
 /**
  * @param {MemberInput[]} members
- * @param {Partial<RallyThresholds>} [thresholds]
+ * @param {Partial<RallyThresholds> | { minApc1Cp?: number }} [thresholds]
  * @returns {CategorizedMember[]}
  */
 function classifyAllianceMembers(members, thresholds) {
@@ -140,14 +153,16 @@ function summarizeRallyRoles(categorized) {
 }
 
 /**
- * Build roster-derived APC1 median gate from live uploaded samples.
- * @param {{ apc1_cp: number, rally_capacity?: number }[]} samples
+ * Build roster-derived median gate from each member's highest APC march CP.
+ * @param {{ max_apc_cp?: number, apc1_cp?: number, rally_capacity?: number }[]} samples
  * @returns {RallyThresholds & { sampleApc: number }}
  */
 function deriveThresholdsFromRoster(samples) {
-  const apcs = (samples || []).map(s => Number(s.apc1_cp)).filter(n => Number.isFinite(n) && n > 0);
+  const apcs = (samples || [])
+    .map(s => memberMaxApcCp(s))
+    .filter(n => Number.isFinite(n) && n > 0);
   return {
-    minApc1Cp: median(apcs),
+    minApcCp: median(apcs),
     sampleApc: apcs.length
   };
 }
@@ -185,7 +200,7 @@ function slotsForCapacity(capacity, marchTroops) {
  * @returns {number}
  */
 function byApcDesc(a, b) {
-  return Number(b.apc1_cp) - Number(a.apc1_cp);
+  return Number(b.max_apc_cp) - Number(a.max_apc_cp);
 }
 
 /**
@@ -295,7 +310,8 @@ const rallyRolesApi = {
   deriveThresholdsFromRoster,
   median,
   slotsForCapacity,
-  suggestRallyFormations
+  suggestRallyFormations,
+  memberMaxApcCp
 };
 
 if (typeof module !== "undefined" && module.exports) {

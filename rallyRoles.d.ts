@@ -6,8 +6,10 @@ export type RallyRole = "RL" | "RJ";
 export interface MemberInput {
   id: string;
   name: string;
-  apc1_cp: number;
+  /** Highest APC march CP across APC1–APC4 (empty/0 skipped by callers). */
+  max_apc_cp: number;
   rally_capacity: number;
+  /** Faction of the classifying (highest) march. */
   apc1_faction: DominantFaction;
 }
 
@@ -16,9 +18,9 @@ export interface CategorizedMember extends MemberInput {
   specialty_faction: DominantFaction;
 }
 
-/** APC1 median gate from live uploaded roster. */
+/** Median of each member's highest APC march CP from live uploaded roster. */
 export interface RallyThresholds {
-  minApc1Cp: number;
+  minApcCp: number;
 }
 
 export interface RallyRoleSummary {
@@ -31,22 +33,22 @@ export interface RallyRoleSummary {
 export const DEFAULT_THRESHOLDS: RallyThresholds;
 
 export function normalizeThresholds(
-  thresholds?: Partial<RallyThresholds> | null
+  thresholds?: Partial<RallyThresholds> | { minApc1Cp?: number } | null
 ): RallyThresholds;
 
 export function meetsRallyLeaderThresholds(
-  member: Pick<MemberInput, "apc1_cp" | "rally_capacity">,
-  thresholds?: Partial<RallyThresholds>
+  member: Pick<MemberInput, "max_apc_cp" | "rally_capacity"> | { apc1_cp?: number; max_apc_cp?: number; rally_capacity?: number },
+  thresholds?: Partial<RallyThresholds> | { minApc1Cp?: number }
 ): boolean;
 
 export function classifyMember(
-  member: MemberInput,
-  thresholds?: Partial<RallyThresholds>
+  member: MemberInput | (Omit<MemberInput, "max_apc_cp"> & { apc1_cp?: number; max_apc_cp?: number }),
+  thresholds?: Partial<RallyThresholds> | { minApc1Cp?: number }
 ): CategorizedMember;
 
 export function classifyAllianceMembers(
   members: MemberInput[],
-  thresholds?: Partial<RallyThresholds>
+  thresholds?: Partial<RallyThresholds> | { minApc1Cp?: number }
 ): CategorizedMember[];
 
 export function summarizeRallyRoles(
@@ -54,10 +56,14 @@ export function summarizeRallyRoles(
 ): RallyRoleSummary;
 
 export function deriveThresholdsFromRoster(
-  samples: Array<Pick<MemberInput, "apc1_cp"> | Pick<MemberInput, "apc1_cp" | "rally_capacity">>
+  samples: Array<{ max_apc_cp?: number; apc1_cp?: number; rally_capacity?: number }>
 ): RallyThresholds & { sampleApc: number };
 
 export function median(values: number[]): number;
+
+export function memberMaxApcCp(
+  member: { max_apc_cp?: number; apc1_cp?: number }
+): number;
 
 export const DEFAULT_JOINER_MARCH_TROOPS: number;
 
