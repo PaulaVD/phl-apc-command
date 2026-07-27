@@ -869,7 +869,10 @@
     if (el.teScheduleList.dataset.eventsFp === nextFp) return;
     el.teScheduleList.dataset.eventsFp = nextFp;
     if (!list.length) {
-      el.teScheduleList.innerHTML = `<p class="te-empty" id="teScheduleEmpty">No events scheduled.</p>`;
+      const emptyHint = isAdmin
+        ? "No events yet — use Schedule event below to add one."
+        : "No events scheduled yet. Officers post game times here; you can accept or decline when they appear.";
+      el.teScheduleList.innerHTML = `<p class="te-empty" id="teScheduleEmpty">${escapeHtml(emptyHint)}</p>`;
       el.teScheduleEmpty = document.getElementById("teScheduleEmpty");
       return;
     }
