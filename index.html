@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Teko:wght@500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=138" />
+  <link rel="stylesheet" href="styles.css?v=139" />
 </head>
 <body class="mobile-tab-times">
   <a class="skip-link" href="#operatorConsole">Skip to form</a>
@@ -536,25 +536,22 @@
     </section>
   </div>
 
-  <div class="member-drawer" id="memberDrawer" aria-hidden="true">
-    <div class="member-drawer-backdrop" data-drawer-close="1"></div>
-    <aside class="member-drawer-sheet" role="dialog" aria-modal="true" aria-labelledby="memberDrawerTitle">
-      <div class="member-drawer-head">
+  <div class="member-field-popup" id="memberDrawer" aria-hidden="true">
+    <div class="member-field-popup-backdrop" data-drawer-close="1"></div>
+    <section class="member-field-popup-card" role="dialog" aria-modal="true" aria-labelledby="memberDrawerTitle">
+      <div class="member-field-popup-head">
         <div>
-          <span class="eyebrow" id="memberDrawerEyebrow"><span></span>Field edit</span>
-          <h2 id="memberDrawerTitle">Edit member</h2>
-          <p id="memberDrawerSub">Tap a field to edit just that value. Changes sync to the cloud roster.</p>
+          <span class="eyebrow" id="memberDrawerEyebrow"><span></span>Edit field</span>
+          <h2 id="memberDrawerTitle">Edit field</h2>
+          <p id="memberDrawerSub">Changes save automatically.</p>
         </div>
         <button type="button" class="icon-btn" id="memberDrawerClose" aria-label="Close editor" data-drawer-close="1">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.4 6.4 12 12l5.6-5.6 1.4 1.4L13.4 13.4l5.6 5.6-1.4 1.4L12 14.8l-5.6 5.6-1.4-1.4 5.6-5.6L5 7.8z"/></svg>
         </button>
       </div>
-      <div class="member-drawer-body" id="memberDrawerBody"></div>
-      <div class="member-drawer-actions" id="memberDrawerActions">
-        <button type="button" class="btn btn-primary" id="memberDrawerSave">Save field</button>
-        <button type="button" class="btn btn-ghost" id="memberDrawerCancel">Cancel</button>
-      </div>
-    </aside>
+      <div class="member-field-popup-body" id="memberDrawerBody"></div>
+      <p class="member-field-popup-hint" id="memberDrawerHint">Press Enter or tap away to save.</p>
+    </section>
   </div>
 
   <div class="admin-modal" id="personalCodeModal" aria-hidden="true">
@@ -580,6 +577,6 @@
   <script src="serverClock.js?v=35"></script>
   <script src="rallyRoles.js?v=31"></script>
   <script src="rallyMatchmaking.js?v=28"></script>
-  <script src="app.js?v=138" defer></script>
+  <script src="app.js?v=139" defer></script>
 </body>
 </html>

@@ -72,8 +72,8 @@
   let mobileTab = "times";
   let adminView = "roster";
   let drawerMemberId = null;
-  let drawerField = null; // null = overview; else single field key
-  let drawerFromOverview = false;
+  let drawerField = null;
+  let drawerSaving = false;
   let pendingPersonalCodeReveal = null;
   let scheduledEvents = [];
   let editingEventId = null;
@@ -253,9 +253,6 @@
     memberDrawerTitle: document.getElementById("memberDrawerTitle"),
     memberDrawerSub: document.getElementById("memberDrawerSub"),
     memberDrawerEyebrow: document.getElementById("memberDrawerEyebrow"),
-    memberDrawerActions: document.getElementById("memberDrawerActions"),
-    memberDrawerSave: document.getElementById("memberDrawerSave"),
-    memberDrawerCancel: document.getElementById("memberDrawerCancel"),
     memberDrawerClose: document.getElementById("memberDrawerClose"),
     personalCodeModal: document.getElementById("personalCodeModal"),
     personalCodeReveal: document.getElementById("personalCodeReveal"),
@@ -372,8 +369,7 @@
     el.kpiRlBtn?.addEventListener("click", () => toggleRallyTeamPanel("rl"));
     el.kpiRjBtn?.addEventListener("click", () => toggleRallyTeamPanel("rj"));
     el.accessCodeInput?.addEventListener("keydown", event => { if (event.key === "Enter") attemptUnlock(); });
-    el.memberDrawerSave?.addEventListener("click", saveMemberDrawer);
-    el.memberDrawerCancel?.addEventListener("click", onMemberDrawerCancel);
+    el.memberDrawerClose?.addEventListener("click", closeMemberDrawer);
     el.personalCodeCopyBtn?.addEventListener("click", copyRevealedPersonalCode);
     el.historyRefreshBtn?.addEventListener("click", () => {
       pullCloudRoster({ silent: false }).then(() => renderHistory());
@@ -384,7 +380,6 @@
       btn.addEventListener("click", () => setAdminView(btn.dataset.adminView));
     });
     document.querySelectorAll("[data-drawer-close]").forEach(node => {
-      if (node === el.memberDrawerCancel) return;
       node.addEventListener("click", closeMemberDrawer);
     });
     document.addEventListener("click", onDynamicClick);
@@ -1236,6 +1231,7 @@
           node.classList.toggle("active", node.dataset.faction === factionBtn.dataset.faction);
         });
         playSfx("click");
+        void saveMemberDrawer();
         return;
       }
       const idx = Number(factionBtn.dataset.apcIndex);
@@ -1271,18 +1267,9 @@
       void deleteScheduledEvent(action.dataset.id);
       return;
     }
-    if (action?.dataset.action === "edit") {
-      openMemberDrawer(action.dataset.id, null);
-      return;
-    }
     const fieldTap = event.target.closest("[data-edit-field]");
     if (fieldTap?.dataset.id && fieldTap.dataset.editField) {
       openMemberDrawer(fieldTap.dataset.id, fieldTap.dataset.editField);
-      return;
-    }
-    const cardOpen = event.target.closest(".member-card[data-id]");
-    if (cardOpen && !event.target.closest("[data-action], [data-edit-field], a, button, input, select, textarea")) {
-      openMemberDrawer(cardOpen.dataset.id, null);
       return;
     }
     if (action?.dataset.action === "delete") {
@@ -1522,8 +1509,7 @@
     rememberPersonalCode(member.name, code);
     pendingPersonalCodeReveal = code;
     openPersonalCodeModal(code);
-    if (drawerMemberId === member.id) {
-      drawerField = null;
+    if (drawerMemberId === member.id && drawerField === "personalCode") {
       renderMemberDrawer();
     }
     renderAll();
@@ -1813,11 +1799,6 @@
     if (play) playSfx("click");
   }
 
-  function editMember(id) {
-    // Admin interactive edit: overview of tappable fields (not a full wizard form).
-    openMemberDrawer(id, null);
-  }
-
   function fieldLabel(field) {
     if (!field) return "Member";
     if (field === "name") return "Player name";
@@ -1835,7 +1816,8 @@
     return field;
   }
 
-  function openMemberDrawer(id, field = null) {
+  function openMemberDrawer(id, field) {
+    if (!field) return;
     const member = roster.find(item => item.id === id);
     if (!member || !el.memberDrawer || !el.memberDrawerBody) return;
 
@@ -1852,15 +1834,8 @@
       return;
     }
 
-    const sameMemberOpen = el.memberDrawer.classList.contains("open") && drawerMemberId === id;
     drawerMemberId = member.id;
-    if (field == null) {
-      drawerField = null;
-      drawerFromOverview = true;
-    } else {
-      if (!sameMemberOpen) drawerFromOverview = false;
-      drawerField = field;
-    }
+    drawerField = field;
     lastFocusedElement = document.activeElement;
     renderMemberDrawer();
     el.memberDrawer.classList.add("open");
@@ -1871,94 +1846,12 @@
 
   function renderMemberDrawer() {
     const member = roster.find(item => item.id === drawerMemberId);
-    if (!member || !el.memberDrawerBody) return;
+    if (!member || !el.memberDrawerBody || !drawerField) return;
 
     const eyebrow = el.memberDrawerEyebrow;
-    if (eyebrow) {
-      eyebrow.innerHTML = drawerField
-        ? "<span></span>Edit field"
-        : "<span></span>Member · tap a field";
-    }
-
-    if (!drawerField) {
-      if (el.memberDrawerTitle) el.memberDrawerTitle.textContent = member.name;
-      if (el.memberDrawerSub) {
-        el.memberDrawerSub.textContent = member.personalCode
-          ? `Personal Code ${member.personalCode} · tap any value to edit just that field`
-          : "No Personal Code yet · tap fields to edit; code auto-assigns on save";
-      }
-      if (el.memberDrawerSave) el.memberDrawerSave.hidden = true;
-      if (el.memberDrawerCancel) {
-        el.memberDrawerCancel.textContent = "Close";
-        el.memberDrawerCancel.removeAttribute("data-drawer-back");
-        el.memberDrawerCancel.setAttribute("data-drawer-close", "1");
-      }
-
-      const apcs = Array.from({ length: APC_COUNT }, (_, i) => member.apcs?.[i] || { cp: 0, faction: "Fighter" });
-      const apcRows = apcs.map((apc, i) => {
-        return `
-          <button type="button" class="drawer-field-row" data-edit-field="apc${i}.cp" data-id="${member.id}">
-            <span>APC ${i + 1}${i === 0 ? " · Main" : i >= REQUIRED_APC_COUNT ? " · Optional" : ""} CP</span>
-            <strong>${Number(apc.cp) > 0 ? `${formatNumber(apc.cp)}M` : (i >= REQUIRED_APC_COUNT ? "Empty" : `${formatNumber(apc.cp)}M`)}</strong>
-          </button>
-          <button type="button" class="drawer-field-row" data-edit-field="apc${i}.faction" data-id="${member.id}">
-            <span>APC ${i + 1} faction</span>
-            <strong>${escapeHtml(apc.faction || "Fighter")}</strong>
-          </button>`;
-      }).join("");
-
-      el.memberDrawerBody.innerHTML = `
-        <div class="drawer-overview">
-          <button type="button" class="drawer-field-row" data-edit-field="name" data-id="${member.id}">
-            <span>Player name</span><strong>${escapeHtml(member.name)}</strong>
-          </button>
-          <button type="button" class="drawer-field-row" data-edit-field="level" data-id="${member.id}">
-            <span>Level</span><strong>${escapeHtml(formatLevel(member.level))}</strong>
-          </button>
-          <button type="button" class="drawer-field-row" data-edit-field="rank" data-id="${member.id}">
-            <span>PH-L rank</span><strong>${escapeHtml(member.rank)}</strong>
-          </button>
-          <button type="button" class="drawer-field-row" data-edit-field="plaza" data-id="${member.id}">
-            <span>Rally Plaza</span><strong>${formatTroops(member.rallyCapacity || 0)}</strong>
-          </button>
-          ${isAdmin ? `<button type="button" class="drawer-field-row" data-edit-field="personalCode" data-id="${member.id}">
-            <span>Personal Code</span><strong>${escapeHtml(member.personalCode || "—")}</strong>
-          </button>
-          <div class="drawer-code-actions">
-            ${member.personalCode
-              ? `<button class="btn btn-ghost" type="button" data-action="copy-code" data-code="${escapeHtml(member.personalCode)}">Copy code</button>
-                 <button class="btn btn-ghost" type="button" data-action="reveal-code" data-code="${escapeHtml(member.personalCode)}">Reveal</button>
-                 <button class="btn btn-ghost" type="button" data-action="generate-code" data-id="${member.id}" data-regenerate="1">Regenerate</button>`
-              : `<button class="btn btn-primary" type="button" data-action="generate-code" data-id="${member.id}">Generate code</button>`}
-          </div>
-          <button type="button" class="drawer-field-row" data-edit-field="needsReview" data-id="${member.id}">
-            <span>Needs review (-updt)</span><strong>${memberNeedsReview(member) ? "Yes" : "No"}</strong>
-          </button>` : `<div class="drawer-field-row is-static"><span>Personal Code</span><strong>${escapeHtml(member.personalCode || "—")}</strong></div>
-          ${member.personalCode ? `<div class="drawer-code-actions"><button class="btn btn-ghost" type="button" data-action="copy-code" data-code="${escapeHtml(member.personalCode)}">Copy code</button></div>` : ""}`}
-          ${apcRows}
-        </div>`;
-      el.memberDrawerBody.scrollTop = 0;
-      return;
-    }
-
-    // Single-field editor
+    if (eyebrow) eyebrow.innerHTML = "<span></span>Edit field";
     if (el.memberDrawerTitle) el.memberDrawerTitle.textContent = fieldLabel(drawerField);
-    if (el.memberDrawerSub) el.memberDrawerSub.textContent = `Editing only · ${member.name}`;
-    if (el.memberDrawerSave) {
-      el.memberDrawerSave.hidden = false;
-      el.memberDrawerSave.textContent = "Save field";
-    }
-    if (el.memberDrawerCancel) {
-      if (drawerFromOverview) {
-        el.memberDrawerCancel.textContent = "Back";
-        el.memberDrawerCancel.removeAttribute("data-drawer-close");
-        el.memberDrawerCancel.setAttribute("data-drawer-back", "1");
-      } else {
-        el.memberDrawerCancel.textContent = "Cancel";
-        el.memberDrawerCancel.removeAttribute("data-drawer-back");
-        el.memberDrawerCancel.setAttribute("data-drawer-close", "1");
-      }
-    }
+    if (el.memberDrawerSub) el.memberDrawerSub.textContent = member.name;
 
     let body = "";
     if (drawerField === "name") {
@@ -1996,18 +1889,23 @@
     el.memberDrawerBody.innerHTML = body || `<p class="empty">Unknown field.</p>`;
     el.memberDrawerBody.scrollTop = 0;
     enhanceSelects(el.memberDrawerBody);
+    bindMemberFieldAutoSave();
     const focusEl = document.getElementById("drawerFieldInput") || el.memberDrawerBody.querySelector(".seg-btn.active");
     focusEl?.focus?.();
   }
 
-  function onMemberDrawerCancel() {
-    if (el.memberDrawerCancel?.hasAttribute("data-drawer-back")) {
-      drawerField = null;
-      renderMemberDrawer();
-      playSfx("click");
+  function bindMemberFieldAutoSave() {
+    const input = document.getElementById("drawerFieldInput");
+    if (!input) return;
+    if (input.type === "checkbox") {
+      input.addEventListener("change", () => { void saveMemberDrawer(); });
       return;
     }
-    closeMemberDrawer();
+    if (input.tagName === "SELECT") {
+      input.addEventListener("change", () => { void saveMemberDrawer(); });
+      return;
+    }
+    input.addEventListener("blur", () => { void saveMemberDrawer(); });
   }
 
   function closeMemberDrawer() {
@@ -2016,7 +1914,7 @@
     el.memberDrawer.setAttribute("aria-hidden", "true");
     drawerMemberId = null;
     drawerField = null;
-    drawerFromOverview = false;
+    drawerSaving = false;
     if (!el.authModal?.classList.contains("open") && !el.deleteModal?.classList.contains("open") && !el.syncModal?.classList.contains("open") && !el.personalCodeModal?.classList.contains("open")) {
       document.body.classList.remove("modal-open");
     }
@@ -2024,6 +1922,7 @@
   }
 
   async function saveMemberDrawer() {
+    if (drawerSaving) return;
     const canEdit =
       isAdmin ||
       (isMember &&
@@ -2117,16 +2016,11 @@
     const fields = diffMemberFields(previous, member);
     const editedLabel = fieldLabel(drawerField);
     if (!fields.length) {
-      toast("No changes.", "success");
-      if (drawerFromOverview) {
-        drawerField = null;
-        renderMemberDrawer();
-      } else {
-        closeMemberDrawer();
-      }
+      closeMemberDrawer();
       return;
     }
 
+    drawerSaving = true;
     const idx = roster.findIndex(m => m.id === member.id);
     if (idx >= 0) roster[idx] = member;
     saveRoster();
@@ -2151,14 +2045,10 @@
       sessionStorage.setItem(MEMBER_SESSION_KEY, JSON.stringify(memberSession));
     }
 
-    if (drawerFromOverview) {
-      drawerField = null;
-      renderMemberDrawer();
-    } else {
-      closeMemberDrawer();
-    }
+    closeMemberDrawer();
     renderAll();
     const ok = await pushCloudRosterWithRetry({ silent: true });
+    drawerSaving = false;
     toast(
       ok
         ? `<strong>${escapeHtml(editedLabel)}</strong> updated for ${escapeHtml(member.name)}.`
@@ -2478,7 +2368,7 @@
       const rally = getMemberRallyRole(member);
       const review = memberNeedsReview(member);
       return `
-        <article class="member-card${review ? " is-needs-review" : ""}" style="--status:${st.color}" data-id="${member.id}" tabindex="0" role="button" aria-label="Edit ${escapeHtml(member.name)}">
+        <article class="member-card${review ? " is-needs-review" : ""}" style="--status:${st.color}" data-id="${member.id}">
           <div>
             <div class="member-tags">
               <button type="button" class="tag level field-tap" data-edit-field="level" data-id="${member.id}" title="Edit level">${formatLevel(member.level)}</button>
@@ -2488,7 +2378,7 @@
               <span class="tag">${rally.specialty_faction}</span>
               <span class="tag ${gap.met ? "gap-ok" : "gap-bad"}">${formatGap(gap)}</span>
               ${stale ? '<span class="tag stale">Stale</span>' : ""}
-              ${review ? '<span class="tag needs-review">Needs review</span>' : ""}
+              ${review ? `<button type="button" class="tag needs-review field-tap" data-edit-field="needsReview" data-id="${member.id}" title="Edit review flag">Needs review</button>` : ""}
               ${isAdmin && member.personalCode ? `<button type="button" class="tag personal-code field-tap" data-edit-field="personalCode" data-id="${member.id}" title="Edit Personal Code">${escapeHtml(member.personalCode)}</button>` : (member.personalCode ? `<span class="tag personal-code">${escapeHtml(member.personalCode)}</span>` : "")}
             </div>
             <button type="button" class="member-name field-tap" data-edit-field="name" data-id="${member.id}" title="Edit name">${escapeHtml(member.name)}</button>
@@ -2505,10 +2395,6 @@
           </div>
           <div class="score-box"><span>Total APC CP</span><strong>${formatNumber(total)}<small>M</small></strong></div>
           <div class="card-actions">
-            <button class="card-action edit-primary" type="button" data-action="edit" data-id="${member.id}" title="Open field list">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17.25V21h3.75L17.8 9.94l-3.75-3.75L3 17.25Zm18-11.5a1 1 0 0 0 0-1.41l-1.34-1.34a1 1 0 0 0-1.41 0l-1.05 1.05 3.75 3.75L21 5.75Z"/></svg>
-              Fields
-            </button>
             ${member.personalCode
               ? `<button class="card-action code-action" type="button" data-action="copy-code" data-code="${escapeHtml(member.personalCode)}" title="Copy Personal Code">Code</button>`
               : (isAdmin
