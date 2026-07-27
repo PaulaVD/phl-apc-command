@@ -738,7 +738,10 @@ body.admin-mode .member-privacy-note{display:none}
 body.modal-open{overflow:hidden;touch-action:none}
 body.modal-open .member-field-popup,
 body.modal-open .member-field-popup-card,
-body.modal-open .member-field-popup-body{touch-action:pan-y}
+body.modal-open .member-field-popup-body,
+body.modal-open .events-modal,
+body.modal-open .events-modal-card,
+body.modal-open .events-modal .te-schedule{touch-action:pan-y}
 @media(max-width:640px){.member-privacy-note{align-items:flex-start}.admin-modal-actions{display:grid}.admin-modal-actions .btn{width:100%}}
 
 .entry-mode-wrap{display:grid;gap:10px;justify-items:end}
@@ -1274,10 +1277,39 @@ body.admin-mode .roster-jump-btn.admin-only{display:inline-flex!important}
 .events-modal-head .icon-btn{
   width:34px;height:34px;min-height:34px;border-radius:10px;font-size:1.2rem;line-height:1;flex:none
 }
-.events-modal .te-schedule{gap:8px;max-height:min(36vh,260px);overflow:auto}
+.events-modal .te-schedule{gap:8px;max-height:min(42vh,320px);overflow:auto;-webkit-overflow-scrolling:touch}
 .events-modal .te-admin-schedule{padding:12px;border-radius:14px}
 .events-modal .te-event{padding:10px 12px}
 .events-modal .te-event-form-actions .btn{min-height:40px}
+.te-event-rsvp{display:grid;gap:8px;margin-top:2px}
+.te-event-rsvp-counts{
+  display:flex;flex-wrap:wrap;gap:8px;align-items:center;
+  color:var(--soft);font-size:.75rem;letter-spacing:.04em
+}
+.te-event-rsvp-prompt{color:var(--gold);font-weight:700}
+.te-event-rsvp-mine{color:var(--gold);font-weight:600}
+.te-event-rsvp-mine.is-declined{color:var(--muted)}
+.te-event-rsvp-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.te-event-rsvp-actions .btn{
+  min-height:40px;padding:0 12px;font-size:.78rem;letter-spacing:.06em;width:100%
+}
+.te-rsvp-accept.is-active,
+.te-rsvp-accept.btn-primary{
+  border-color:rgba(110, 214, 150, .55);
+  color:#9de7b8;
+  background:rgba(70, 160, 110, .16)
+}
+.te-rsvp-decline.is-active{
+  border-color:rgba(220, 120, 110, .5);
+  color:#f0b0a8;
+  background:rgba(160, 70, 60, .14)
+}
+.te-event-rsvp-locked .te-rsvp-signin{
+  min-height:40px;width:100%;font-size:.76rem;letter-spacing:.04em
+}
+.te-event-rsvp-names{
+  display:block;color:var(--soft);font-size:.72rem;line-height:1.35
+}
 .te-convert-row strong,
 #teConvertedTime{
   display:inline-block;box-sizing:content-box;

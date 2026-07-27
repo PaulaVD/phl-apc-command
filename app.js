@@ -468,6 +468,8 @@
     const next = Boolean(open);
     if (next) {
       if (el.teEventDate && !el.teEventDate.value) el.teEventDate.value = todayServerDate();
+      if (el.teScheduleList) delete el.teScheduleList.dataset.eventsFp;
+      renderScheduledEvents();
       openModal("events", el.teScheduleList);
       el.eventsTabBtn.setAttribute("aria-expanded", "true");
       el.eventsTabBtn.classList.add("is-open");
@@ -845,10 +847,13 @@
     const nextFp = scheduledEventsFingerprint(list);
     if (el.teScheduleList.dataset.eventsFp === nextFp) return;
     el.teScheduleList.dataset.eventsFp = nextFp;
+    const canRsvp = Boolean(isMember || isAdmin);
     if (!list.length) {
       const emptyHint = isAdmin
         ? "No events yet — schedule one below."
-        : "No events yet. Officers post times here.";
+        : isMember
+          ? "No events yet. When officers post a time, you can Accept or Decline here."
+          : "No events yet. Sign in with your Personal Code to RSVP when times are posted.";
       el.teScheduleList.innerHTML = `<p class="te-empty" id="teScheduleEmpty">${escapeHtml(emptyHint)}</p>`;
       el.teScheduleEmpty = document.getElementById("teScheduleEmpty");
       return;
@@ -870,25 +875,32 @@
             <button class="btn btn-ghost" type="button" data-action="delete-event" data-id="${escapeHtml(event.id)}">Delete</button>
           </div>`
         : "";
-      const rsvpActions = `
-        <div class="te-event-rsvp">
-          <div class="te-event-rsvp-counts">
-            <span>${counts.accepted} in</span>
-            <span>${counts.declined} out</span>
-            ${myStatus ? `<span class="te-event-rsvp-mine is-${escapeHtml(myStatus)}">You: ${myStatus === "accepted" ? "in" : "out"}</span>` : ""}
-          </div>
-          <div class="te-event-rsvp-actions">
-            <button class="btn btn-ghost te-rsvp-accept ${myStatus === "accepted" ? "is-active" : ""}" type="button" data-action="rsvp-event" data-id="${escapeHtml(event.id)}" data-status="accepted">Accept</button>
-            <button class="btn btn-ghost te-rsvp-decline ${myStatus === "declined" ? "is-active" : ""}" type="button" data-action="rsvp-event" data-id="${escapeHtml(event.id)}" data-status="declined">Decline</button>
-          </div>
-          ${renderEventRsvpNames(event)}
-        </div>`;
-      return `<div class="te-event">
+      const rsvpBlock = canRsvp
+        ? `<div class="te-event-rsvp">
+            <div class="te-event-rsvp-counts">
+              <span>${counts.accepted} in</span>
+              <span>${counts.declined} out</span>
+              ${myStatus ? `<span class="te-event-rsvp-mine is-${escapeHtml(myStatus)}">You: ${myStatus === "accepted" ? "in" : "out"}</span>` : `<span class="te-event-rsvp-prompt">Your response</span>`}
+            </div>
+            <div class="te-event-rsvp-actions">
+              <button class="btn te-rsvp-accept ${myStatus === "accepted" ? "is-active btn-primary" : "btn-ghost"}" type="button" data-action="rsvp-event" data-id="${escapeHtml(event.id)}" data-status="accepted">Accept</button>
+              <button class="btn te-rsvp-decline ${myStatus === "declined" ? "is-active" : "btn-ghost"}" type="button" data-action="rsvp-event" data-id="${escapeHtml(event.id)}" data-status="declined">Decline</button>
+            </div>
+            ${renderEventRsvpNames(event)}
+          </div>`
+        : `<div class="te-event-rsvp te-event-rsvp-locked">
+            <div class="te-event-rsvp-counts">
+              <span>${counts.accepted} in</span>
+              <span>${counts.declined} out</span>
+            </div>
+            <button class="btn btn-ghost te-rsvp-signin" type="button" data-action="events-signin">Sign in to Accept / Decline</button>
+          </div>`;
+      return `<div class="te-event${canRsvp ? " has-rsvp" : ""}">
         <div class="te-event-when">${when}</div>
         <div class="te-event-body">
           <span>${escapeHtml(event.title)}</span>
           ${note}
-          ${rsvpActions}
+          ${rsvpBlock}
         </div>
         ${adminActions}
       </div>`;
@@ -1465,6 +1477,13 @@
     }
     if (action?.dataset.action === "rsvp-event") {
       void rsvpScheduledEvent(action.dataset.id, action.dataset.status);
+      return;
+    }
+    if (action?.dataset.action === "events-signin") {
+      setEventsPopoverOpen(false);
+      openAuthModal();
+      toast("Sign in with your Personal Code to Accept or Decline.", "success");
+      playSfx("click");
       return;
     }
     const fieldTap = event.target.closest("[data-edit-field]");
@@ -3291,8 +3310,9 @@
     closeModal("auth");
     applyAccessMode();
     await pullScheduledEvents({ silent: true });
+    if (el.teScheduleList) delete el.teScheduleList.dataset.eventsFp;
     renderAll();
-    toast(`Unlocked <strong>${escapeHtml(member.name)}</strong>.`, "success");
+    toast(`Unlocked <strong>${escapeHtml(member.name)}</strong>. Open Events to Accept / Decline.`, "success");
     playSfx("success");
   }
 
