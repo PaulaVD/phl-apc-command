@@ -71,7 +71,7 @@
   let audioAvailable = true;
   let pendingDeleteId = null;
   let lastFocusedElement = null;
-  let mobileTab = "times";
+  let mobileTab = "events";
   let adminView = "roster";
   let drawerMemberId = null;
   let drawerField = null;
@@ -233,7 +233,10 @@
       document.getElementById("orbitFaction4")
     ],
     mobileShellTabs: document.getElementById("mobileShellTabs"),
-    eventsMenu: document.getElementById("eventsMenu"),
+    mobileEventsPanel: document.getElementById("mobileEventsPanel"),
+    mobileEventsMount: document.getElementById("mobileEventsMount"),
+    eventsContent: document.getElementById("eventsContent"),
+    eventsModalMount: document.getElementById("eventsModalMount"),
     eventsTabBtn: document.getElementById("eventsTabBtn"),
     eventsModal: document.getElementById("eventsModal"),
     eventsPopover: document.getElementById("eventsModal"),
@@ -318,6 +321,7 @@
     enhanceSelects(document.querySelector(".toolbar"));
     initServerClockPanel();
     if (el.teEventDate && !el.teEventDate.value) el.teEventDate.value = todayServerDate();
+    syncEventsContentHost();
     renderAll();
     pullScheduledEvents({ silent: true });
     probeAudioAssets();
@@ -436,8 +440,18 @@
     nextStep();
   }
 
+  function syncEventsContentHost() {
+    const content = el.eventsContent || document.getElementById("eventsContent");
+    const mobileMount = el.mobileEventsMount || document.getElementById("mobileEventsMount");
+    const modalMount = el.eventsModalMount || document.getElementById("eventsModalMount");
+    if (!content || !mobileMount || !modalMount) return;
+    const isMobile = window.matchMedia(MOBILE_MQ).matches;
+    const target = isMobile ? mobileMount : modalMount;
+    if (content.parentElement !== target) target.appendChild(content);
+  }
+
   function syncMobileLofiHost() {
-    /* Lofi stays in the header; Times panel host removed. */
+    /* Lofi stays in the header. */
   }
 
   function initMobileTabs() {
@@ -445,29 +459,83 @@
     const apply = () => {
       const isMobile = mq.matches;
       document.documentElement.classList.toggle("is-mobile-shell", isMobile);
-      document.body.classList.remove("mobile-tab-times", "mobile-tab-preview");
-      document.body.classList.toggle("mobile-tab-push", isMobile);
-      const hint = document.getElementById("mobileTabHint");
-      if (hint) hint.hidden = true;
+      if (!isMobile) {
+        document.body.classList.remove("mobile-tab-events", "mobile-tab-times", "mobile-tab-push", "mobile-tab-preview");
+        const hint = document.getElementById("mobileTabHint");
+        if (hint) hint.hidden = true;
+        if (el.eventsModal?.classList.contains("open")) {
+          /* keep desktop modal as-is */
+        }
+        syncEventsContentHost();
+        return;
+      }
+      setMobileTab(mobileTab === "push" ? "push" : "events", { silent: true });
+      maybeShowMobileTabHint();
     };
+    el.mobileShellTabs?.querySelectorAll("[data-mobile-tab]").forEach(btn => {
+      btn.addEventListener("click", () => setMobileTab(btn.dataset.mobileTab));
+    });
     apply();
     if (mq.addEventListener) mq.addEventListener("change", apply);
     else if (mq.addListener) mq.addListener(apply);
   }
 
   function maybeShowMobileTabHint() {
-    /* Mobile Times tab removed — Events lives in the header. */
+    const hint = document.getElementById("mobileTabHint");
+    if (!hint || !window.matchMedia(MOBILE_MQ).matches) return;
+    try {
+      if (localStorage.getItem(MOBILE_HINT_KEY) === "1") {
+        hint.hidden = true;
+        return;
+      }
+    } catch {
+      /* ignore */
+    }
+    hint.hidden = false;
+    window.setTimeout(() => {
+      hint.hidden = true;
+      try { localStorage.setItem(MOBILE_HINT_KEY, "1"); } catch { /* ignore */ }
+    }, 6000);
   }
 
-  function setMobileTab() {
-    /* no-op: schedule is header Events popover */
+  function setMobileTab(tab, { silent = false } = {}) {
+    mobileTab = tab === "push" ? "push" : "events";
+    document.body.classList.remove("mobile-tab-preview", "mobile-tab-times");
+    document.body.classList.toggle("mobile-tab-events", mobileTab === "events");
+    document.body.classList.toggle("mobile-tab-push", mobileTab === "push");
+    el.mobileShellTabs?.querySelectorAll("[data-mobile-tab]").forEach(btn => {
+      const active = btn.dataset.mobileTab === mobileTab;
+      btn.classList.toggle("is-active", active);
+      btn.setAttribute("aria-selected", String(active));
+      btn.setAttribute("tabindex", active ? "0" : "-1");
+    });
+    if (mobileTab === "events") {
+      setEventsPopoverOpen(false);
+      syncEventsContentHost();
+      if (el.teScheduleList) delete el.teScheduleList.dataset.eventsFp;
+      renderScheduledEvents();
+      el.mobileEventsPanel?.scrollIntoView({ block: "nearest" });
+    } else {
+      setEventsPopoverOpen(false);
+      syncEventsContentHost();
+      document.getElementById("operatorConsole")?.scrollIntoView({ block: "nearest" });
+    }
+    if (!silent) playSfx("click");
   }
 
   function setEventsPopoverOpen(open) {
     if (!el.eventsModal || !el.eventsTabBtn) return;
     const next = Boolean(open);
+    if (next && window.matchMedia(MOBILE_MQ).matches) {
+      setMobileTab("events", { silent: true });
+      el.eventsTabBtn.setAttribute("aria-expanded", "false");
+      el.eventsTabBtn.classList.remove("is-open");
+      playSfx("click");
+      return;
+    }
     if (next) {
       if (el.teEventDate && !el.teEventDate.value) el.teEventDate.value = todayServerDate();
+      syncEventsContentHost();
       if (el.teScheduleList) delete el.teScheduleList.dataset.eventsFp;
       renderScheduledEvents();
       openModal("events", el.teScheduleList);
@@ -482,6 +550,10 @@
   }
 
   function toggleEventsPopover() {
+    if (window.matchMedia(MOBILE_MQ).matches) {
+      setMobileTab("events");
+      return;
+    }
     const open = !el.eventsModal?.classList.contains("open");
     setEventsPopoverOpen(open);
   }

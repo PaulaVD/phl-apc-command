@@ -1025,10 +1025,10 @@ button.rally-stat:disabled .rally-stat-chevron{opacity:.25}
   .wizard-card-head p{font-size:.88rem}
 }
 
-/* —— Mobile shell (legacy hooks; Events is header-only now) —— */
-.mobile-shell-tabs{display:none!important}
-.mobile-tab-hint{display:none!important}
-.times-events-panel{display:none!important}
+/* —— Mobile shell tabs (Events / Push Data) —— */
+.mobile-shell-tabs{display:none}
+.mobile-tab-hint{display:none}
+.mobile-events-panel{display:none}
 .admin-view-tabs{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .admin-view-switcher{display:grid;gap:6px;justify-items:end;flex:0 0 auto}
 .admin-view-switcher-label{
@@ -1277,7 +1277,9 @@ body.admin-mode .roster-jump-btn.admin-only{display:inline-flex!important}
 .events-modal-head .icon-btn{
   width:34px;height:34px;min-height:34px;border-radius:10px;font-size:1.2rem;line-height:1;flex:none
 }
-.events-modal .te-schedule{gap:8px;max-height:min(42vh,320px);overflow:auto;-webkit-overflow-scrolling:touch}
+.events-content{display:grid;gap:12px}
+.mobile-events-panel .mobile-events-body{padding:0 14px 16px}
+.mobile-events-panel .te-schedule{max-height:none}
 .events-modal .te-admin-schedule{padding:12px;border-radius:14px}
 .events-modal .te-event{padding:10px 12px}
 .events-modal .te-event-form-actions .btn{min-height:40px}
@@ -1403,15 +1405,59 @@ body.admin-mode .te-admin-schedule.admin-only{display:grid!important}
     flex:1 1 auto;min-width:0;min-height:42px;padding:0 12px;font-size:.72rem;letter-spacing:.06em
   }
 
-  .mobile-shell-tabs,
-  .mobile-tab-hint,
-  .times-events-panel{display:none!important}
-  /* Hide APC scan on phone — Times/Events stays schedule-only; Push stays form-only */
-  .scan-panel,[data-mobile-desktop-only]{display:none!important}
+  .mobile-shell-tabs{
+    display:grid!important;
+    grid-template-columns:1fr 1fr;
+    gap:6px;
+    position:fixed;
+    left:8px;
+    right:8px;
+    bottom:calc(8px + env(safe-area-inset-bottom,0px));
+    z-index:45;
+    margin:0;
+    padding:6px;
+    border-radius:16px;
+    border:1px solid rgba(255,189,126,.4);
+    background:linear-gradient(180deg,rgba(42,16,12,.98),rgba(12,5,5,.98));
+    backdrop-filter:blur(16px);
+    box-shadow:0 -8px 28px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.08)
+  }
+  .mobile-shell-tab{
+    min-height:44px;padding:8px 10px;border-radius:12px;border:1px solid rgba(255,255,255,.1);
+    background:rgba(255,255,255,.04);color:var(--muted);font-family:var(--font);
+    display:grid;place-items:center;text-align:center;
+    cursor:pointer;-webkit-tap-highlight-color:transparent
+  }
+  .mobile-shell-tab strong{
+    font-size:.78rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase;line-height:1.15
+  }
+  .mobile-shell-tab.is-active{
+    color:#2a1208;
+    background:linear-gradient(180deg,#f8d297,#ff9a57 65%,#da4e28);
+    border-color:rgba(255,189,126,.65);
+    box-shadow:0 8px 18px rgba(217,78,39,.32)
+  }
+  .mobile-tab-hint{
+    display:block;margin:0 0 10px;padding:10px 12px;border-radius:12px;
+    border:1px dashed rgba(240,186,114,.35);background:rgba(240,186,114,.08);
+    color:var(--muted);font-size:.82rem;line-height:1.35
+  }
+  .mobile-tab-hint[hidden]{display:none!important}
 
-  .wizard-panel{order:-1}
-  .member-privacy-note{order:-2;margin-top:0;margin-bottom:12px}
-  .dashboard-grid{order:-1}
+  /* Compact Events pane — not the old full Times dashboard */
+  .mobile-events-panel{
+    display:none;
+    margin:0 0 12px;
+    padding-bottom:8px
+  }
+  body.mobile-tab-events .mobile-events-panel{display:block!important;order:-1}
+  body.mobile-tab-events [data-mobile-pane="push"]{display:none!important}
+  body.mobile-tab-push .mobile-events-panel{display:none!important}
+  body.mobile-tab-push .wizard-panel{order:-1}
+  body.mobile-tab-push .member-privacy-note{order:-2;margin-top:0;margin-bottom:12px}
+  body.mobile-tab-push .dashboard-grid{order:-1}
+
+  .scan-panel,[data-mobile-desktop-only]{display:none!important}
 
   .te-event{padding:10px 12px;flex-wrap:wrap}
   .te-event-manage{flex-direction:row;width:100%;margin-left:0}
@@ -1421,7 +1467,7 @@ body.admin-mode .te-admin-schedule.admin-only{display:grid!important}
     width:100%;
     max-width:100%;
     margin:0;
-    padding:8px 10px calc(16px + env(safe-area-inset-bottom,0px));
+    padding:8px 10px calc(88px + env(safe-area-inset-bottom,0px));
     box-sizing:border-box;
     overflow-x:hidden;
     display:flex;
@@ -1430,13 +1476,14 @@ body.admin-mode .te-admin-schedule.admin-only{display:grid!important}
   }
   .dashboard-grid,
   .member-privacy-note,
-  .wizard-panel{
+  .wizard-panel,
+  .mobile-events-panel{
     width:100%;
     max-width:100%;
     min-width:0;
     box-sizing:border-box
   }
-  .toast-region{bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+  .toast-region{bottom:calc(88px + env(safe-area-inset-bottom,0px))}
 
   .wizard-panel{
     padding-bottom:12px;
@@ -1514,6 +1561,7 @@ body.admin-mode .te-admin-schedule.admin-only{display:grid!important}
   .wizard-card-head .tiny-label{display:none}
   .wizard-panel .step-pill{min-height:32px;padding:0 10px;font-size:.7rem}
   .wizard-panel .panel-head p{display:none} /* reclaim vertical space on phone */
+  body.mobile-tab-events .mobile-events-panel,
   body.mobile-tab-push .member-privacy-note,
   body.mobile-tab-push .wizard-panel{
     scroll-margin-bottom:calc(96px + env(safe-area-inset-bottom,0px))
@@ -1529,12 +1577,13 @@ body.admin-mode .te-admin-schedule.admin-only{display:grid!important}
 @media (min-width:901px){
   .mobile-shell-tabs,
   .mobile-tab-hint,
+  .mobile-events-panel,
   .times-events-panel{display:none!important}
 }
 
 /* Narrow phone polish — must follow the ≤900 mobile shell block */
 @media (max-width:480px){
-  .shell{padding-left:10px;padding-right:10px;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+  .shell{padding-left:10px;padding-right:10px;padding-bottom:calc(88px + env(safe-area-inset-bottom,0px))}
   .quick-row{grid-template-columns:1fr;gap:8px}
   .quick-btn:last-child{grid-column:auto}
   .rail-item{min-width:4.75rem;max-width:6.25rem}
