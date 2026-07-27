@@ -1885,7 +1885,7 @@
         const i = Number(apcMatch[1]);
         const apc = member.apcs?.[i] || { cp: 0, faction: "Fighter" };
         if (apcMatch[2] === "cp") {
-          body = `<div class="field"><label for="drawerFieldInput">APC ${i + 1} CP (M)</label><input class="input" id="drawerFieldInput" type="number" min="0" step="1" value="${Number(apc.cp || 0)}"></div>`;
+          body = `<div class="field"><label for="drawerFieldInput">APC ${i + 1} CP (M)</label><input class="input" id="drawerFieldInput" type="number" min="0" step="any" value="${Number(apc.cp || 0)}"></div>`;
         } else {
           body = `<div class="field"><span class="field-label">APC ${i + 1} faction</span><div class="faction-row compact" id="drawerFactionRow">
             ${FACTIONS.map(f => `<button class="seg-btn ${apc.faction === f ? "active" : ""}" type="button" data-drawer-faction="${i}" data-faction="${f}">${f}</button>`).join("")}
