@@ -1861,16 +1861,21 @@
     if (el.memberDrawerTitle) el.memberDrawerTitle.textContent = fieldLabel(drawerField);
     if (el.memberDrawerSub) {
       const levelLabel = formatLevel(member.level);
-      el.memberDrawerSub.textContent = drawerField?.endsWith?.(".cp")
-        ? `${member.name} · Level ${levelLabel} · max ${formatNumber(getMaxForLevel(member.level))}M`
-        : `${member.name} · Level ${levelLabel}`;
+      if (drawerField?.endsWith?.(".cp")) {
+        el.memberDrawerSub.textContent = `${member.name} · Level ${levelLabel} · max ${formatNumber(getMaxForLevel(member.level))}M`;
+      } else if (drawerField === "level") {
+        el.memberDrawerSub.textContent = `${member.name} · APC CP max follows this HQ level`;
+      } else {
+        el.memberDrawerSub.textContent = `${member.name} · Level ${levelLabel}`;
+      }
     }
 
     let body = "";
     if (drawerField === "name") {
       body = `<div class="field"><label for="drawerFieldInput">Player name</label><input class="input" id="drawerFieldInput" maxlength="30" value="${escapeHtml(member.name)}"></div>`;
     } else if (drawerField === "level") {
-      body = `<div class="field"><label for="drawerFieldInput">Level</label><select id="drawerFieldInput">${levelOptionsHtml(member.level)}</select></div>`;
+      const max = getMaxForLevel(member.level);
+      body = `<div class="field"><label for="drawerFieldInput">Level</label><select id="drawerFieldInput">${levelOptionsHtml(member.level)}</select><small id="drawerLevelMaxHint">APC CP max for this level: <strong>${formatNumber(max)}M</strong>. Same rule for every member.</small></div>`;
     } else if (drawerField === "rank") {
       body = `<div class="field"><label for="drawerFieldInput">PH-L rank</label><select id="drawerFieldInput">${rankOptionsHtml(member.rank)}</select></div>`;
     } else if (drawerField === "plaza") {
@@ -1891,7 +1896,7 @@
         const apc = member.apcs?.[i] || { cp: 0, faction: "Fighter" };
         if (apcMatch[2] === "cp") {
           const max = getMaxForLevel(member.level);
-          body = `<div class="field"><label for="drawerFieldInput">APC ${i + 1} CP (M)</label><input class="input" id="drawerFieldInput" type="number" min="0" max="${max}" step="any" value="${Number(apc.cp || 0)}"><small>Max for level ${escapeHtml(formatLevel(member.level))}: <strong>${formatNumber(max)}M</strong>. Raise HQ level first if you need a higher CP.</small></div>`;
+          body = `<div class="field"><label for="drawerFieldInput">APC ${i + 1} CP (M)</label><input class="input" id="drawerFieldInput" type="number" min="0" max="${max}" step="any" value="${Number(apc.cp || 0)}"><small>Max for <strong>${escapeHtml(member.name)}</strong> at level ${escapeHtml(formatLevel(member.level))}: <strong>${formatNumber(max)}M</strong>. Raise their HQ level first for a higher CP.</small></div>`;
         } else {
           body = `<div class="field"><span class="field-label">APC ${i + 1} faction</span><div class="faction-row compact" id="drawerFactionRow">
             ${FACTIONS.map(f => `<button class="seg-btn ${apc.faction === f ? "active" : ""}" type="button" data-drawer-faction="${i}" data-faction="${f}">${f}</button>`).join("")}
@@ -1916,6 +1921,16 @@
       return;
     }
     if (input.tagName === "SELECT") {
+      if (drawerField === "level") {
+        const syncLevelHint = () => {
+          const hint = document.getElementById("drawerLevelMaxHint");
+          const level = input.value;
+          if (!hint || !BANDS[level]) return;
+          hint.innerHTML = `APC CP max for this level: <strong>${formatNumber(getMaxForLevel(level))}M</strong>. Same rule for every member.`;
+        };
+        input.addEventListener("change", syncLevelHint);
+        input.addEventListener("input", syncLevelHint);
+      }
       input.addEventListener("change", () => { void saveMemberDrawer(); });
       return;
     }
@@ -1966,6 +1981,9 @@
       apcs: previous.apcs.map(apc => ({ ...apc })),
       updated: Date.now()
     };
+    let clampNote = "";
+    let levelMaxNote = "";
+    let savedCp = null;
 
     if (drawerField === "name") {
       const name = String(document.getElementById("drawerFieldInput")?.value || "").trim().slice(0, 30);
@@ -1985,6 +2003,7 @@
       member.level = level;
       const max = getMaxForLevel(level);
       member.apcs = member.apcs.map(apc => ({ ...apc, cp: clamp(Number(apc.cp || 0), 0, max) }));
+      levelMaxNote = ` APC CP max is now ${formatNumber(max)}M for every march.`;
     } else if (drawerField === "rank") {
       const rank = document.getElementById("drawerFieldInput")?.value;
       if (!RANKS.includes(rank)) {
@@ -2017,10 +2036,13 @@
       if (!member.apcs[i]) member.apcs[i] = { cp: 0, faction: "Fighter" };
       if (apcMatch[2] === "cp") {
         const max = getMaxForLevel(member.level);
-        member.apcs[i] = {
-          ...member.apcs[i],
-          cp: clamp(Number(document.getElementById("drawerFieldInput")?.value || 0), 0, max)
-        };
+        const raw = Number(document.getElementById("drawerFieldInput")?.value || 0);
+        const cp = clamp(raw, 0, max);
+        member.apcs[i] = { ...member.apcs[i], cp };
+        savedCp = cp;
+        if (raw > max) {
+          clampNote = ` Capped at ${formatNumber(max)}M for level ${formatLevel(member.level)}.`;
+        }
       } else {
         const factionBtn = el.memberDrawerBody.querySelector(`[data-drawer-faction="${i}"].active`);
         const faction = factionBtn?.dataset.faction || member.apcs[i].faction;
@@ -2035,24 +2057,9 @@
 
     const fields = diffMemberFields(previous, member);
     const editedLabel = fieldLabel(drawerField);
-    const editedFieldKey = drawerField;
-    let clampNote = "";
-    let savedCp = null;
-    if (editedFieldKey?.endsWith?.(".cp")) {
-      const apcMatch = /^apc(\d)\.cp$/.exec(editedFieldKey);
-      if (apcMatch) {
-        const i = Number(apcMatch[1]);
-        const raw = Number(document.getElementById("drawerFieldInput")?.value || 0);
-        const max = getMaxForLevel(member.level);
-        savedCp = Number(member.apcs[i]?.cp || 0);
-        if (raw > max) {
-          clampNote = ` Capped at ${formatNumber(max)}M for level ${formatLevel(member.level)}.`;
-        }
-      }
-    }
     if (!fields.length) {
-      if (clampNote) {
-        toast(`<strong>${escapeHtml(editedLabel)}</strong> stays at ${formatNumber(getMaxForLevel(member.level))}M.${clampNote}`, "error");
+      if (clampNote && savedCp != null) {
+        toast(`<strong>${escapeHtml(editedLabel)}</strong> stays at ${formatNumber(savedCp)}M.${clampNote}`, "error");
         playSfx("error");
         return;
       }
@@ -2090,9 +2097,10 @@
     const ok = await pushCloudRosterWithRetry({ silent: true });
     drawerSaving = false;
     const valueNote = savedCp != null ? ` → <strong>${formatNumber(savedCp)}M</strong>` : "";
+    const extraNote = `${valueNote}.${clampNote}${levelMaxNote}`;
     toast(
       ok
-        ? `<strong>${escapeHtml(editedLabel)}</strong> updated for ${escapeHtml(member.name)}${valueNote}.${clampNote}`
+        ? `<strong>${escapeHtml(editedLabel)}</strong> updated for ${escapeHtml(member.name)}${extraNote}`
         : `<strong>${escapeHtml(member.name)}</strong> saved locally. Cloud sync will retry.`,
       ok ? (clampNote ? "error" : "success") : "error"
     );
