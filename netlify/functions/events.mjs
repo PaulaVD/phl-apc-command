@@ -1,5 +1,9 @@
 import { getStore } from "@netlify/blobs";
-import { AUTH_CORS_HEADERS, resolveCallerAuth } from "../lib/auth.mjs";
+import {
+  AUTH_CORS_HEADERS,
+  normalizePersonalCode,
+  resolveCallerAuth
+} from "../lib/auth.mjs";
 
 const STORE_NAME = "phl-events";
 const KEY = "scheduled";
@@ -35,21 +39,83 @@ function normalizeTime(value) {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
+function normalizeDate(value) {
+  const raw = String(value || "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return "";
+  const [y, mo, d] = raw.split("-").map(Number);
+  if (!Number.isFinite(y) || !Number.isFinite(mo) || !Number.isFinite(d)) return "";
+  if (mo < 1 || mo > 12 || d < 1 || d > 31) return "";
+  const check = new Date(Date.UTC(y, mo - 1, d));
+  if (
+    check.getUTCFullYear() !== y ||
+    check.getUTCMonth() !== mo - 1 ||
+    check.getUTCDate() !== d
+  ) {
+    return "";
+  }
+  return raw;
+}
+
+function normalizeRsvpStatus(value) {
+  const raw = String(value || "").trim().toLowerCase();
+  if (raw === "accepted" || raw === "accept" || raw === "yes") return "accepted";
+  if (raw === "declined" || raw === "decline" || raw === "no") return "declined";
+  return "";
+}
+
+function normalizeRsvps(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const out = {};
+  for (const [key, value] of Object.entries(raw)) {
+    if (!value || typeof value !== "object") continue;
+    const status = normalizeRsvpStatus(value.status);
+    if (!status) continue;
+    let actorKey = "";
+    if (String(key).startsWith("admin:")) {
+      actorKey = String(key).trim().slice(0, 48);
+    } else {
+      actorKey = normalizePersonalCode(key);
+    }
+    if (!actorKey) continue;
+    out[actorKey] = {
+      status,
+      name: String(value.name || "").trim().slice(0, 40),
+      updated: Number(value.updated) || Date.now()
+    };
+  }
+  return out;
+}
+
 function normalizeEvent(item) {
   if (!item || typeof item !== "object") return null;
   const id = String(item.id || "").trim().slice(0, 64);
   const time = normalizeTime(item.time);
   const title = String(item.title || item.label || "").trim().slice(0, 80);
   const note = String(item.note || "").trim().slice(0, 120);
+  const date = normalizeDate(item.date);
   if (!id || !time || !title) return null;
   return {
     id,
+    date,
     time,
     title,
     note,
+    rsvps: normalizeRsvps(item.rsvps),
     updated: Number(item.updated) || Date.now(),
     createdBy: String(item.createdBy || "").trim().slice(0, 40)
   };
+}
+
+function sortEvents(list) {
+  return [...list].sort((a, b) => {
+    const aDate = a.date || "9999-99-99";
+    const bDate = b.date || "9999-99-99";
+    const byDate = String(aDate).localeCompare(String(bDate));
+    if (byDate) return byDate;
+    const byTime = String(a.time).localeCompare(String(b.time));
+    if (byTime) return byTime;
+    return String(a.title).localeCompare(String(b.title));
+  });
 }
 
 function normalizeEvents(list) {
@@ -63,13 +129,7 @@ function normalizeEvents(list) {
       map.set(event.id, event);
     }
   }
-  return [...map.values()]
-    .sort((a, b) => {
-      const byTime = String(a.time).localeCompare(String(b.time));
-      if (byTime) return byTime;
-      return String(a.title).localeCompare(String(b.title));
-    })
-    .slice(0, MAX_EVENTS);
+  return sortEvents([...map.values()]).slice(0, MAX_EVENTS);
 }
 
 async function readEvents(store) {
@@ -103,6 +163,22 @@ function newId() {
   return `evt_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
+function resolveRsvpActor(auth, body) {
+  if (auth.personalCode) {
+    return {
+      key: auth.personalCode,
+      name: String(body?.name || "").trim().slice(0, 40) || auth.personalCode
+    };
+  }
+  if (auth.role === "leadership" && auth.adminId) {
+    return {
+      key: `admin:${auth.adminId}`,
+      name: String(body?.name || auth.adminName || auth.adminId).trim().slice(0, 40)
+    };
+  }
+  return null;
+}
+
 export default async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("", { status: 204, headers: cors });
@@ -130,15 +206,40 @@ export default async (req) => {
       }
 
       const auth = await resolveCallerAuth(req, body);
-      if (auth.role !== "leadership") {
-        return json(401, { error: "Leadership credentials required" });
-      }
-
       const action = String(body.action || "upsert").toLowerCase();
       const existing = await readEvents(store);
       let next = [...existing.events];
 
-      if (action === "delete") {
+      if (action === "rsvp") {
+        if (auth.role === "public") {
+          return json(401, { error: "Sign in required to accept or decline" });
+        }
+        const actor = resolveRsvpActor(auth, body);
+        if (!actor) {
+          return json(401, { error: "Sign in required to accept or decline" });
+        }
+        const id = String(body.id || body.event?.id || "").trim();
+        const status = normalizeRsvpStatus(body.status || body.rsvp);
+        if (!id) return json(400, { error: "Missing event id" });
+        if (!status) return json(400, { error: "Status must be accepted or declined" });
+        const prev = next.find(item => item.id === id);
+        if (!prev) return json(404, { error: "Event not found" });
+        const rsvps = { ...(prev.rsvps || {}) };
+        rsvps[actor.key] = {
+          status,
+          name: actor.name,
+          updated: Date.now()
+        };
+        const event = normalizeEvent({
+          ...prev,
+          rsvps,
+          updated: Date.now()
+        });
+        if (!event) return json(400, { error: "Invalid event" });
+        next = [...next.filter(item => item.id !== id), event];
+      } else if (auth.role !== "leadership") {
+        return json(401, { error: "Leadership credentials required" });
+      } else if (action === "delete") {
         const id = String(body.id || body.event?.id || "").trim();
         if (!id) return json(400, { error: "Missing event id" });
         next = next.filter(item => item.id !== id);
@@ -146,16 +247,20 @@ export default async (req) => {
         const incoming = body.event || body;
         const id = String(incoming.id || body.id || "").trim() || newId();
         const time = normalizeTime(incoming.time);
+        const date = normalizeDate(incoming.date);
         const title = String(incoming.title || incoming.label || "").trim().slice(0, 80);
         const note = String(incoming.note || "").trim().slice(0, 120);
         if (!time) return json(400, { error: "Invalid time (use HH:MM server time)" });
+        if (!date) return json(400, { error: "Invalid date (use YYYY-MM-DD)" });
         if (!title) return json(400, { error: "Title is required" });
         const prev = next.find(item => item.id === id);
         const event = normalizeEvent({
           id,
+          date,
           time,
           title,
           note,
+          rsvps: prev?.rsvps || {},
           updated: Date.now(),
           createdBy: prev?.createdBy || auth.adminName || auth.adminId || "admin"
         });
@@ -168,7 +273,7 @@ export default async (req) => {
       const saved = await writeEvents(store, next);
       return json(200, {
         alliance_id: "phl",
-        scope: "leadership",
+        scope: auth.role === "leadership" ? "leadership" : "member",
         role: auth.role,
         tier: auth.tier,
         events: saved.events,

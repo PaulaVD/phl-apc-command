@@ -246,6 +246,7 @@
     teScheduleEmpty: document.getElementById("teScheduleEmpty"),
     teAdminSchedule: document.getElementById("teAdminSchedule"),
     teEventForm: document.getElementById("teEventForm"),
+    teEventDate: document.getElementById("teEventDate"),
     teEventTime: document.getElementById("teEventTime"),
     teEventTitle: document.getElementById("teEventTitle"),
     teEventNote: document.getElementById("teEventNote"),
@@ -317,6 +318,7 @@
     maybeWarnStaleSessions();
     enhanceSelects(document.querySelector(".toolbar"));
     initServerClockPanel();
+    if (el.teEventDate && !el.teEventDate.value) el.teEventDate.value = todayServerDate();
     renderAll();
     pullScheduledEvents({ silent: true });
     probeAudioAssets();
@@ -732,17 +734,66 @@
     return getConfig().eventsApiUrl || "";
   }
 
+  function todayServerDate() {
+    try {
+      return new Intl.DateTimeFormat("en-CA", {
+        timeZone: "America/Sao_Paulo",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit"
+      }).format(new Date());
+    } catch {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    }
+  }
+
+  function formatEventDate(date) {
+    const raw = String(date || "").trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return "";
+    try {
+      const [y, m, d] = raw.split("-").map(Number);
+      const dt = new Date(Date.UTC(y, m - 1, d, 15));
+      return new Intl.DateTimeFormat(undefined, {
+        weekday: "short",
+        month: "short",
+        day: "numeric"
+      }).format(dt);
+    } catch {
+      return raw;
+    }
+  }
+
+  function normalizeEventRsvps(raw) {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+    const out = {};
+    for (const [key, value] of Object.entries(raw)) {
+      if (!value || typeof value !== "object") continue;
+      const status = String(value.status || "").toLowerCase();
+      if (status !== "accepted" && status !== "declined") continue;
+      out[String(key)] = {
+        status,
+        name: String(value.name || "").trim().slice(0, 40),
+        updated: Number(value.updated) || 0
+      };
+    }
+    return out;
+  }
+
   function normalizeScheduledEvent(item) {
     if (!item || typeof item !== "object") return null;
     const id = String(item.id || "").trim();
     const time = String(item.time || "").trim();
     const title = String(item.title || item.label || "").trim();
+    const date = String(item.date || "").trim();
     if (!id || !/^\d{2}:\d{2}$/.test(time) || !title) return null;
     return {
       id,
+      date: /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : "",
       time,
       title: title.slice(0, 80),
       note: String(item.note || "").trim().slice(0, 120),
+      rsvps: normalizeEventRsvps(item.rsvps),
       updated: Number(item.updated) || 0,
       createdBy: String(item.createdBy || "").trim()
     };
@@ -750,16 +801,65 @@
 
   function sortScheduledEvents(list) {
     return [...(list || [])].sort((a, b) => {
+      const aDate = a.date || "9999-99-99";
+      const bDate = b.date || "9999-99-99";
+      const byDate = String(aDate).localeCompare(String(bDate));
+      if (byDate) return byDate;
       const byTime = String(a.time).localeCompare(String(b.time));
       if (byTime) return byTime;
       return String(a.title).localeCompare(String(b.title));
     });
   }
 
+  function myEventRsvpKey() {
+    if (memberSession?.personalCode) return normalizePersonalCode(memberSession.personalCode);
+    if (isAdmin && adminSession?.id) return `admin:${adminSession.id}`;
+    return "";
+  }
+
+  function getMyEventRsvp(event) {
+    const key = myEventRsvpKey();
+    if (!key || !event?.rsvps) return null;
+    return event.rsvps[key] || null;
+  }
+
+  function countEventRsvps(event) {
+    const entries = Object.values(event?.rsvps || {});
+    let accepted = 0;
+    let declined = 0;
+    for (const entry of entries) {
+      if (entry.status === "accepted") accepted += 1;
+      else if (entry.status === "declined") declined += 1;
+    }
+    return { accepted, declined };
+  }
+
   function scheduledEventsFingerprint(list) {
+    const me = myEventRsvpKey() || "anon";
+    const mode = isAdmin ? "a" : isMember ? "m" : "p";
     return sortScheduledEvents(list)
-      .map(event => `${event.id}:${event.time}:${event.title}:${event.note || ""}:${isAdmin ? "a" : "p"}`)
+      .map(event => {
+        const mine = event.rsvps?.[me]?.status || "-";
+        const counts = countEventRsvps(event);
+        return `${event.id}:${event.date || ""}:${event.time}:${event.title}:${event.note || ""}:${counts.accepted}:${counts.declined}:${mine}:${mode}`;
+      })
       .join("|");
+  }
+
+  function renderEventRsvpNames(event) {
+    if (!isAdmin) return "";
+    const accepted = [];
+    const declined = [];
+    for (const entry of Object.values(event.rsvps || {})) {
+      const label = entry.name || "Member";
+      if (entry.status === "accepted") accepted.push(label);
+      else if (entry.status === "declined") declined.push(label);
+    }
+    if (!accepted.length && !declined.length) return "";
+    const parts = [];
+    if (accepted.length) parts.push(`In: ${accepted.join(", ")}`);
+    if (declined.length) parts.push(`Out: ${declined.join(", ")}`);
+    return `<small class="te-event-rsvp-names">${escapeHtml(parts.join(" · "))}</small>`;
   }
 
   function renderScheduledEvents() {
@@ -774,28 +874,50 @@
       return;
     }
     el.teScheduleList.innerHTML = list.map(event => {
+      const dateLabel = formatEventDate(event.date);
+      const when = dateLabel
+        ? `<b>${escapeHtml(dateLabel)}</b><span class="te-event-time">${escapeHtml(event.time)}</span>`
+        : `<b>${escapeHtml(event.time)}</b>`;
       const note = event.note
         ? `<em>${escapeHtml(event.note)}</em>`
         : "";
-      const actions = isAdmin
-        ? `<div class="te-event-actions">
+      const counts = countEventRsvps(event);
+      const mine = getMyEventRsvp(event);
+      const myStatus = mine?.status || "";
+      const adminActions = isAdmin
+        ? `<div class="te-event-manage">
             <button class="btn btn-ghost" type="button" data-action="edit-event" data-id="${escapeHtml(event.id)}">Edit</button>
             <button class="btn btn-ghost" type="button" data-action="delete-event" data-id="${escapeHtml(event.id)}">Delete</button>
           </div>`
         : "";
+      const rsvpActions = `
+        <div class="te-event-rsvp">
+          <div class="te-event-rsvp-counts">
+            <span>${counts.accepted} in</span>
+            <span>${counts.declined} out</span>
+            ${myStatus ? `<span class="te-event-rsvp-mine is-${escapeHtml(myStatus)}">You: ${myStatus === "accepted" ? "in" : "out"}</span>` : ""}
+          </div>
+          <div class="te-event-rsvp-actions">
+            <button class="btn btn-ghost te-rsvp-accept ${myStatus === "accepted" ? "is-active" : ""}" type="button" data-action="rsvp-event" data-id="${escapeHtml(event.id)}" data-status="accepted">Accept</button>
+            <button class="btn btn-ghost te-rsvp-decline ${myStatus === "declined" ? "is-active" : ""}" type="button" data-action="rsvp-event" data-id="${escapeHtml(event.id)}" data-status="declined">Decline</button>
+          </div>
+          ${renderEventRsvpNames(event)}
+        </div>`;
       return `<div class="te-event">
-        <b>${escapeHtml(event.time)}</b>
+        <div class="te-event-when">${when}</div>
         <div class="te-event-body">
           <span>${escapeHtml(event.title)}</span>
           ${note}
+          ${rsvpActions}
         </div>
-        ${actions}
+        ${adminActions}
       </div>`;
     }).join("");
   }
 
   function resetScheduledEventForm() {
     editingEventId = null;
+    if (el.teEventDate) el.teEventDate.value = todayServerDate();
     if (el.teEventTime) el.teEventTime.value = "15:00";
     if (el.teEventTitle) el.teEventTitle.value = "";
     if (el.teEventNote) el.teEventNote.value = "";
@@ -808,6 +930,7 @@
     const event = scheduledEvents.find(item => item.id === id);
     if (!event) return;
     editingEventId = event.id;
+    if (el.teEventDate) el.teEventDate.value = event.date || todayServerDate();
     if (el.teEventTime) el.teEventTime.value = event.time;
     if (el.teEventTitle) el.teEventTitle.value = event.title;
     if (el.teEventNote) el.teEventNote.value = event.note || "";
@@ -867,14 +990,48 @@
     return data;
   }
 
+  async function postEventRsvp(id, status) {
+    const url = getEventsApiUrl();
+    if (!url) throw new Error("Events API not configured");
+    if (!isAdmin && !isMember) {
+      throw new Error("Sign in required");
+    }
+    const name = isMember
+      ? (memberSession?.name || "")
+      : (adminSession?.name || "");
+    const response = await fetch(url, {
+      method: "POST",
+      cache: "no-store",
+      headers: getRosterAuthHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({
+        action: "rsvp",
+        id,
+        status,
+        name
+      })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data?.error || `RSVP failed (${response.status})`);
+    }
+    scheduledEvents = sortScheduledEvents(
+      (Array.isArray(data?.events) ? data.events : [])
+        .map(normalizeScheduledEvent)
+        .filter(Boolean)
+    );
+    renderScheduledEvents();
+    return data;
+  }
+
   async function onScheduledEventSubmit(event) {
     event.preventDefault();
     if (!isAdmin || eventsBusy) return;
+    const date = String(el.teEventDate?.value || "").trim();
     const time = String(el.teEventTime?.value || "").trim();
     const title = String(el.teEventTitle?.value || "").trim();
     const note = String(el.teEventNote?.value || "").trim();
-    if (!time || !title) {
-      toast("Time and title are required.", "error");
+    if (!date || !time || !title) {
+      toast("Date, time, and title are required.", "error");
       playSfx("error");
       return;
     }
@@ -886,6 +1043,7 @@
         action: "upsert",
         event: {
           id: editingEventId || undefined,
+          date,
           time,
           title,
           note
@@ -914,6 +1072,27 @@
       playSfx("success");
     } catch (error) {
       toast(error?.message || "Could not delete event.", "error");
+      playSfx("error");
+    } finally {
+      eventsBusy = false;
+    }
+  }
+
+  async function rsvpScheduledEvent(id, status) {
+    if (!id || eventsBusy) return;
+    if (!isAdmin && !isMember) {
+      openAuthModal();
+      toast("Sign in with your Personal Code to accept or decline.", "error");
+      playSfx("error");
+      return;
+    }
+    eventsBusy = true;
+    try {
+      await postEventRsvp(id, status);
+      toast(status === "accepted" ? "You're in for this event." : "Declined — you're out.", "success");
+      playSfx("success");
+    } catch (error) {
+      toast(error?.message || "Could not update RSVP.", "error");
       playSfx("error");
     } finally {
       eventsBusy = false;
@@ -1302,6 +1481,10 @@
     }
     if (action?.dataset.action === "delete-event") {
       void deleteScheduledEvent(action.dataset.id);
+      return;
+    }
+    if (action?.dataset.action === "rsvp-event") {
+      void rsvpScheduledEvent(action.dataset.id, action.dataset.status);
       return;
     }
     const fieldTap = event.target.closest("[data-edit-field]");
@@ -3120,6 +3303,7 @@
     saveHistory();
     closeModal("auth");
     applyAccessMode();
+    await pullScheduledEvents({ silent: true });
     renderAll();
     toast(`Unlocked <strong>${escapeHtml(member.name)}</strong>.`, "success");
     playSfx("success");
