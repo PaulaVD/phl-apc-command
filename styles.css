@@ -1152,10 +1152,10 @@ button.row-val.field-tap small{font-size:.62em;color:var(--soft)}
   font-size:var(--label-size);font-weight:700;letter-spacing:var(--label-track);
   text-transform:uppercase;color:var(--gold);line-height:1.35
 }
-.member-field-popup-hint{
-  flex:0 0 auto;margin:0;padding-top:8px;color:var(--soft);font-size:.78rem;
-  text-align:center;line-height:1.35
+.member-field-popup-actions{
+  flex:0 0 auto;display:grid;grid-template-columns:1fr 1fr;gap:10px;padding-top:10px
 }
+.member-field-popup-actions .btn-primary{grid-column:1/-1}
 .drawer-check-row{display:flex!important;align-items:center;gap:10px;flex-direction:row!important}
 .personal-code-reveal{
   margin:12px 0 4px;padding:18px 16px;border-radius:16px;border:1px solid var(--line-2);

@@ -253,6 +253,8 @@
     memberDrawerTitle: document.getElementById("memberDrawerTitle"),
     memberDrawerSub: document.getElementById("memberDrawerSub"),
     memberDrawerEyebrow: document.getElementById("memberDrawerEyebrow"),
+    memberDrawerSave: document.getElementById("memberDrawerSave"),
+    memberDrawerCancel: document.getElementById("memberDrawerCancel"),
     memberDrawerClose: document.getElementById("memberDrawerClose"),
     personalCodeModal: document.getElementById("personalCodeModal"),
     personalCodeReveal: document.getElementById("personalCodeReveal"),
@@ -369,7 +371,9 @@
     el.kpiRlBtn?.addEventListener("click", () => toggleRallyTeamPanel("rl"));
     el.kpiRjBtn?.addEventListener("click", () => toggleRallyTeamPanel("rj"));
     el.accessCodeInput?.addEventListener("keydown", event => { if (event.key === "Enter") attemptUnlock(); });
+    el.memberDrawerSave?.addEventListener("click", () => { void saveMemberDrawer(); });
     el.memberDrawerClose?.addEventListener("click", closeMemberDrawer);
+    el.memberDrawerCancel?.addEventListener("click", closeMemberDrawer);
     el.personalCodeCopyBtn?.addEventListener("click", copyRevealedPersonalCode);
     el.historyRefreshBtn?.addEventListener("click", () => {
       pullCloudRoster({ silent: false }).then(() => renderHistory());
@@ -381,6 +385,9 @@
     });
     document.querySelectorAll("[data-drawer-close]").forEach(node => {
       node.addEventListener("click", closeMemberDrawer);
+    });
+    document.querySelectorAll("[data-drawer-save-close]").forEach(node => {
+      node.addEventListener("click", () => { void saveMemberDrawer(); });
     });
     document.addEventListener("click", onDynamicClick);
     document.addEventListener("input", onDynamicInput);
@@ -398,6 +405,14 @@
       else if (el.syncModal?.classList.contains("open")) closeModal("sync");
       return;
     }
+    if (event.key === "Enter" && el.memberDrawer?.classList.contains("open") && drawerField) {
+      const tag = event.target?.tagName;
+      if (tag === "INPUT" || tag === "SELECT") {
+        event.preventDefault();
+        void saveMemberDrawer();
+      }
+      return;
+    }
     if (document.body.classList.contains("modal-open")) return;
     if (event.key !== "Enter") return;
 
@@ -405,13 +420,6 @@
     const tag = target.tagName;
     if (tag === "TEXTAREA" || tag === "BUTTON" || tag === "A" || target.isContentEditable) return;
     if (document.querySelector(".ui-select.is-open")) return;
-    if (el.memberDrawer?.classList.contains("open")) {
-      if (drawerField && (tag === "INPUT" || tag === "SELECT")) {
-        event.preventDefault();
-        saveMemberDrawer();
-      }
-      return;
-    }
     if (tag !== "INPUT" && tag !== "SELECT") return;
 
     event.preventDefault();
@@ -1905,7 +1913,13 @@
       input.addEventListener("change", () => { void saveMemberDrawer(); });
       return;
     }
-    input.addEventListener("blur", () => { void saveMemberDrawer(); });
+    // Enter + Save button are primary; blur still saves when focus leaves the field.
+    input.addEventListener("keydown", event => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        void saveMemberDrawer();
+      }
+    });
   }
 
   function closeMemberDrawer() {
