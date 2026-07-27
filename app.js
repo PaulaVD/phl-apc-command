@@ -2767,75 +2767,8 @@
     }).join("");
   }
 
-  function renderRallyFormations(categorized, thresholds) {
-    if (!el.rallyFormationList) return;
-    const block = el.rallyMatchmaking || document.getElementById("rallyMatchmaking");
-    if (block) block.hidden = false;
-
-    if (!thresholds?.ready) {
-      el.rallyFormationList.innerHTML = `
-        <div class="rally-leader-empty">
-          Waiting for real uploads. RL / RJ uses the median highest APC march CP from the live roster — counts update as members submit.
-        </div>`;
-      return;
-    }
-
-    const api = globalThis.PHL_RALLY_MATCHMAKING || globalThis.PHL_RALLY_ROLES;
-    if (!api?.suggestRallyFormations) {
-      el.rallyFormationList.innerHTML = `<div class="rally-leader-empty">Matchmaking module not loaded. Hard-refresh (v137).</div>`;
-      return;
-    }
-
-    const leaders = categorized.filter(m => m.assigned_role === "RL");
-    const joiners = categorized.filter(m => m.assigned_role === "RJ");
-    if (!leaders.length) {
-      el.rallyFormationList.innerHTML = `<div class="rally-leader-empty">No Rally Leaders yet — need highest APC at or above the live median (${formatNumber(thresholds.minApcM)}M).</div>`;
-      return;
-    }
-    if (!joiners.length) {
-      el.rallyFormationList.innerHTML = `<div class="rally-leader-empty">Need at least one Rally Joiner (below the median) to fill marches (~100k each).</div>`;
-      return;
-    }
-
-    const groups = api.suggestRallyFormations(categorized);
-    if (!groups.length) {
-      el.rallyFormationList.innerHTML = `<div class="rally-leader-empty">No formations generated.</div>`;
-      return;
-    }
-
-    el.rallyFormationList.innerHTML = groups.map(group => {
-      const pure = group.is_faction_pure;
-      const troops = formatTroops(group.expected_total_troops);
-      const cap = formatTroops(group.max_capacity);
-      const slots = Math.floor(Number(group.max_capacity || 0) / 100_000);
-      let joinersHtml;
-      if (group.recommended_joiners.length) {
-        joinersHtml = group.recommended_joiners.map(name => {
-          const off = (group.off_faction_fillers || []).includes(name);
-          return `<li class="${off ? "is-off-faction" : "is-aligned"}">${escapeHtml(name)}${off ? " · off" : ""}</li>`;
-        }).join("");
-      } else if (slots <= 0) {
-        joinersHtml = `<li class="is-empty">Plaza &lt; 100k — no joiner marches fit</li>`;
-      } else {
-        joinersHtml = `<li class="is-empty">No free joiners left in pool (${slots} open slot${slots === 1 ? "" : "s"})</li>`;
-      }
-
-      return `
-        <article class="rally-formation-card ${pure ? "is-pure" : "is-mixed"}">
-          <header>
-            <div>
-              <b>${escapeHtml(group.leader_name)}</b>
-              <span>${escapeHtml(group.leader_faction)} RL · Plaza ${cap}</span>
-            </div>
-            <em class="rally-pure-tag">${pure ? "Pure" : "Mixed"}</em>
-          </header>
-          <ul class="rally-joiner-chips">${joinersHtml}</ul>
-          <footer>
-            <span>${troops} / ${cap}</span>
-            <span>${group.recommended_joiners.length} march${group.recommended_joiners.length === 1 ? "" : "es"}${group.open_slots ? ` · ${group.open_slots} open` : ""}</span>
-          </footer>
-        </article>`;
-    }).join("");
+  function renderRallyFormations() {
+    // Suggested strike-team matchmaking UI removed.
   }
 
   function syncRallyCriteriaControls() {
