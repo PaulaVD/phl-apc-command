@@ -1053,7 +1053,7 @@
           <div class="cp-control">
             <button class="mini-btn" type="button" data-apc-index="${index}" data-step="-10">-10</button>
             <div class="value-wrap">
-              <input class="cp-input" id="cpInput${index}" data-apc-index="${index}" type="number" min="0" max="${max}" step="1" value="${apc.cp}" aria-label="APC ${index + 1} CP${optional ? " (optional)" : ""}">
+              <input class="cp-input" id="cpInput${index}" data-apc-index="${index}" type="number" min="0" max="${APC_CP_STORE_MAX}" step="any" value="${apc.cp}" aria-label="APC ${index + 1} CP${optional ? " (optional)" : ""}">
               <b>M CP</b>
             </div>
             <button class="mini-btn" type="button" data-apc-index="${index}" data-step="10">+10</button>
