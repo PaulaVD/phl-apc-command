@@ -51,6 +51,8 @@
   let editingId = null;
   let currentStep = 0;
   let sfxEnabled = true;
+  let cinematicAudioEnabled = true;
+  let cinematicAudioStarted = false;
   let adminSession = loadAdminSession();
   let isAdmin = Boolean(adminSession);
   let memberSession = isAdmin ? null : loadMemberSession();
@@ -154,6 +156,12 @@
     scanModeTag: document.getElementById("scanModeTag"),
     statusTag: document.getElementById("statusTag"),
     sfxBtn: document.getElementById("sfxBtn"),
+    bgCinematicVideo: document.getElementById("bgCinematicVideo"),
+    bgCinematicAudio: document.getElementById("bgCinematicAudio"),
+    bgAudioBtn: document.getElementById("bgAudioBtn"),
+    bgAudioGate: document.getElementById("bgAudioGate"),
+    bgAudioEnableBtn: document.getElementById("bgAudioEnableBtn"),
+    bgAudioSkipBtn: document.getElementById("bgAudioSkipBtn"),
     lofiPlayer: document.getElementById("lofiPlayer"),
     lofiNowBtn: document.getElementById("lofiNowBtn"),
     lofiTrackTitle: document.getElementById("lofiTrackTitle"),
@@ -315,6 +323,7 @@
     enforceLocalRosterScope();
     bindEvents();
     initLofiPlayer();
+    initCinematicBackground();
     applyAccessMode();
     initMobileTabs();
     maybeWarnStaleSessions();
@@ -363,6 +372,24 @@
       unlockAudio();
       sfxEnabled = !sfxEnabled;
       el.sfxBtn.classList.toggle("active", sfxEnabled);
+      playSfx("click");
+    });
+    el.bgAudioBtn?.addEventListener("click", () => {
+      unlockAudio();
+      setCinematicAudioEnabled(!cinematicAudioEnabled);
+      playSfx("click");
+    });
+    el.bgAudioEnableBtn?.addEventListener("click", () => {
+      unlockAudio();
+      hideBgAudioGate();
+      setCinematicAudioEnabled(true);
+      void startCinematicMedia({ withSound: true });
+      playSfx("success");
+    });
+    el.bgAudioSkipBtn?.addEventListener("click", () => {
+      hideBgAudioGate();
+      setCinematicAudioEnabled(false);
+      void startCinematicMedia({ withSound: false });
       playSfx("click");
     });
     el.signInBtn?.addEventListener("click", handleSignInAccess);
@@ -3873,6 +3900,94 @@
     lastRenderedLevel = null;
   }
 
+  function hideBgAudioGate() {
+    if (el.bgAudioGate) el.bgAudioGate.hidden = true;
+  }
+
+  function showBgAudioGate() {
+    if (el.bgAudioGate) el.bgAudioGate.hidden = false;
+  }
+
+  function syncCinematicAudioUi() {
+    el.bgAudioBtn?.classList.toggle("active", cinematicAudioEnabled);
+    el.bgAudioBtn?.setAttribute("aria-pressed", String(cinematicAudioEnabled));
+    const onIcon = el.bgAudioBtn?.querySelector(".bg-audio-icon-on");
+    const offIcon = el.bgAudioBtn?.querySelector(".bg-audio-icon-off");
+    if (onIcon) onIcon.hidden = !cinematicAudioEnabled;
+    if (offIcon) offIcon.hidden = cinematicAudioEnabled;
+  }
+
+  function setCinematicAudioEnabled(enabled) {
+    cinematicAudioEnabled = Boolean(enabled);
+    syncCinematicAudioUi();
+    if (!cinematicAudioEnabled) {
+      try { el.bgCinematicAudio?.pause(); } catch {}
+      if (el.bgCinematicVideo) el.bgCinematicVideo.muted = true;
+      return;
+    }
+    void startCinematicMedia({ withSound: true });
+  }
+
+  async function startCinematicMedia({ withSound = cinematicAudioEnabled } = {}) {
+    const video = el.bgCinematicVideo;
+    const audioEl = el.bgCinematicAudio;
+    if (video) {
+      try {
+        video.muted = true;
+        video.loop = true;
+        video.playsInline = true;
+        await video.play();
+      } catch (error) {
+        console.warn("Cinematic video play failed:", error);
+      }
+    }
+    if (!withSound || !audioEl) return false;
+    try {
+      if (lofiPlaying) pauseLofi();
+      audioEl.volume = 0.42;
+      await audioEl.play();
+      cinematicAudioStarted = true;
+      if (video) video.muted = true;
+      return true;
+    } catch (error) {
+      console.warn("Cinematic audio play failed:", error);
+      return false;
+    }
+  }
+
+  function initCinematicBackground() {
+    syncCinematicAudioUi();
+    const video = el.bgCinematicVideo;
+    if (video) {
+      video.muted = true;
+      video.loop = true;
+      video.playsInline = true;
+      video.play().catch(() => {});
+    }
+    // Browsers block autoplay with sound — ask once, then remember for this tab.
+    let remembered = "";
+    try { remembered = sessionStorage.getItem("phl_cinematic_audio_v1") || ""; } catch { /* ignore */ }
+    if (remembered === "off") {
+      setCinematicAudioEnabled(false);
+      hideBgAudioGate();
+      return;
+    }
+    if (remembered === "on") {
+      hideBgAudioGate();
+      void startCinematicMedia({ withSound: true }).then(ok => {
+        if (!ok) showBgAudioGate();
+      });
+      return;
+    }
+    showBgAudioGate();
+    el.bgAudioEnableBtn?.addEventListener("click", () => {
+      try { sessionStorage.setItem("phl_cinematic_audio_v1", "on"); } catch { /* ignore */ }
+    }, { once: true });
+    el.bgAudioSkipBtn?.addEventListener("click", () => {
+      try { sessionStorage.setItem("phl_cinematic_audio_v1", "off"); } catch { /* ignore */ }
+    }, { once: true });
+  }
+
   function unlockAudio() {
     if (audioUnlocked) return;
     audioUnlocked = true;
@@ -4052,6 +4167,9 @@
   function playLofi(forceReload = false) {
     const track = LOFI_PLAYLIST[lofiIndex];
     if (!track) return;
+    if (cinematicAudioEnabled) {
+      try { el.bgCinematicAudio?.pause(); } catch {}
+    }
     if (!lofiYtReady || !lofiPlayerYt) {
       lofiPendingPlay = true;
       lofiPlaying = true;
@@ -4077,6 +4195,9 @@
     lofiPlaying = false;
     try { lofiPlayerYt?.pauseVideo(); } catch {}
     syncLofiUi();
+    if (cinematicAudioEnabled && cinematicAudioStarted) {
+      void startCinematicMedia({ withSound: true });
+    }
   }
 
   function applyLofiVolume() {
