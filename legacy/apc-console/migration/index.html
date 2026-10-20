@@ -13,11 +13,11 @@
   <link rel="stylesheet" href="../styles.css?v=162" />
   <link rel="stylesheet" href="migration.css?v=3" />
   <link rel="stylesheet" href="migration-readability.css?v=1" />
-  <link rel="stylesheet" href="migration-portal.css?v=4" />
+  <link rel="stylesheet" href="migration-portal.css?v=5" />
   <script src="../config.js?v=62"></script>
   <script>window.PHL_EMBED_MIGRATION = true;</script>
 </head>
-<body>
+<body class="phl-migration-page">
   <div class="bg-cinematic" aria-hidden="true">
     <video
       id="bgCinematicVideo"
@@ -38,13 +38,13 @@
   <div class="noise" aria-hidden="true"></div>
   <div class="vignette" aria-hidden="true"></div>
 
-  <header class="topbar migration-portal-topbar">
-    <div class="topbar-main">
+  <header class="topbar migration-unified-header">
+    <div class="topbar-main migration-topbar-primary">
       <a class="brand brand-home" href="/" title="Phoenix Legacy official alliance site">
         <div class="brand-mark"><img class="game-asset" src="../assets/phl-logo.png?v=2" alt="Phoenix Legacy logo" width="48" height="48" decoding="async"></div>
         <div class="brand-copy">
           <strong>Phoenix Legacy</strong>
-          <small>From Ashes, We Rise Together · PH-L Portal</small>
+          <small>Migration workspace</small>
         </div>
       </a>
 
@@ -62,63 +62,17 @@
         </div>
       </div>
 
-      <div class="time-block time-block-convert" title="Convert a server event to your local time">
-        <div class="event-convert-row">
-          <span class="time-block-kicker">Event</span>
-          <input class="input time-block-input" id="serverEventInput" type="time" value="15:00" step="60" aria-label="Server event time">
-          <span class="time-block-arrow" aria-hidden="true">→</span>
-          <strong id="localConvertedTime">--:--</strong>
-          <select class="time-block-offset" id="localOffsetSelect" aria-label="Target UTC offset"></select>
-          <small class="time-block-meta" id="localConvertedMeta">Detecting timezone…</small>
-        </div>
-      </div>
-
-      <div class="lofi-player" id="lofiPlayer" data-playing="0">
-        <div class="lofi-yt" aria-hidden="true"><div id="lofiYtMount"></div></div>
-        <button class="lofi-now" id="lofiNowBtn" type="button" aria-expanded="false" aria-controls="lofiPlaylist" title="Open Lofi Girl playlist">
-          <span class="lofi-eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
-          <span class="lofi-now-text">
-            <span class="lofi-kicker">Lofi</span>
-            <strong id="lofiTrackTitle">beats to relax/study to</strong>
-            <small id="lofiTrackArtist">Lofi Girl · live radio</small>
-          </span>
-        </button>
-        <div class="lofi-controls">
-          <button class="lofi-btn lofi-skip" id="lofiPrevBtn" type="button" title="Previous station" aria-label="Previous station">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
-          </button>
-          <button class="lofi-btn lofi-play" id="lofiPlayBtn" type="button" title="Play / pause" aria-label="Play Lofi Girl radio">
-            <svg class="lofi-icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
-            <svg class="lofi-icon-pause" viewBox="0 0 24 24" aria-hidden="true" hidden><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>
-          </button>
-          <button class="lofi-btn lofi-skip" id="lofiNextBtn" type="button" title="Next station" aria-label="Next station">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 6h2v12h-2zM6 18l8.5-6L6 6z"/></svg>
-          </button>
-        </div>
-        <label class="lofi-vol" title="Volume">
-          <span class="sr-only">Volume</span>
-          <input id="lofiVolume" type="range" min="0" max="100" value="55" aria-label="Lofi volume">
-        </label>
-        <div class="lofi-playlist" id="lofiPlaylist" hidden role="listbox" aria-label="Lofi Girl playlist"></div>
-      </div>
-
       <div class="top-actions">
         <button class="btn btn-ghost events-tab" id="eventsTabBtn" type="button" aria-expanded="false" aria-controls="eventsModal" aria-haspopup="dialog">
           Events
           <span class="events-tab-count" id="eventsTabCount" hidden>0</span>
         </button>
-        <button class="btn btn-ghost migration-entry-btn roster-jump-btn is-current" id="migrationCmdBtn" type="button" aria-current="page" title="Migration Command workspace">
-          Migration
-        </button>
-        <button class="btn btn-ghost admin-only roster-jump-btn" id="rosterJumpBtn" type="button" title="Back to alliance console roster">
+        <button class="btn btn-ghost admin-only roster-jump-btn" id="rosterJumpBtn" type="button" title="Back to alliance console">
           Console
         </button>
         <button class="icon-btn active" id="bgAudioBtn" type="button" title="Toggle cinematic soundtrack" aria-label="Toggle cinematic soundtrack" aria-pressed="true">
           <svg class="bg-audio-icon-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3.23v17.54a1 1 0 0 1-1.64.77L7.56 17H4a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2h3.56l4.8-4.54A1 1 0 0 1 14 3.23Zm3.54 4.05a1 1 0 0 1 1.41 0 6.98 6.98 0 0 1 0 9.9 1 1 0 1 1-1.41-1.42 4.98 4.98 0 0 0 0-7.06 1 1 0 0 1 0-1.42Zm-2.83 2.83a1 1 0 0 1 1.41 0 2.98 2.98 0 0 1 0 4.22 1 1 0 1 1-1.41-1.42.98.98 0 0 0 0-1.38 1 1 0 0 1 0-1.42Z"/></svg>
           <svg class="bg-audio-icon-off" viewBox="0 0 24 24" aria-hidden="true" hidden><path d="M4.27 3 3 4.27 7.73 9H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h3.56l4.8 4.54A1 1 0 0 0 14 20.77v-6.5l4.93 4.93 1.27-1.27L4.27 3ZM14 3.23a1 1 0 0 0-1.64-.77l-2.1 2 3.74 3.74V3.23Z"/></svg>
-        </button>
-        <button class="icon-btn active" id="sfxBtn" title="Toggle sound effects" aria-label="Toggle sound effects">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3.23v17.54a1 1 0 0 1-1.64.77L7.56 17H4a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2h3.56l4.8-4.54A1 1 0 0 1 14 3.23Zm3.54 4.05a1 1 0 0 1 1.41 0 6.98 6.98 0 0 1 0 9.9 1 1 0 1 1-1.41-1.42 4.98 4.98 0 0 0 0-7.06 1 1 0 0 1 0-1.42Zm-2.83 2.83a1 1 0 0 1 1.41 0 2.98 2.98 0 0 1 0 4.22 1 1 0 1 1-1.41-1.42.98.98 0 0 0 0-1.38 1 1 0 0 1 0-1.42Z"/></svg>
         </button>
         <button class="btn btn-signin" id="signInBtn" type="button" aria-haspopup="dialog" aria-controls="authModal">
           <span class="lock-dot" id="signInDot"></span>
@@ -126,6 +80,7 @@
         </button>
       </div>
     </div>
+    <div id="migrationToolbarMount" class="topbar-migration-toolbar" aria-label="Migration sections"></div>
   </header>
 
   <main class="shell migration-workspace">
@@ -202,6 +157,6 @@
 
   <script src="../serverClock.js?v=35"></script>
   <script src="../app.js?v=164" defer></script>
-  <script type="module" src="migration-ui.bundle.js?v=7"></script>
+  <script type="module" src="migration-ui.bundle.js?v=8"></script>
 </body>
 </html>
