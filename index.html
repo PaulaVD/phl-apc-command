@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#0b0404" />
-  <title>Phoenix Legacy — Command Hub</title>
-  <meta name="description" content="PH-L: consola APC, migración de alianza y herramientas de oficiales." />
+  <title>Phoenix Legacy — Sitio oficial de la alianza</title>
+  <meta name="description" content="Phoenix Legacy (PH-L): sitio oficial de la alianza en Dark War Survival. Eventos, roster, APC, herramientas de miembros y espacio privado de liderazgo." />
   <link rel="icon" href="legacy/apc-console/assets/phl-logo.png?v=2" type="image/png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -13,9 +13,10 @@
   <style>
     :root {
       --bg: #050101;
-      --panel: rgba(22, 9, 9, 0.92);
+      --panel: rgba(22, 9, 9, 0.88);
       --line: rgba(255, 189, 126, 0.28);
       --gold: #ffb97e;
+      --ember: #ff7a46;
       --teal: #5eead4;
       --text: #f5e6dc;
       --muted: #a89288;
@@ -27,48 +28,182 @@
       font-family: Rajdhani, system-ui, sans-serif;
       font-weight: 600;
       color: var(--text);
-      background:
-        radial-gradient(circle at 50% 0%, rgba(255, 122, 70, 0.18), transparent 42%),
-        linear-gradient(180deg, #120606 0%, var(--bg) 55%);
-      display: grid;
-      place-items: center;
-      padding: 24px;
+      background: var(--bg);
     }
-    .hub {
-      width: min(920px, 100%);
+    .bg {
+      position: fixed;
+      inset: 0;
+      z-index: -2;
+      overflow: hidden;
+      pointer-events: none;
+    }
+    .bg video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      filter: saturate(1.05) brightness(0.45);
+    }
+    .bg-scrim {
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 50% 0%, rgba(255, 122, 70, 0.22), transparent 45%),
+        linear-gradient(180deg, rgba(5, 1, 1, 0.35) 0%, rgba(5, 1, 1, 0.92) 55%, #050101 100%);
+    }
+    .site {
+      width: min(1040px, 100%);
+      margin: 0 auto;
+      padding: 20px 20px 48px;
+      display: grid;
+      gap: 28px;
+    }
+    .site-nav {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px 18px;
+      padding: 12px 16px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: rgba(8, 3, 3, 0.72);
+      backdrop-filter: blur(10px);
+    }
+    .site-nav .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: inherit;
+      margin-right: auto;
+    }
+    .site-nav .logo img {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    }
+    .site-nav .logo strong {
+      font-family: Teko, Rajdhani, sans-serif;
+      font-size: 1.35rem;
+      letter-spacing: 0.06em;
+      line-height: 1;
+    }
+    .site-nav .logo small {
+      display: block;
+      color: var(--gold);
+      font-size: 0.72rem;
+      font-style: italic;
+      font-weight: 600;
+    }
+    .site-nav a.link {
+      text-decoration: none;
+      color: var(--muted);
+      font-size: 0.92rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 8px 10px;
+      border-radius: 10px;
+    }
+    .site-nav a.link:hover { color: var(--text); background: rgba(255, 255, 255, 0.04); }
+    .site-nav a.cta {
+      text-decoration: none;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      border-radius: 12px;
+      padding: 10px 16px;
+      border: 1px solid rgba(255, 189, 126, 0.55);
+      color: #fff4ea;
+      background: linear-gradient(180deg, rgba(255, 140, 80, 0.35), rgba(120, 40, 20, 0.5));
+    }
+    .hero {
+      text-align: center;
+      display: grid;
+      gap: 14px;
+      padding: 28px 12px 8px;
+    }
+    .hero .eyebrow {
+      margin: 0 auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--teal);
+    }
+    .hero .eyebrow::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 12px currentColor;
+    }
+    .hero h1 {
+      margin: 0;
+      font-family: Teko, Rajdhani, sans-serif;
+      font-size: clamp(2.4rem, 6vw, 3.4rem);
+      letter-spacing: 0.05em;
+      font-weight: 600;
+      line-height: 0.95;
+    }
+    .hero .motto {
+      margin: 0;
+      color: var(--gold);
+      font-size: 1.15rem;
+      font-style: italic;
+      letter-spacing: 0.02em;
+    }
+    .hero .lead {
+      margin: 0 auto;
+      max-width: 58ch;
+      color: var(--muted);
+      line-height: 1.5;
+      font-size: 1.05rem;
+    }
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 12px;
+      margin-top: 8px;
+    }
+    a.btn {
+      text-decoration: none;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      border-radius: 12px;
+      padding: 12px 18px;
+      border: 1px solid var(--line);
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.03);
+    }
+    a.btn.primary {
+      background: linear-gradient(180deg, rgba(255, 140, 80, 0.35), rgba(120, 40, 20, 0.5));
+      border-color: rgba(255, 189, 126, 0.55);
+      color: #fff4ea;
+    }
+    .sections {
       display: grid;
       gap: 20px;
     }
-    .brand {
-      text-align: center;
-      display: grid;
-      gap: 8px;
-    }
-    .brand img {
-      width: 72px;
-      height: 72px;
-      margin: 0 auto;
-      border-radius: 18px;
-      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
-    }
-    .brand h1 {
+    .section-title {
       margin: 0;
       font-family: Teko, Rajdhani, sans-serif;
-      font-size: clamp(2rem, 5vw, 2.8rem);
+      font-size: 1.5rem;
       letter-spacing: 0.06em;
-      font-weight: 600;
     }
-    .brand p {
-      margin: 0;
+    .section-intro {
+      margin: 6px 0 0;
       color: var(--muted);
-      max-width: 52ch;
-      margin-inline: auto;
       line-height: 1.45;
+      max-width: 62ch;
     }
     .cards {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
       gap: 16px;
+      margin-top: 14px;
     }
     .card {
       border: 1px solid var(--line);
@@ -79,96 +214,144 @@
       gap: 12px;
       box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
     }
-    .card h2 {
+    .card h3 {
       margin: 0;
       font-family: Teko, Rajdhani, sans-serif;
-      font-size: 1.65rem;
+      font-size: 1.55rem;
       letter-spacing: 0.04em;
     }
     .card p {
       margin: 0;
       color: var(--muted);
       line-height: 1.45;
-      min-height: 4.5em;
+    }
+    .card ul {
+      margin: 0;
+      padding-left: 1.1em;
+      color: var(--muted);
+      line-height: 1.45;
     }
     .tag {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      font-size: 0.78rem;
+      font-size: 0.75rem;
       text-transform: uppercase;
       letter-spacing: 0.08em;
       color: var(--teal);
     }
-    .tag::before {
-      content: "";
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: currentColor;
-      box-shadow: 0 0 10px currentColor;
-    }
-    .actions {
+    .tag.officer { color: var(--gold); }
+    .pill-row {
       display: flex;
       flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 4px;
+      gap: 8px;
     }
-    a.btn {
-      text-decoration: none;
-      font-weight: 700;
-      letter-spacing: 0.04em;
-      border-radius: 12px;
-      padding: 11px 16px;
+    .pill {
+      font-size: 0.78rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 6px 10px;
+      border-radius: 999px;
       border: 1px solid var(--line);
-      color: var(--text);
-      background: rgba(255, 255, 255, 0.03);
-    }
-    a.btn.primary {
-      background: linear-gradient(180deg, rgba(255, 140, 80, 0.35), rgba(120, 40, 20, 0.5));
-      border-color: rgba(255, 189, 126, 0.55);
-      color: #fff4ea;
+      color: var(--muted);
     }
     footer {
       text-align: center;
       color: var(--muted);
-      font-size: 0.9rem;
-      line-height: 1.5;
+      font-size: 0.88rem;
+      line-height: 1.55;
+      padding-top: 8px;
+      border-top: 1px solid rgba(255, 189, 126, 0.12);
     }
     footer a { color: var(--gold); }
   </style>
 </head>
 <body>
-  <div class="hub">
-    <header class="brand">
-      <img src="legacy/apc-console/assets/phl-logo.png?v=2" width="72" height="72" alt="Phoenix Legacy" decoding="async" />
-      <h1>PHOENIX LEGACY COMMAND HUB</h1>
-      <p>Dos espacios de trabajo para la alianza: la consola APC en Netlify y el centro de migración con roster, diplomacia y despliegue.</p>
+  <div class="bg" aria-hidden="true">
+    <video autoplay muted loop playsinline preload="metadata" poster="legacy/apc-console/assets/phl-logo.png?v=2">
+      <source src="legacy/apc-console/assets/PHLL.mov?v=157" type="video/mp4" />
+    </video>
+    <div class="bg-scrim"></div>
+  </div>
+
+  <div class="site">
+    <nav class="site-nav" aria-label="Sitio PH-L">
+      <a class="logo" href="/">
+        <img src="legacy/apc-console/assets/phl-logo.png?v=2" width="44" height="44" alt="" decoding="async" />
+        <span>
+          <strong>Phoenix Legacy</strong>
+          <small>From Ashes, We Rise Together</small>
+        </span>
+      </a>
+      <a class="link" href="#miembros">Miembros</a>
+      <a class="link" href="#oficiales">Oficiales</a>
+      <a class="cta" href="legacy/apc-console/">Portal de la alianza</a>
+    </nav>
+
+    <header class="hero">
+      <p class="eyebrow">Dark War Survival · Alianza PH-L</p>
+      <h1>Sitio oficial de Phoenix Legacy</h1>
+      <p class="motto">From Ashes, We Rise Together</p>
+      <p class="lead">
+        Este es el hogar digital de la alianza: identidad, coordinación y herramientas para el día a día en el juego.
+        La consola APC, eventos, roster y el espacio de migración viven aquí — no son un sitio aparte, son parte del mismo portal PH-L.
+      </p>
+      <div class="hero-actions">
+        <a class="btn primary" href="legacy/apc-console/">Entrar al portal de miembros</a>
+        <a class="btn" href="legacy/apc-console/?auth=migration">Acceso oficiales R4/R5</a>
+      </div>
     </header>
 
-    <div class="cards">
-      <article class="card">
-        <span class="tag">Netlify · Público</span>
-        <h2>APC Command Console</h2>
-        <p>Envío de CP de APC, roster compartido, eventos, reloj de servidor y herramientas de oficiales (la URL histórica de la alianza).</p>
-        <div class="actions">
-          <a class="btn primary" href="legacy/apc-console/">Abrir consola APC</a>
+    <div class="sections">
+      <section id="miembros">
+        <h2 class="section-title">Para todos los miembros</h2>
+        <p class="section-intro">
+          Usa el portal con tu Personal Code para ver eventos, actualizar tu CP de APC y mantener tu ficha al día con la alianza.
+        </p>
+        <div class="cards">
+          <article class="card">
+            <span class="tag">Portal principal</span>
+            <h3>Consola PH-L</h3>
+            <p>La experiencia que la alianza ya conoce: reloj de servidor, eventos, envío de datos APC y roster compartido.</p>
+            <ul>
+              <li>RSVP a eventos de Dark War</li>
+              <li>Push Data de APC y perfil personal</li>
+              <li>Sincronización en la nube del roster</li>
+            </ul>
+            <a class="btn primary" href="legacy/apc-console/">Abrir consola</a>
+          </article>
+          <article class="card">
+            <span class="tag">Atajos</span>
+            <h3>Enlaces directos</h3>
+            <p>Misma URL oficial; rutas cortas para compartir en Discord o chat de alianza.</p>
+            <div class="pill-row">
+              <span class="pill">/consola</span>
+              <span class="pill">/apc</span>
+            </div>
+            <p style="margin-top:4px;font-size:0.9rem;">También puedes usar <code>/legacy/apc-console/</code> en este dominio.</p>
+          </article>
         </div>
-      </article>
+      </section>
 
-      <article class="card">
-        <span class="tag">Migration Command · R4 privado</span>
-        <h2>PH-L Migration Command</h2>
-        <p>No uses tu Personal Code de miembro. En la consola APC pulsa <strong>Sign in</strong> e introduce tu <strong>código de liderazgo</strong> (R4/R5); verás <strong>Exit admin</strong> y el botón <strong>Migration</strong> arriba.</p>
-        <div class="actions">
-          <a class="btn primary" href="legacy/apc-console/?auth=migration">Iniciar sesión R4</a>
+      <section id="oficiales">
+        <h2 class="section-title">Para liderazgo R4 / R5</h2>
+        <p class="section-intro">
+          Migration Command es la zona privada de planificación (roster de migración, diplomacia, despliegue). Requiere código de liderazgo, no el Personal Code de miembro.
+        </p>
+        <div class="cards">
+          <article class="card">
+            <span class="tag officer">Privado · Oficiales</span>
+            <h3>Migration Command</h3>
+            <p>Inicia sesión en el portal con tu código de liderazgo. En la barra superior verás <strong>Exit admin</strong> y el botón <strong>Migration</strong>.</p>
+            <a class="btn primary" href="legacy/apc-console/?auth=migration">Iniciar sesión de liderazgo</a>
+          </article>
         </div>
-      </article>
+      </section>
     </div>
 
     <footer>
-      <p>Documentación de migración: <a href="LEEME_PRIMERO.md">LEEME_PRIMERO.md</a> · Repo: <a href="https://github.com/PaulaVD/phl-apc-command">PaulaVD/phl-apc-command</a></p>
-      <p>La consola APC sigue en <strong>https://transcendent-kitsune-43421d.netlify.app/legacy/apc-console/</strong> (mismas APIs <code>/api/*</code> en la raíz del sitio).</p>
+      <p>Phoenix Legacy (PH-L) · Sitio oficial de la alianza en <strong>transcendent-kitsune-43421d.netlify.app</strong></p>
+      <p>Documentación interna: <a href="LEEME_PRIMERO.md">LEEME_PRIMERO.md</a></p>
     </footer>
   </div>
 </body>

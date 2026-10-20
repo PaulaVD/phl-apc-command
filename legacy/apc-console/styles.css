@@ -114,6 +114,8 @@ img{display:block;max-width:100%}
 }
 
 .brand{display:flex;align-items:center;gap:10px;min-width:0;flex:0 0 auto}
+a.brand-home{text-decoration:none;color:inherit;border-radius:14px}
+a.brand-home:focus-visible{outline:2px solid rgba(255,189,126,.55);outline-offset:3px}
 .brand-mark{
   width:48px;height:48px;border-radius:50%;overflow:hidden;flex:none;
   border:1px solid var(--line-2);background:#0a0404;box-shadow:0 0 16px rgba(255,122,70,.18)
