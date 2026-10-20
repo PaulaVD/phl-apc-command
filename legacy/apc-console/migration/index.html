@@ -13,7 +13,7 @@
   <link rel="stylesheet" href="../styles.css?v=162" />
   <link rel="stylesheet" href="migration.css?v=3" />
   <link rel="stylesheet" href="migration-readability.css?v=1" />
-  <link rel="stylesheet" href="migration-portal.css?v=7" />
+  <link rel="stylesheet" href="migration-portal.css?v=8" />
   <script src="../config.js?v=63"></script>
   <script>window.PHL_EMBED_MIGRATION = true;</script>
 </head>
@@ -48,39 +48,41 @@
         </div>
       </a>
 
+      <div class="migration-topbar-util">
+        <div class="top-clocks migration-clocks-compact" id="serverClockPanel" aria-label="Dark War server time">
+          <div class="time-block time-block-server" title="Dark War server time (Asunción +1h)">
+            <span class="time-block-kicker">Srv</span>
+            <time id="serverClockDisplay" aria-live="polite">--:--:--</time>
+            <span class="time-block-badge" id="serverClockBadge">UTC-3</span>
+          </div>
+          <div class="time-block time-block-local" title="Your local time">
+            <span class="time-block-kicker">Loc</span>
+            <b id="localClockDisplay">--:--:--</b>
+            <em class="time-block-badge" id="localOffsetBadge">auto</em>
+            <small class="time-block-zone" id="localZoneLabel">Detecting…</small>
+          </div>
+        </div>
+
+        <div class="top-actions migration-top-actions">
+          <button class="btn btn-ghost events-tab" id="eventsTabBtn" type="button" aria-expanded="false" aria-controls="eventsModal" aria-haspopup="dialog" title="Alliance events">
+            <span class="migration-action-short">Events</span>
+            <span class="events-tab-count" id="eventsTabCount" hidden>0</span>
+          </button>
+          <button class="btn btn-ghost admin-only roster-jump-btn" id="rosterJumpBtn" type="button" title="Back to APC console">
+            <span class="migration-action-short">Console</span>
+          </button>
+          <button class="icon-btn active" id="bgAudioBtn" type="button" title="Toggle cinematic soundtrack" aria-label="Toggle cinematic soundtrack" aria-pressed="true">
+            <svg class="bg-audio-icon-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3.23v17.54a1 1 0 0 1-1.64.77L7.56 17H4a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2h3.56l4.8-4.54A1 1 0 0 1 14 3.23Zm3.54 4.05a1 1 0 0 1 1.41 0 6.98 6.98 0 0 1 0 9.9 1 1 0 1 1-1.41-1.42 4.98 4.98 0 0 0 0-7.06 1 1 0 0 1 0-1.42Zm-2.83 2.83a1 1 0 0 1 1.41 0 2.98 2.98 0 0 1 0 4.22 1 1 0 1 1-1.41-1.42.98.98 0 0 0 0-1.38 1 1 0 0 1 0-1.42Z"/></svg>
+            <svg class="bg-audio-icon-off" viewBox="0 0 24 24" aria-hidden="true" hidden><path d="M4.27 3 3 4.27 7.73 9H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h3.56l4.8 4.54A1 1 0 0 0 14 20.77v-6.5l4.93 4.93 1.27-1.27L4.27 3ZM14 3.23a1 1 0 0 0-1.64-.77l-2.1 2 3.74 3.74V3.23Z"/></svg>
+          </button>
+          <button class="btn btn-signin migration-signin-btn" id="signInBtn" type="button" aria-haspopup="dialog" aria-controls="authModal">
+            <span class="lock-dot" id="signInDot"></span>
+            <span id="signInLabel">Sign in</span>
+          </button>
+        </div>
+      </div>
+
       <div id="migrationToolbarMount" class="topbar-migration-toolbar" aria-label="Migration sections"></div>
-
-      <div class="top-clocks migration-clocks-compact" id="serverClockPanel" aria-label="Dark War server time">
-        <div class="time-block time-block-server" title="Dark War server time (Asunción +1h)">
-          <span class="time-block-kicker">Server</span>
-          <time id="serverClockDisplay" aria-live="polite">--:--:--</time>
-          <span class="time-block-badge" id="serverClockBadge">UTC-3</span>
-        </div>
-        <div class="time-block time-block-local" title="Your local time">
-          <span class="time-block-kicker">Local</span>
-          <b id="localClockDisplay">--:--:--</b>
-          <em class="time-block-badge" id="localOffsetBadge">auto</em>
-          <small class="time-block-zone" id="localZoneLabel">Detecting…</small>
-        </div>
-      </div>
-
-      <div class="top-actions">
-        <button class="btn btn-ghost events-tab" id="eventsTabBtn" type="button" aria-expanded="false" aria-controls="eventsModal" aria-haspopup="dialog">
-          Events
-          <span class="events-tab-count" id="eventsTabCount" hidden>0</span>
-        </button>
-        <button class="btn btn-ghost admin-only roster-jump-btn" id="rosterJumpBtn" type="button" title="Back to alliance console">
-          Console
-        </button>
-        <button class="icon-btn active" id="bgAudioBtn" type="button" title="Toggle cinematic soundtrack" aria-label="Toggle cinematic soundtrack" aria-pressed="true">
-          <svg class="bg-audio-icon-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3.23v17.54a1 1 0 0 1-1.64.77L7.56 17H4a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2h3.56l4.8-4.54A1 1 0 0 1 14 3.23Zm3.54 4.05a1 1 0 0 1 1.41 0 6.98 6.98 0 0 1 0 9.9 1 1 0 1 1-1.41-1.42 4.98 4.98 0 0 0 0-7.06 1 1 0 0 1 0-1.42Zm-2.83 2.83a1 1 0 0 1 1.41 0 2.98 2.98 0 0 1 0 4.22 1 1 0 1 1-1.41-1.42.98.98 0 0 0 0-1.38 1 1 0 0 1 0-1.42Z"/></svg>
-          <svg class="bg-audio-icon-off" viewBox="0 0 24 24" aria-hidden="true" hidden><path d="M4.27 3 3 4.27 7.73 9H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h3.56l4.8 4.54A1 1 0 0 0 14 20.77v-6.5l4.93 4.93 1.27-1.27L4.27 3ZM14 3.23a1 1 0 0 0-1.64-.77l-2.1 2 3.74 3.74V3.23Z"/></svg>
-        </button>
-        <button class="btn btn-signin" id="signInBtn" type="button" aria-haspopup="dialog" aria-controls="authModal">
-          <span class="lock-dot" id="signInDot"></span>
-          <span id="signInLabel">Sign in</span>
-        </button>
-      </div>
     </div>
   </header>
 
@@ -156,8 +158,27 @@
   <div class="session-banner" id="sessionBanner" hidden role="status"></div>
   <div class="toast-region" id="toastRegion" aria-live="polite"></div>
 
-  <script src="../serverClock.js?v=36"></script>
-  <script src="../app.js?v=166" defer></script>
+  <script src="../serverClock.js?v=37"></script>
+  <script>
+    (function bootstrapMigrationClocks() {
+      function mount() {
+        var api = window.PHL_SERVER_CLOCK;
+        var clockEl = document.getElementById("serverClockDisplay");
+        if (!api || !api.mountServerClock || !clockEl || clockEl.dataset.mounted === "1") return;
+        api.mountServerClock({
+          clockEl: clockEl,
+          serverBadgeEl: document.getElementById("serverClockBadge"),
+          localClockEl: document.getElementById("localClockDisplay"),
+          localOffsetBadgeEl: document.getElementById("localOffsetBadge"),
+          localZoneLabelEl: document.getElementById("localZoneLabel")
+        });
+        clockEl.dataset.mounted = "1";
+      }
+      if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mount);
+      else mount();
+    })();
+  </script>
+  <script src="../app.js?v=167" defer></script>
   <script type="module" src="migration-ui.bundle.js?v=10"></script>
 </body>
 </html>

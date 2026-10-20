@@ -3278,9 +3278,18 @@
     const who = adminSession?.name ? ` · ${adminSession.name}` : "";
     const mName = memberSession?.name ? ` · ${memberSession.name}` : "";
     let label = "Sign in";
-    if (isAdmin) label = `Exit admin${who}`;
-    else if (isMember) label = `Lock profile${mName}`;
+    if (isAdmin) label = embedMigration ? "Exit" : `Exit admin${who}`;
+    else if (isMember) label = embedMigration ? "Lock" : `Lock profile${mName}`;
     if (el.signInLabel) el.signInLabel.textContent = label;
+    if (el.signInBtn) {
+      if (isAdmin) {
+        el.signInBtn.title = `Signed in as ${adminSession?.name || "leadership"}. Click to sign out.`;
+      } else if (isMember) {
+        el.signInBtn.title = `Member session${mName}. Click to lock profile.`;
+      } else {
+        el.signInBtn.title = "Sign in with your PH-L access code";
+      }
+    }
     else if (el.adminAccessLabel) el.adminAccessLabel.textContent = label;
     el.signInBtn?.setAttribute("aria-pressed", String(isAdmin || isMember));
     el.signInBtn?.classList.toggle("is-unlocked", isAdmin || isMember);

@@ -1,7 +1,7 @@
 /* Unified single-row Migration header (tabs live in the portal topbar) */
 
 body.phl-migration-page {
-  --phl-portal-topbar: 76px;
+  --phl-portal-topbar: 108px;
   background: transparent;
 }
 
@@ -14,13 +14,35 @@ body.phl-migration-page .migration-unified-header {
 }
 
 body.phl-migration-page .migration-topbar-primary {
-  display: flex;
-  flex-wrap: nowrap;
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+  grid-template-areas:
+    "brand util"
+    "toolbar toolbar";
   align-items: center;
-  gap: 10px 12px;
+  gap: 8px 12px;
   width: 100%;
   min-width: 0;
   padding: 0;
+}
+
+body.phl-migration-page .migration-topbar-util {
+  grid-area: util;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+  flex-wrap: nowrap;
+}
+
+body.phl-migration-page .migration-topbar-primary .brand {
+  grid-area: brand;
+}
+
+body.phl-migration-page .topbar-migration-toolbar {
+  grid-area: toolbar;
+  width: 100%;
 }
 
 body.phl-migration-page .migration-topbar-primary .brand {
@@ -201,28 +223,68 @@ body.phl-migration-page .migration-clocks-compact .time-block-badge {
   font-size: 0.52rem;
 }
 
-body.phl-migration-page .migration-topbar-primary .top-actions {
+body.phl-migration-page .migration-top-actions {
   flex: 0 0 auto;
   margin-left: 0;
   gap: 6px;
+  flex-wrap: nowrap;
 }
 
-body.phl-migration-page .migration-topbar-primary .top-actions .btn {
-  min-height: 40px;
-  padding: 0 10px;
-  font-size: 0.72rem;
-}
-
-body.phl-migration-page .migration-topbar-primary .icon-btn {
-  width: 40px;
-  height: 40px;
-}
-
-body.phl-migration-page .migration-topbar-primary .btn-signin {
-  max-width: 9rem;
-  min-height: 40px;
+body.phl-migration-page .migration-top-actions .btn {
+  min-height: 36px;
   padding: 0 10px;
   font-size: 0.68rem;
+  letter-spacing: 0.06em;
+}
+
+body.phl-migration-page .migration-top-actions .icon-btn {
+  width: 36px;
+  height: 36px;
+  min-height: 36px;
+}
+
+body.phl-migration-page .migration-signin-btn {
+  min-height: 36px;
+  padding: 0 10px;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  max-width: 5.5rem;
+}
+
+body.phl-migration-page.admin-mode .migration-clocks-compact .time-block {
+  height: 36px;
+  padding: 0 7px;
+  gap: 5px;
+}
+
+body.phl-migration-page.admin-mode .migration-clocks-compact .time-block-kicker {
+  font-size: 0.5rem;
+  letter-spacing: 0.08em;
+}
+
+body.phl-migration-page.admin-mode .migration-clocks-compact #serverClockDisplay,
+body.phl-migration-page.admin-mode .migration-clocks-compact #localClockDisplay {
+  font-size: 0.92rem;
+  min-width: 7ch;
+  width: 7ch;
+}
+
+body.phl-migration-page.admin-mode .migration-clocks-compact .time-block-badge {
+  display: none;
+}
+
+body.phl-migration-page.admin-mode .migration-top-actions .events-tab,
+body.phl-migration-page.admin-mode .migration-top-actions .roster-jump-btn {
+  min-width: 0;
+  padding: 0 8px;
+}
+
+body.phl-migration-page.admin-mode .migration-command-save .save-status:not(.unsaved) {
+  display: none;
+}
+
+body.phl-migration-page.admin-mode .migration-signin-btn {
+  max-width: 4.25rem;
 }
 
 body.phl-migration-page .migration-workspace {
@@ -265,37 +327,37 @@ body.phl-migration-page .hero {
   background: linear-gradient(180deg, rgba(22, 9, 9, 0.92), rgba(29, 13, 12, 0.9)) !important;
 }
 
-@media (max-width: 1180px) {
+@media (max-width: 900px) {
   body.phl-migration-page {
-    --phl-portal-topbar: 124px;
+    --phl-portal-topbar: 132px;
   }
 
   body.phl-migration-page .migration-topbar-primary {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "brand"
+      "util"
+      "toolbar";
+  }
+
+  body.phl-migration-page .migration-topbar-util {
+    justify-content: stretch;
     flex-wrap: wrap;
   }
 
-  body.phl-migration-page .migration-topbar-primary .brand {
-    order: 1;
-  }
-
-  body.phl-migration-page .migration-topbar-primary .top-actions {
-    order: 2;
-    margin-left: auto;
-  }
-
-  body.phl-migration-page .topbar-migration-toolbar {
-    order: 3;
-    flex: 1 0 100%;
-  }
-
   body.phl-migration-page .migration-clocks-compact {
-    order: 4;
-    flex: 1 0 100%;
+    flex: 1 1 auto;
+    width: 100%;
     justify-content: center;
   }
 
   body.phl-migration-page .migration-clocks-compact .time-block {
     flex: 1;
+  }
+
+  body.phl-migration-page .migration-top-actions {
+    width: 100%;
+    justify-content: flex-end;
   }
 }
 
