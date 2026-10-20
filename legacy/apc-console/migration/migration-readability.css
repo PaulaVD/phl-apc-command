@@ -1,0 +1,162 @@
+/* PH-L Migration Command — readable type scale (matches alliance console) */
+
+html {
+  font-size: 106.25%;
+}
+
+body {
+  font-size: 1rem !important;
+  line-height: 1.55 !important;
+}
+
+.brand span,
+.workspace-label,
+.cluster,
+.eyebrow,
+.heading-actions > .tag,
+.map-caption {
+  font-size: 0.8125rem !important;
+  letter-spacing: 0.08em !important;
+}
+
+.sidebar nav button {
+  font-size: 0.9375rem !important;
+}
+
+.sidebar nav button small,
+.profile,
+.profile small,
+.crumb,
+.save-status,
+.text-button,
+.panel > p,
+.caption,
+.notice,
+.panel-foot,
+.state-card > p,
+.state-follow,
+.weight-list > div,
+.button-stack button,
+.source-note,
+.source-note a {
+  font-size: 0.875rem !important;
+  line-height: 1.5 !important;
+}
+
+.page-heading h1,
+h1 {
+  font-size: clamp(1.85rem, 2vw + 1rem, 2.35rem) !important;
+  line-height: 1.2 !important;
+}
+
+.page-heading p,
+.hero p,
+.muted,
+.metric > div,
+.metric > small,
+.progress-row > div:first-child,
+.progress-row small,
+.action-row strong,
+.action-row small,
+.shortlist strong,
+.shortlist small,
+.stages strong,
+.stages small,
+.state-facts span,
+.state-facts strong,
+.field > span,
+.panel-title .muted,
+.task-check,
+.activity,
+.drawer-footer button,
+.log-entry p {
+  font-size: 0.9375rem !important;
+  line-height: 1.55 !important;
+}
+
+.hero h2,
+h2 {
+  font-size: clamp(1.75rem, 2.5vw + 0.5rem, 2.25rem) !important;
+  line-height: 1.2 !important;
+}
+
+.panel-title h3,
+h3 {
+  font-size: 1.125rem !important;
+}
+
+.tag,
+.action-number,
+.hero button,
+.primary.small,
+.small,
+th {
+  font-size: 0.8125rem !important;
+}
+
+table,
+td,
+.player-cell strong,
+.execution-list strong,
+.execution-list small,
+.clock-row strong,
+.clock-row small {
+  font-size: 0.875rem !important;
+}
+
+input,
+select,
+textarea,
+button {
+  font-size: 1rem !important;
+}
+
+.metric > strong {
+  font-size: clamp(1.85rem, 3vw, 2.25rem) !important;
+}
+
+.field > small,
+.task-meta,
+.task-card .text-button,
+.panel-foot small,
+footer,
+.detail-metrics small {
+  font-size: 0.8125rem !important;
+}
+
+footer {
+  font-size: 0.875rem !important;
+}
+
+.sidebar nav button.active {
+  color: var(--gold) !important;
+}
+
+@media (max-width: 680px) {
+  .page-heading h1 {
+    font-size: 1.65rem !important;
+  }
+
+  .page-heading p,
+  .hero p {
+    font-size: 0.9375rem !important;
+    max-width: none !important;
+  }
+
+  .eyebrow,
+  .save-status,
+  .primary.small,
+  .panel-title .muted,
+  .metric > small,
+  .notice {
+    font-size: 0.8125rem !important;
+  }
+
+  .metric > strong {
+    font-size: 1.75rem !important;
+  }
+
+  footer {
+    font-size: 0.8125rem !important;
+  }
+}
