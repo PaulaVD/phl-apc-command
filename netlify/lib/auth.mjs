@@ -7,11 +7,36 @@
 
 /** Mirrors window.PHL_CONFIG.admins — keep in sync when officers change. */
 export const ADMIN_ACCOUNTS = [
-  { id: "kittyklawzz", name: "KittyKlawzz", hash: "c366e897148bb26d4d5b0900f0c0e57adf9f32008e2aaf28a6e1a5b751785f6c" },
-  { id: "fisherman5", name: "Fisherman5", hash: "3330b62996b5f3a8925f3c0af1a79752ab10fb94b45ab46d69b958a9a15268e2" },
-  { id: "ash", name: "Ash Officer", hash: "5ab71acdc146f964f251843f02afe0cafff58ad1e2cd7f06c8b96f9c81be2d27" },
-  { id: "rise", name: "Rise Officer", hash: "ed245a31ef1c209e3506b2ae9ab8f8fc525c9a6f6e9ceb7f5ce635dcbf3910e3" },
-  { id: "legacy", name: "Legacy Officer", hash: "f8701f53584028fead16f9301265fcf832ebbee3be25d430521671963086799c" }
+  {
+    id: "kittyklawzz",
+    name: "KittyKlawzz",
+    hash: "c366e897148bb26d4d5b0900f0c0e57adf9f32008e2aaf28a6e1a5b751785f6c",
+    officerRank: "R5"
+  },
+  {
+    id: "fisherman5",
+    name: "Fisherman5",
+    hash: "3330b62996b5f3a8925f3c0af1a79752ab10fb94b45ab46d69b958a9a15268e2",
+    officerRank: "R4"
+  },
+  {
+    id: "ash",
+    name: "Ash Officer",
+    hash: "5ab71acdc146f964f251843f02afe0cafff58ad1e2cd7f06c8b96f9c81be2d27",
+    officerRank: "R4"
+  },
+  {
+    id: "rise",
+    name: "Rise Officer",
+    hash: "ed245a31ef1c209e3506b2ae9ab8f8fc525c9a6f6e9ceb7f5ce635dcbf3910e3",
+    officerRank: "R4"
+  },
+  {
+    id: "legacy",
+    name: "Legacy Officer",
+    hash: "f8701f53584028fead16f9301265fcf832ebbee3be25d430521671963086799c",
+    officerRank: "R4"
+  }
 ];
 
 const enc = new TextEncoder();
@@ -42,7 +67,11 @@ export async function verifyAdminCredentials(adminId, adminCode) {
   if (!account || !code) return null;
   const hash = await sha256Hex(code);
   if (hash !== account.hash) return null;
-  return { id: account.id, name: account.name };
+  return {
+    id: account.id,
+    name: account.name,
+    officerRank: account.officerRank || "R4"
+  };
 }
 
 export function readHeader(req, name) {
@@ -80,6 +109,7 @@ export async function resolveCallerAuth(req, body = null) {
     return {
       role: "leadership",
       tier: "R4-R5",
+      officerRank: admin.officerRank || "R4",
       adminId: admin.id,
       adminName: admin.name,
       personalCode: ""
@@ -90,6 +120,7 @@ export async function resolveCallerAuth(req, body = null) {
     return {
       role: "member",
       tier: "R1-R3",
+      officerRank: "",
       adminId: "",
       adminName: "",
       personalCode
@@ -99,10 +130,18 @@ export async function resolveCallerAuth(req, body = null) {
   return {
     role: "public",
     tier: "anonymous",
+    officerRank: "",
     adminId: "",
     adminName: "",
     personalCode: ""
   };
+}
+
+/** Migration Command — R4/R5 leadership only (not members / public). */
+export function verifyMigrationAccess(auth) {
+  if (!auth || auth.role !== "leadership") return false;
+  const rank = String(auth.officerRank || "R4").toUpperCase();
+  return rank === "R4" || rank === "R5";
 }
 
 export const AUTH_CORS_HEADERS =

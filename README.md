@@ -6,7 +6,8 @@ Monorepo for **Phoenix Legacy (PH-L)** alliance tools.
 |-----|------|----------|
 | **Command hub (portal)** | `/index.html` | https://transcendent-kitsune-43421d.netlify.app/ |
 | **APC Command Console** (legacy static) | `legacy/apc-console/` | https://transcendent-kitsune-43421d.netlify.app/legacy/apc-console/ |
-| **PH-L Migration Command** (Vinext + D1) | `apps/migration-command/` | https://phl-migration-command.mossyskink1024.chatgpt.site |
+| **Migration Command (private R4/R5)** | `legacy/apc-console/migration/` | Same Netlify site — **Leadership sign-in** → header **Migration** |
+| **Migration Command (Vinext source)** | `apps/migration-command/` | https://phl-migration-command.mossyskink1024.chatgpt.site (optional Sites copy) |
 
 Read **`LEEME_PRIMERO.md`** (Spanish) for migration project setup, data backups, and scope notes.
 
@@ -21,6 +22,16 @@ python3 -m http.server 5500
 ```
 
 Netlify Functions stay at repo root (`netlify/functions`). Pushes to `main` deploy via **Deploy to Netlify** (GitHub Action).
+
+## Private migration on Netlify (R4/R5)
+
+After **Leadership** sign-in on the APC console, open **Migration** in the top bar (not visible to members or the public). Data persists via `/api/migration-workspace` (Netlify Blobs).
+
+Rebuild the embedded UI after React changes:
+
+```bash
+npm run migration:build-netlify
+```
 
 ## Migration Command (Sites / Cloudflare)
 

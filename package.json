@@ -8,7 +8,8 @@
     "start": "python3 -m http.server 5500",
     "deploy": "npx --yes netlify-cli deploy --dir=. --prod",
     "migration:install": "npm run install:ci --prefix apps/migration-command",
-    "migration:dev": "npm run dev --prefix apps/migration-command"
+    "migration:dev": "npm run dev --prefix apps/migration-command",
+    "migration:build-netlify": "node scripts/build-migration-netlify.mjs"
   },
   "keywords": [],
   "author": "",
