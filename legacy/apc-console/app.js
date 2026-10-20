@@ -2,6 +2,8 @@
 (() => {
   "use strict";
 
+  const embedMigration = Boolean(window.PHL_EMBED_MIGRATION);
+
   const STORAGE_KEY = "phl_apex_console_v7";
   const PREFS_KEY = "phl_prefs_v1";
   const ADMIN_SESSION_KEY = "phl_admin_session_v3";
@@ -323,22 +325,46 @@
   init();
 
   function init() {
-    el.levelFilter.innerHTML = `<option value="all">All levels</option>${LEVEL_OPTIONS}`;
-    enforceLocalRosterScope();
     bindEvents();
     initLofiPlayer();
     initCinematicBackground();
     applyAccessMode();
+    initServerClockPanel();
+    probeAudioAssets();
+    if (!reducedMotion && el.fxCanvas) startParticles();
+
+    if (embedMigration) {
+      document.body.classList.add("phl-migration-page");
+      maybeWarnStaleSessions();
+      if (el.teEventDate && !el.teEventDate.value) el.teEventDate.value = todayServerDate();
+      syncEventsContentHost();
+      pullScheduledEvents({ silent: true });
+      if (el.migrationCmdBtn) {
+        el.migrationCmdBtn.classList.add("is-current");
+        el.migrationCmdBtn.setAttribute("aria-current", "page");
+      }
+      if (isCloudConfigured()) {
+        flushCloudOutbox()
+          .then(() => {
+            if (isAdmin) return pullCloudRoster({ silent: true });
+            if (isMember) return pullMemberSelf({ silent: true });
+            return Promise.resolve();
+          })
+          .catch(() => {});
+      }
+      if (isAdmin) startAdminRealtime({ claim: true });
+      return;
+    }
+
+    if (el.levelFilter) el.levelFilter.innerHTML = `<option value="all">All levels</option>${LEVEL_OPTIONS}`;
+    enforceLocalRosterScope();
     initMobileTabs();
     maybeWarnStaleSessions();
     enhanceSelects(document.querySelector(".toolbar"));
-    initServerClockPanel();
     if (el.teEventDate && !el.teEventDate.value) el.teEventDate.value = todayServerDate();
     syncEventsContentHost();
     renderAll();
     pullScheduledEvents({ silent: true });
-    probeAudioAssets();
-    if (!reducedMotion) startParticles();
     enableTilt(document.querySelector(".scan-panel[data-tilt]"));
     if (window.matchMedia(MOBILE_MQ).matches) {
       setScanPanelCollapsed(true);
@@ -371,20 +397,22 @@
   }
 
   function bindEvents() {
-    el.primaryBtn.addEventListener("click", () => nextStep());
-    el.backBtn.addEventListener("click", prevStep);
-    el.resetBtn.addEventListener("click", () => resetForm(true));
+    if (!embedMigration) {
+      el.primaryBtn?.addEventListener("click", () => nextStep());
+      el.backBtn?.addEventListener("click", prevStep);
+      el.resetBtn?.addEventListener("click", () => resetForm(true));
+    }
     el.syncCloseBtn?.addEventListener("click", () => closeModal("sync"));
     el.syncPullBtn?.addEventListener("click", () => pullCloudRoster({ silent: false }));
     el.syncPushBtn?.addEventListener("click", () => pushCloudRosterWithRetry({ silent: false }));
     el.exportJsonBtn?.addEventListener("click", exportJsonRoster);
     el.importJsonInput?.addEventListener("change", importJsonRoster);
-    el.searchInput.addEventListener("input", scheduleRosterRender);
-    el.levelFilter.addEventListener("change", renderRoster);
+    el.searchInput?.addEventListener("input", scheduleRosterRender);
+    el.levelFilter?.addEventListener("change", renderRoster);
     el.rankFilter?.addEventListener("change", renderRoster);
-    el.statusFilter.addEventListener("change", renderRoster);
-    el.sortSelect.addEventListener("change", renderRoster);
-    el.sfxBtn.addEventListener("click", () => {
+    el.statusFilter?.addEventListener("change", renderRoster);
+    el.sortSelect?.addEventListener("change", renderRoster);
+    el.sfxBtn?.addEventListener("click", () => {
       unlockAudio();
       sfxEnabled = !sfxEnabled;
       el.sfxBtn.classList.toggle("active", sfxEnabled);
@@ -416,8 +444,8 @@
     document.querySelectorAll("[data-modal-close]").forEach(node => {
       node.addEventListener("click", () => closeModal(node.dataset.modalClose));
     });
-    el.deleteConfirmBtn.addEventListener("click", confirmDeleteMember);
-    el.deleteCancelBtn.addEventListener("click", () => closeModal("delete"));
+    el.deleteConfirmBtn?.addEventListener("click", confirmDeleteMember);
+    el.deleteCancelBtn?.addEventListener("click", () => closeModal("delete"));
     el.scanToggleBtn?.addEventListener("click", toggleScanPanel);
     el.kpiRlBtn?.addEventListener("click", () => toggleRallyTeamPanel("rl"));
     el.kpiRjBtn?.addEventListener("click", () => toggleRallyTeamPanel("rj"));
@@ -435,7 +463,13 @@
       toggleEventsPopover();
     });
     el.eventsPopoverClose?.addEventListener("click", () => setEventsPopoverOpen(false));
-    el.rosterJumpBtn?.addEventListener("click", () => jumpToAdminRoster());
+    el.rosterJumpBtn?.addEventListener("click", () => {
+      if (embedMigration) {
+        window.location.href = "../index.html";
+        return;
+      }
+      jumpToAdminRoster();
+    });
     el.migrationCmdBtn?.addEventListener("click", () => openMigrationWorkspace());
     document.querySelectorAll("[data-admin-view]").forEach(btn => {
       btn.addEventListener("click", () => setAdminView(btn.dataset.adminView));
@@ -3428,6 +3462,7 @@
   }
 
   function openMigrationWorkspace() {
+    if (embedMigration) return;
     if (!isAdmin) {
       sessionStorage.setItem(MIGRATION_PENDING_KEY, "1");
       openAuthModal({

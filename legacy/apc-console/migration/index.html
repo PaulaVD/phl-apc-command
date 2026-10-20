@@ -4,15 +4,204 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="robots" content="noindex, nofollow" />
+  <meta name="theme-color" content="#0b0404" />
   <title>PH-L Migration Command · Private</title>
   <link rel="icon" href="../assets/phl-logo.png?v=2" type="image/png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Teko:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../styles.css?v=162" />
   <link rel="stylesheet" href="migration.css?v=3" />
   <link rel="stylesheet" href="migration-readability.css?v=1" />
+  <link rel="stylesheet" href="migration-portal.css?v=1" />
   <script src="../config.js?v=62"></script>
+  <script>window.PHL_EMBED_MIGRATION = true;</script>
 </head>
 <body>
-  <div id="root"></div>
-  <noscript>Enable JavaScript to use Migration Command.</noscript>
-  <script type="module" src="migration-ui.bundle.js?v=3"></script>
+  <div class="bg-cinematic" aria-hidden="true">
+    <video
+      id="bgCinematicVideo"
+      class="bg-cinematic-video"
+      autoplay
+      muted
+      loop
+      playsinline
+      preload="auto"
+      poster="../assets/phl-logo.png?v=2"
+    >
+      <source src="../assets/PHLL.mov?v=157" type="video/mp4" />
+    </video>
+    <div class="bg-cinematic-scrim"></div>
+  </div>
+  <audio id="bgCinematicAudio" loop preload="auto" src="../assets/phoenix-legacy-theme.mp3"></audio>
+  <canvas id="fxCanvas" class="fx-canvas" aria-hidden="true"></canvas>
+  <div class="noise" aria-hidden="true"></div>
+  <div class="vignette" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <div class="topbar-main">
+      <a class="brand brand-home" href="/" title="Phoenix Legacy official alliance site">
+        <div class="brand-mark"><img class="game-asset" src="../assets/phl-logo.png?v=2" alt="Phoenix Legacy logo" width="48" height="48" decoding="async"></div>
+        <div class="brand-copy">
+          <strong>Phoenix Legacy</strong>
+          <small>From Ashes, We Rise Together · PH-L Portal</small>
+        </div>
+      </a>
+
+      <div class="top-clocks" id="serverClockPanel" aria-label="Dark War server time">
+        <div class="time-block time-block-server" title="Dark War server time (Asunción +1h)">
+          <span class="time-block-kicker">Server</span>
+          <time id="serverClockDisplay" aria-live="polite">--:--:--</time>
+          <span class="time-block-badge" id="serverClockBadge">UTC-3</span>
+        </div>
+        <div class="time-block time-block-local" title="Your local time">
+          <span class="time-block-kicker">Local</span>
+          <b id="localClockDisplay">--:--:--</b>
+          <em class="time-block-badge" id="localOffsetBadge">auto</em>
+          <small class="time-block-zone" id="localZoneLabel">Detecting…</small>
+        </div>
+      </div>
+
+      <div class="time-block time-block-convert" title="Convert a server event to your local time">
+        <div class="event-convert-row">
+          <span class="time-block-kicker">Event</span>
+          <input class="input time-block-input" id="serverEventInput" type="time" value="15:00" step="60" aria-label="Server event time">
+          <span class="time-block-arrow" aria-hidden="true">→</span>
+          <strong id="localConvertedTime">--:--</strong>
+          <select class="time-block-offset" id="localOffsetSelect" aria-label="Target UTC offset"></select>
+          <small class="time-block-meta" id="localConvertedMeta">Detecting timezone…</small>
+        </div>
+      </div>
+
+      <div class="lofi-player" id="lofiPlayer" data-playing="0">
+        <div class="lofi-yt" aria-hidden="true"><div id="lofiYtMount"></div></div>
+        <button class="lofi-now" id="lofiNowBtn" type="button" aria-expanded="false" aria-controls="lofiPlaylist" title="Open Lofi Girl playlist">
+          <span class="lofi-eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+          <span class="lofi-now-text">
+            <span class="lofi-kicker">Lofi</span>
+            <strong id="lofiTrackTitle">beats to relax/study to</strong>
+            <small id="lofiTrackArtist">Lofi Girl · live radio</small>
+          </span>
+        </button>
+        <div class="lofi-controls">
+          <button class="lofi-btn lofi-skip" id="lofiPrevBtn" type="button" title="Previous station" aria-label="Previous station">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
+          </button>
+          <button class="lofi-btn lofi-play" id="lofiPlayBtn" type="button" title="Play / pause" aria-label="Play Lofi Girl radio">
+            <svg class="lofi-icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+            <svg class="lofi-icon-pause" viewBox="0 0 24 24" aria-hidden="true" hidden><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>
+          </button>
+          <button class="lofi-btn lofi-skip" id="lofiNextBtn" type="button" title="Next station" aria-label="Next station">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 6h2v12h-2zM6 18l8.5-6L6 6z"/></svg>
+          </button>
+        </div>
+        <label class="lofi-vol" title="Volume">
+          <span class="sr-only">Volume</span>
+          <input id="lofiVolume" type="range" min="0" max="100" value="55" aria-label="Lofi volume">
+        </label>
+        <div class="lofi-playlist" id="lofiPlaylist" hidden role="listbox" aria-label="Lofi Girl playlist"></div>
+      </div>
+
+      <div class="top-actions">
+        <button class="btn btn-ghost events-tab" id="eventsTabBtn" type="button" aria-expanded="false" aria-controls="eventsModal" aria-haspopup="dialog">
+          Events
+          <span class="events-tab-count" id="eventsTabCount" hidden>0</span>
+        </button>
+        <button class="btn btn-ghost migration-entry-btn roster-jump-btn is-current" id="migrationCmdBtn" type="button" aria-current="page" title="Migration Command workspace">
+          Migration
+        </button>
+        <button class="btn btn-ghost admin-only roster-jump-btn" id="rosterJumpBtn" type="button" title="Back to alliance console roster">
+          Console
+        </button>
+        <button class="icon-btn active" id="bgAudioBtn" type="button" title="Toggle cinematic soundtrack" aria-label="Toggle cinematic soundtrack" aria-pressed="true">
+          <svg class="bg-audio-icon-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3.23v17.54a1 1 0 0 1-1.64.77L7.56 17H4a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2h3.56l4.8-4.54A1 1 0 0 1 14 3.23Zm3.54 4.05a1 1 0 0 1 1.41 0 6.98 6.98 0 0 1 0 9.9 1 1 0 1 1-1.41-1.42 4.98 4.98 0 0 0 0-7.06 1 1 0 0 1 0-1.42Zm-2.83 2.83a1 1 0 0 1 1.41 0 2.98 2.98 0 0 1 0 4.22 1 1 0 1 1-1.41-1.42.98.98 0 0 0 0-1.38 1 1 0 0 1 0-1.42Z"/></svg>
+          <svg class="bg-audio-icon-off" viewBox="0 0 24 24" aria-hidden="true" hidden><path d="M4.27 3 3 4.27 7.73 9H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h3.56l4.8 4.54A1 1 0 0 0 14 20.77v-6.5l4.93 4.93 1.27-1.27L4.27 3ZM14 3.23a1 1 0 0 0-1.64-.77l-2.1 2 3.74 3.74V3.23Z"/></svg>
+        </button>
+        <button class="icon-btn active" id="sfxBtn" title="Toggle sound effects" aria-label="Toggle sound effects">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3.23v17.54a1 1 0 0 1-1.64.77L7.56 17H4a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2h3.56l4.8-4.54A1 1 0 0 1 14 3.23Zm3.54 4.05a1 1 0 0 1 1.41 0 6.98 6.98 0 0 1 0 9.9 1 1 0 1 1-1.41-1.42 4.98 4.98 0 0 0 0-7.06 1 1 0 0 1 0-1.42Zm-2.83 2.83a1 1 0 0 1 1.41 0 2.98 2.98 0 0 1 0 4.22 1 1 0 1 1-1.41-1.42.98.98 0 0 0 0-1.38 1 1 0 0 1 0-1.42Z"/></svg>
+        </button>
+        <button class="btn btn-signin" id="signInBtn" type="button" aria-haspopup="dialog" aria-controls="authModal">
+          <span class="lock-dot" id="signInDot"></span>
+          <span id="signInLabel">Sign in</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="shell migration-workspace">
+    <div id="root"></div>
+    <noscript>Enable JavaScript to use Migration Command.</noscript>
+  </main>
+
+  <div class="admin-modal events-modal" id="eventsModal" aria-hidden="true">
+    <div class="admin-modal-backdrop" data-modal-close="events"></div>
+    <section class="admin-modal-card events-modal-card" role="dialog" aria-modal="true" aria-labelledby="eventsModalTitle">
+      <div class="events-modal-head">
+        <div>
+          <span class="eyebrow"><span></span>Dark War</span>
+          <h2 id="eventsModalTitle">Game events</h2>
+        </div>
+        <button class="icon-btn" id="eventsPopoverClose" type="button" aria-label="Close events" data-modal-close="events">×</button>
+      </div>
+      <div id="eventsModalMount">
+        <div class="events-content" id="eventsContent">
+          <div class="te-schedule" id="teScheduleList" aria-live="polite">
+            <p class="te-empty" id="teScheduleEmpty">No events scheduled yet.</p>
+          </div>
+          <div class="te-admin-schedule admin-only" id="teAdminSchedule">
+            <span class="time-block-kicker">Schedule event</span>
+            <form class="te-event-form" id="teEventForm">
+              <div class="te-event-form-row">
+                <input class="input" id="teEventDate" type="date" required aria-label="Event date">
+                <input class="input" id="teEventTime" type="time" value="15:00" step="60" required aria-label="Server time">
+              </div>
+              <input class="input" id="teEventTitle" type="text" maxlength="80" placeholder="Title" required aria-label="Event title">
+              <input class="input" id="teEventNote" type="text" maxlength="120" placeholder="Note (optional)" aria-label="Optional note">
+              <div class="te-event-form-actions">
+                <button class="btn btn-primary" id="teEventSaveBtn" type="submit">Add event</button>
+                <button class="btn btn-ghost" id="teEventCancelBtn" type="button" hidden>Cancel</button>
+              </div>
+            </form>
+            <p class="te-admin-hint">Server time (UTC-3). Members accept or decline only.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="bg-audio-gate" id="bgAudioGate" hidden>
+    <div class="bg-audio-gate-card">
+      <strong>Phoenix Legacy</strong>
+      <p>Enable the Phoenix Legacy soundtrack with the background film.</p>
+      <button class="btn btn-primary" id="bgAudioEnableBtn" type="button">Enable sound</button>
+      <button class="btn btn-ghost" id="bgAudioSkipBtn" type="button">Continue muted</button>
+    </div>
+  </div>
+
+  <div class="admin-modal" id="authModal" aria-hidden="true">
+    <div class="admin-modal-backdrop" data-modal-close="auth"></div>
+    <section class="admin-modal-card auth-modal-card" role="dialog" aria-modal="true" aria-labelledby="authModalTitle">
+      <span class="eyebrow"><span></span>PH-L unlock</span>
+      <h2 id="authModalTitle">Sign in</h2>
+      <p id="authModalLead">Enter your PH-L access code. The portal unlocks member or leadership tools based on your code — one sign-in for everyone.</p>
+      <label class="admin-code-field">
+        <span>Access code</span>
+        <input id="accessCodeInput" type="text" maxlength="64" autocomplete="off" spellcheck="false" placeholder="Enter access code">
+      </label>
+      <div class="admin-error" id="authError" aria-live="polite"></div>
+      <div class="admin-modal-actions">
+        <button class="btn btn-primary" id="authUnlockBtn" type="button">Unlock</button>
+        <button class="btn btn-ghost" id="authCancelBtn" type="button" data-modal-close="auth">Cancel</button>
+      </div>
+      <small class="admin-security-note">Session is stored for this browser tab only. Codes are never logged.</small>
+    </section>
+  </div>
+
+  <div class="session-banner" id="sessionBanner" hidden role="status"></div>
+  <div class="toast-region" id="toastRegion" aria-live="polite"></div>
+
+  <script src="../serverClock.js?v=35"></script>
+  <script src="../app.js?v=164" defer></script>
+  <script type="module" src="migration-ui.bundle.js?v=4"></script>
 </body>
 </html>
