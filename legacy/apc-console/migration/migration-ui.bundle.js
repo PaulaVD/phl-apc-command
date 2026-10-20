@@ -17380,7 +17380,8 @@ function Page() {
       ". Historical capacity is a scenario, not a reservation."
     ] })
   ] });
-  const embed = Boolean(window.PHL_EMBED_MIGRATION);
+  const embedHost = typeof window !== "undefined" && (Boolean(window.PHL_EMBED_MIGRATION) || /\/migration\/?$/i.test(window.location.pathname) || window.location.pathname.includes("/apc-console/migration"));
+  const embed = embedHost;
   const navButtons = nav.map(([name, Icon2]) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", { type: "button", className: tab === name ? "active" : "", onClick: () => {
     setTab(name);
     setMobile(false);
@@ -17401,7 +17402,7 @@ function Page() {
     ] })
   ] });
   return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "app" + (embed ? " embed" : ""), children: [
-    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("aside", { className: (mobile ? "sidebar visible" : "sidebar") + (embed ? " sidebar-embed-hidden" : ""), hidden: embed, "aria-hidden": embed, children: [
+    !embed && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("aside", { className: mobile ? "sidebar visible" : "sidebar", children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("a", { className: "brand", href: "../index.html", title: "Back to PH-L alliance portal", children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "brand-icon", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Flame, { size: 25 }) }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [

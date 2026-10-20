@@ -33,8 +33,11 @@ body.phl-migration-page .app.embed {
   width: 100%;
 }
 
-body.phl-migration-page .app .sidebar,
-body.phl-migration-page .app .sidebar-embed-hidden {
+body.phl-migration-page .app .sidebar {
+  display: none !important;
+}
+
+body.phl-migration-page .app:not(.embed) .sidebar {
   display: none !important;
 }
 
