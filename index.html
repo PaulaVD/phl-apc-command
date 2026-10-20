@@ -5,13 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#0b0404" />
   <title>Phoenix Legacy — Official alliance site</title>
-  <meta name="description" content="Phoenix Legacy (PH-L): official Dark War Survival alliance site. Events, roster, APC tools, and private R4/R5 migration workspace." />
+  <meta name="description" content="Phoenix Legacy (PH-L): official Dark War Survival alliance portal. One sign-in for members and leadership." />
   <link rel="icon" href="legacy/apc-console/assets/phl-logo.png?v=2" type="image/png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Teko:wght@500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="legacy/apc-console/styles.css?v=162" />
-  <link rel="stylesheet" href="home.css?v=3" />
+  <link rel="stylesheet" href="home.css?v=4" />
 </head>
 <body>
   <div class="bg-cinematic" aria-hidden="true">
@@ -43,9 +43,7 @@
         </div>
       </a>
       <div class="top-actions">
-        <a class="btn btn-ghost" href="#members">Members</a>
-        <a class="btn btn-ghost" href="#officers">Officers</a>
-        <a class="btn btn-primary" href="legacy/apc-console/">Alliance portal</a>
+        <a class="btn btn-primary" href="legacy/apc-console/?signin=1">Sign in</a>
       </div>
     </div>
   </header>
@@ -53,68 +51,24 @@
   <main class="shell home-shell">
     <section class="panel home-hero">
       <div class="panel-head">
-        <span class="eyebrow"><span></span>Dark War Survival · PH-L Alliance</span>
+        <span class="eyebrow"><span></span>Dark War Survival · PH-L</span>
         <h1>Official Phoenix Legacy site</h1>
         <p class="motto">From Ashes, We Rise Together</p>
-        <p>
-          The alliance home on the web: identity, coordination, and day-to-day tools in one place.
-          The APC console, events, roster, and migration workspace all live here — one PH-L portal.
+        <p class="home-lead">
+          One alliance portal: events, APC Push Data, roster sync, and officer tools when your access level allows it.
+        </p>
+        <p class="home-signin-note">
+          Sign in once with your PH-L access code. The system recognizes members and leadership automatically — no separate logins.
         </p>
       </div>
       <div class="home-hero-actions">
-        <a class="btn btn-primary" href="legacy/apc-console/">Open member portal</a>
-        <a class="btn btn-ghost" href="legacy/apc-console/?auth=migration">R4/R5 officer access</a>
-      </div>
-    </section>
-
-    <section id="members">
-      <div class="home-section-head">
-        <h2>For all members</h2>
-        <p>Sign in with your Personal Code for events, APC CP updates, and your alliance profile.</p>
-      </div>
-      <div class="home-cards">
-        <article class="panel home-card">
-          <span class="home-tag">Main portal</span>
-          <h3>PH-L console</h3>
-          <p>Server clock, events, APC Push Data, and shared roster — the platform the alliance already uses.</p>
-          <ul>
-            <li>RSVP to Dark War events</li>
-            <li>Push Data for APC and your personal profile</li>
-            <li>Cloud-synced alliance roster</li>
-          </ul>
-          <a class="btn btn-primary" href="legacy/apc-console/">Open console</a>
-        </article>
-        <article class="panel home-card">
-          <span class="home-tag">Shortcuts</span>
-          <h3>Direct links</h3>
-          <p>Same official URL; short paths for Discord or alliance chat.</p>
-          <div class="home-pill-row">
-            <span class="home-pill">/console</span>
-            <span class="home-pill">/apc</span>
-          </div>
-          <p>Or use <code>/legacy/apc-console/</code> on this domain.</p>
-        </article>
-      </div>
-    </section>
-
-    <section id="officers">
-      <div class="home-section-head">
-        <h2>For R4 / R5 leadership</h2>
-        <p>Migration Command is private planning space. It requires a leadership code, not a member Personal Code.</p>
-      </div>
-      <div class="home-cards">
-        <article class="panel home-card">
-          <span class="home-tag officer">Private · Officers</span>
-          <h3>Migration Command</h3>
-          <p>Sign in to the portal with your leadership code. You will see <strong>Exit admin</strong> and the <strong>Migration</strong> button in the top bar.</p>
-          <a class="btn btn-primary" href="legacy/apc-console/?auth=migration">Leadership sign-in</a>
-        </article>
+        <a class="btn btn-primary" href="legacy/apc-console/?signin=1">Sign in</a>
+        <a class="btn btn-ghost" href="legacy/apc-console/">Open portal</a>
       </div>
     </section>
 
     <footer class="home-footer">
-      <p>Phoenix Legacy (PH-L) · Official alliance site</p>
-      <p>Internal docs: <a href="LEEME_PRIMERO.md">LEEME_PRIMERO.md</a> · <a href="README.md">README.md</a></p>
+      <p>Phoenix Legacy (PH-L)</p>
     </footer>
   </main>
 </body>

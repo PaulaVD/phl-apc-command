@@ -6,6 +6,8 @@
   const PREFS_KEY = "phl_prefs_v1";
   const ADMIN_SESSION_KEY = "phl_admin_session_v3";
   const MIGRATION_PENDING_KEY = "phl_migration_redirect_v1";
+  const AUTH_MODAL_LEAD_DEFAULT =
+    "Enter your PH-L access code. The portal unlocks member or leadership tools based on your code — one sign-in for everyone.";
   const LEGACY_ADMIN_SESSION_KEYS = ["phl_admin_session_v1", "phl_admin_session_v2"];
   const MEMBER_SESSION_KEY = "phl_member_session_v1";
   const OUTBOX_KEY = "phl_cloud_outbox_v1";
@@ -358,10 +360,13 @@
       window.location.href = "migration/";
     } else if (wantsMigrationAuthFromUrl() && !isAdmin) {
       sessionStorage.setItem(MIGRATION_PENDING_KEY, "1");
-      if (el.authModalLead) {
-        el.authModalLead.textContent = "Leadership access required for Migration Command (R4/R5). Enter your officer code — not your member Personal Code.";
-      }
+      openAuthModal({
+        lead: "Sign in with your PH-L access code. Migration opens automatically for leadership accounts."
+      });
+      stripAuthQueryParams();
+    } else if (wantsSignInFromUrl() && !isAdmin && !isMember) {
       openAuthModal();
+      stripAuthQueryParams();
     }
   }
 
@@ -3282,12 +3287,12 @@
     openMemberModal();
   }
 
-  function openAuthModal() {
+  function openAuthModal(options = {}) {
     if (!el.authModal) return;
     if (el.authError) el.authError.textContent = "";
     if (el.authModalTitle) el.authModalTitle.textContent = "Sign in";
     if (el.authModalLead) {
-      el.authModalLead.innerHTML = "Enter your <strong>leadership code</strong> (R4/R5) or member <strong>Personal Code</strong>. Migration only unlocks with leadership.";
+      el.authModalLead.textContent = options.lead || AUTH_MODAL_LEAD_DEFAULT;
     }
     if (el.accessCodeInput) {
       el.accessCodeInput.value = recallPersonalCodeHint() || memberSession?.personalCode || "";
@@ -3388,6 +3393,32 @@
     }
   }
 
+  function wantsSignInFromUrl() {
+    try {
+      return new URLSearchParams(window.location.search).get("signin") === "1";
+    } catch {
+      return false;
+    }
+  }
+
+  function stripAuthQueryParams() {
+    try {
+      const url = new URL(window.location.href);
+      let changed = false;
+      for (const key of ["signin", "auth"]) {
+        if (url.searchParams.has(key)) {
+          url.searchParams.delete(key);
+          changed = true;
+        }
+      }
+      if (changed) {
+        window.history.replaceState({}, "", url.pathname + url.search + url.hash);
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
   function consumeMigrationRedirect() {
     if (!isAdmin) return false;
     const pending = sessionStorage.getItem(MIGRATION_PENDING_KEY) === "1" || wantsMigrationAuthFromUrl();
@@ -3399,10 +3430,9 @@
   function openMigrationWorkspace() {
     if (!isAdmin) {
       sessionStorage.setItem(MIGRATION_PENDING_KEY, "1");
-      if (el.authModalLead) {
-        el.authModalLead.textContent = "Leadership access required for Migration Command (R4/R5). Enter your officer code — not your member Personal Code.";
-      }
-      openAuthModal();
+      openAuthModal({
+        lead: "Sign in with your PH-L access code. Migration opens for leadership accounts after unlock."
+      });
       return;
     }
     window.location.href = "migration/";
@@ -3457,7 +3487,7 @@
     await pullScheduledEvents({ silent: true });
     if (el.teScheduleList) delete el.teScheduleList.dataset.eventsFp;
     renderAll();
-    toast(`Unlocked <strong>${escapeHtml(member.name)}</strong>. Events &amp; your profile are available — use a <strong>leadership code</strong> (top bar <strong>Migration</strong>) for Migration Command.`, "success");
+    toast(`Welcome, <strong>${escapeHtml(member.name)}</strong>. Member tools are unlocked.`, "success");
     playSfx("success");
   }
 

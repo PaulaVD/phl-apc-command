@@ -1,45 +1,55 @@
-/* Phoenix Legacy official home — layout on top of legacy/apc-console/styles.css */
+/* Phoenix Legacy official home — minimal layout on legacy/apc-console/styles.css */
 
 .home-shell {
-  width: min(1040px, calc(100% - 24px));
-  padding-bottom: 48px;
+  width: min(720px, calc(100% - 24px));
+  padding-bottom: 40px;
   display: grid;
-  gap: 20px;
+  gap: 16px;
 }
 
 .home-hero {
   text-align: center;
-  padding: 8px 20px 24px;
+  padding: 4px 16px 8px;
 }
 
 .home-hero .panel-head {
   display: grid;
   justify-items: center;
-  padding: 24px 20px 0;
+  gap: 10px;
+  padding: 28px 20px 0;
 }
 
 .home-hero .panel-head h1 {
-  margin: 10px 0 0;
+  margin: 0;
   font-family: var(--font-display);
-  font-size: clamp(2.2rem, 5vw, 3.2rem);
+  font-size: clamp(2rem, 5vw, 2.75rem);
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  line-height: 0.95;
+  line-height: 1;
 }
 
 .home-hero .motto {
-  margin: 10px 0 0;
+  margin: 0;
   color: var(--gold);
-  font-size: 1.1rem;
+  font-size: 1.125rem;
   font-style: italic;
   font-weight: 600;
 }
 
-.home-hero .panel-head p {
-  max-width: 58ch;
-  margin-inline: auto;
+.home-lead {
+  max-width: 42ch;
+  margin: 0 auto;
   font-size: var(--body-size);
-  line-height: 1.6;
+  line-height: 1.55;
+  color: var(--text);
+}
+
+.home-signin-note {
+  max-width: 46ch;
+  margin: 0 auto;
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  color: var(--muted);
 }
 
 .home-hero-actions {
@@ -47,117 +57,18 @@
   flex-wrap: wrap;
   justify-content: center;
   gap: 12px;
-  padding: 20px 20px 26px;
+  padding: 22px 20px 28px;
 }
 
 a.btn {
   text-decoration: none;
 }
 
-.home-section-head {
-  padding: 4px 4px 0;
-}
-
-.home-section-head h2 {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--section-size);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.home-section-head p {
-  margin: 8px 0 0;
-  color: var(--muted);
-  font-size: var(--body-size);
-  line-height: 1.6;
-  max-width: 62ch;
-}
-
-.home-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 16px;
-}
-
-.home-card {
-  padding: 20px 20px 22px;
-  display: grid;
-  gap: 12px;
-  align-content: start;
-}
-
-.home-card h3 {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: 1.45rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.home-card p,
-.home-card ul {
-  margin: 0;
-  color: var(--muted);
-  font-size: var(--body-size);
-  line-height: 1.6;
-  font-weight: 500;
-}
-
-.home-card ul {
-  padding-left: 1.15em;
-}
-
-.home-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: max(var(--label-size), 0.8125rem);
-  font-weight: 700;
-  letter-spacing: var(--label-track);
-  text-transform: uppercase;
-  color: var(--gold);
-}
-
-.home-tag::before {
-  content: "";
-  width: 18px;
-  height: 1px;
-  background: linear-gradient(90deg, var(--ember), transparent);
-}
-
-.home-tag.officer {
-  color: var(--gold-2);
-}
-
-.home-pill-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.home-pill {
-  font-size: 0.875rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  padding: 6px 10px;
-  border-radius: 999px;
-  border: 1px solid var(--line-2);
-  color: var(--soft);
-  background: rgba(255, 255, 255, 0.03);
-}
-
 .home-footer {
   text-align: center;
   color: var(--muted);
-  font-size: 1rem;
-  line-height: 1.55;
-  padding: 16px 8px 0;
-  border-top: 1px solid var(--line);
-}
-
-.home-footer a {
-  color: var(--gold);
+  font-size: 0.9375rem;
+  padding: 8px;
 }
 
 .home-topbar .top-actions {
@@ -171,6 +82,6 @@ a.btn {
   .home-topbar .top-actions {
     width: 100%;
     margin-left: 0;
-    justify-content: flex-start;
+    justify-content: flex-end;
   }
 }
