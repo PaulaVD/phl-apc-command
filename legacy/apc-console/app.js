@@ -3461,8 +3461,14 @@
     playSfx("success");
   }
 
+  function normalizeAccessCodeInput(value) {
+    const trimmed = String(value || "").trim();
+    if (/^phl-/i.test(trimmed)) return trimmed.toUpperCase().replace(/[^A-Z0-9-]/g, "");
+    return trimmed;
+  }
+
   async function attemptUnlock() {
-    const raw = (el.accessCodeInput?.value || "").trim();
+    const raw = normalizeAccessCodeInput(el.accessCodeInput?.value);
     if (!raw) {
       setAuthError("Enter your access code.");
       return;
