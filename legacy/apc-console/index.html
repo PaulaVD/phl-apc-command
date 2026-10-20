@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Teko:wght@500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=157" />
+  <link rel="stylesheet" href="styles.css?v=159" />
 </head>
 <body class="mobile-tab-events">
   <a class="skip-link" href="#operatorConsole">Skip to form</a>
@@ -103,7 +103,7 @@
           Events
           <span class="events-tab-count" id="eventsTabCount" hidden>0</span>
         </button>
-        <button class="btn btn-ghost admin-only roster-jump-btn" id="migrationCmdBtn" type="button" title="Private R4 migration workspace">
+        <button class="btn btn-ghost migration-entry-btn roster-jump-btn" id="migrationCmdBtn" type="button" title="Private R4/R5 migration workspace (leadership code required)">
           Migration
         </button>
         <button class="btn btn-ghost admin-only roster-jump-btn" id="rosterJumpBtn" type="button" title="Jump to member power roster">
@@ -515,7 +515,7 @@
     <section class="admin-modal-card auth-modal-card" role="dialog" aria-modal="true" aria-labelledby="authModalTitle">
       <span class="eyebrow"><span></span>PH-L unlock</span>
       <h2 id="authModalTitle">Sign in</h2>
-      <p id="authModalLead">Enter your PH-L access code.</p>
+      <p id="authModalLead">Enter your <strong>leadership code</strong> (R4/R5 officers) or your member <strong>Personal Code</strong>. Migration Command only unlocks with leadership.</p>
       <label class="admin-code-field">
         <span>Access code</span>
         <input id="accessCodeInput" type="text" maxlength="64" autocomplete="off" spellcheck="false" placeholder="Enter access code">
@@ -605,6 +605,6 @@
   <script src="serverClock.js?v=35"></script>
   <script src="rallyRoles.js?v=31"></script>
   <script src="rallyMatchmaking.js?v=28"></script>
-  <script src="app.js?v=158" defer></script>
+  <script src="app.js?v=159" defer></script>
 </body>
 </html>

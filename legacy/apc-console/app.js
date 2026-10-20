@@ -359,7 +359,7 @@
     } else if (wantsMigrationAuthFromUrl() && !isAdmin) {
       sessionStorage.setItem(MIGRATION_PENDING_KEY, "1");
       if (el.authModalLead) {
-        el.authModalLead.textContent = "Leadership access required for the private Migration Command workspace (R4/R5).";
+        el.authModalLead.textContent = "Leadership access required for Migration Command (R4/R5). Enter your officer code — not your member Personal Code.";
       }
       openAuthModal();
     }
@@ -3286,7 +3286,9 @@
     if (!el.authModal) return;
     if (el.authError) el.authError.textContent = "";
     if (el.authModalTitle) el.authModalTitle.textContent = "Sign in";
-    if (el.authModalLead) el.authModalLead.textContent = "Enter your PH-L access code.";
+    if (el.authModalLead) {
+      el.authModalLead.innerHTML = "Enter your <strong>leadership code</strong> (R4/R5) or member <strong>Personal Code</strong>. Migration only unlocks with leadership.";
+    }
     if (el.accessCodeInput) {
       el.accessCodeInput.value = recallPersonalCodeHint() || memberSession?.personalCode || "";
     }
@@ -3398,7 +3400,7 @@
     if (!isAdmin) {
       sessionStorage.setItem(MIGRATION_PENDING_KEY, "1");
       if (el.authModalLead) {
-        el.authModalLead.textContent = "Leadership access required for the private Migration Command workspace (R4/R5).";
+        el.authModalLead.textContent = "Leadership access required for Migration Command (R4/R5). Enter your officer code — not your member Personal Code.";
       }
       openAuthModal();
       return;
@@ -3455,7 +3457,7 @@
     await pullScheduledEvents({ silent: true });
     if (el.teScheduleList) delete el.teScheduleList.dataset.eventsFp;
     renderAll();
-    toast(`Unlocked <strong>${escapeHtml(member.name)}</strong>. Open Events to Accept / Decline.`, "success");
+    toast(`Unlocked <strong>${escapeHtml(member.name)}</strong>. Events &amp; your profile are available — use a <strong>leadership code</strong> (top bar <strong>Migration</strong>) for Migration Command.`, "success");
     playSfx("success");
   }
 

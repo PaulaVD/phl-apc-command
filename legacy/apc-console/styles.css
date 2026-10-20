@@ -1284,6 +1284,15 @@ button.row-val.field-tap.is-muted{color:var(--soft);font-weight:700}
   color:#2a1208;font-size:.68rem;font-weight:800;letter-spacing:0
 }
 .events-tab-count[hidden]{display:none!important}
+.migration-entry-btn{
+  display:inline-flex!important;align-items:center;justify-content:center
+}
+body:not(.admin-mode) .migration-entry-btn{
+  opacity:.82;border-style:dashed
+}
+body.member-mode .migration-entry-btn{
+  opacity:1;border-color:rgba(115,240,182,.22);color:var(--success)
+}
 .roster-jump-btn{
   min-height:var(--tb-chip-h);padding:0 14px;border-radius:14px;
   font-size:.78rem;letter-spacing:.1em
