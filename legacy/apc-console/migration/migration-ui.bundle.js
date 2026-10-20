@@ -17380,8 +17380,28 @@ function Page() {
       ". Historical capacity is a scenario, not a reservation."
     ] })
   ] });
-  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "app", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("aside", { className: mobile ? "sidebar visible" : "sidebar", children: [
+  const embed = Boolean(window.PHL_EMBED_MIGRATION);
+  const navButtons = nav.map(([name, Icon2]) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", { type: "button", className: tab === name ? "active" : "", onClick: () => {
+    setTab(name);
+    setMobile(false);
+  }, children: [
+    /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Icon2, { size: 18 }),
+    name,
+    name === "Roster" && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("small", { children: data.players.length }),
+    name === "Diplomacy" && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("small", { children: data.states.length })
+  ] }, name));
+  const saveActions = /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "top-actions", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "save-status " + (dirty ? "unsaved" : ""), children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "dot" }),
+      saving ? "Saving\u2026" : dirty ? "Unsaved changes" : savedAt ? "Saved" : "Imported snapshot"
+    ] }),
+    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", { className: "primary small", type: "button", onClick: save, disabled: saving, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Save, { size: 15 }),
+      saving ? "Saving" : "Save workspace"
+    ] })
+  ] });
+  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "app" + (embed ? " embed" : ""), children: [
+    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("aside", { className: (mobile ? "sidebar visible" : "sidebar") + (embed ? " sidebar-embed-hidden" : ""), hidden: embed, "aria-hidden": embed, children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("a", { className: "brand", href: "../index.html", title: "Back to PH-L alliance portal", children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "brand-icon", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Flame, { size: 25 }) }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
@@ -17393,15 +17413,7 @@ function Page() {
         "PHOENIX LEGACY ",
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "\u2197" })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("nav", { children: nav.map(([name, Icon2]) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", { className: tab === name ? "active" : "", onClick: () => {
-        setTab(name);
-        setMobile(false);
-      }, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Icon2, { size: 18 }),
-        name,
-        name === "Roster" && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("small", { children: data.players.length }),
-        name === "Diplomacy" && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("small", { children: data.states.length })
-      ] }, name)) }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("nav", { children: navButtons }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "sidebar-bottom", children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "cluster", children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "pulse" }),
@@ -17421,25 +17433,24 @@ function Page() {
         ] })
       ] })
     ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "main", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("header", { className: "topbar", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "main" + (embed ? " embed-main" : ""), children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("header", { className: embed ? "migration-command-bar" : "topbar", children: embed ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("nav", { className: "portal-migration-subnav", "aria-label": "Migration workspace", children: navButtons }),
+        saveActions,
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "migration-phase-chip", title: "Current migration phase", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "pulse" }),
+          " ",
+          data.settings.phase.toUpperCase()
+        ] })
+      ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "crumb", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "icon mobile-toggle", "aria-label": "Toggle menu", onClick: () => setMobile(!mobile), children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Menu, { size: 20 }) }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "icon mobile-toggle", type: "button", "aria-label": "Toggle menu", onClick: () => setMobile(!mobile), children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Menu, { size: 20 }) }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Workspace" }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ChevronRight, { size: 14 }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: tab })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "top-actions", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "save-status " + (dirty ? "unsaved" : ""), children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "dot" }),
-            saving ? "Saving\u2026" : dirty ? "Unsaved changes" : savedAt ? "Saved" : "Imported snapshot"
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", { className: "primary small", onClick: save, disabled: saving, children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Save, { size: 15 }),
-            saving ? "Saving" : "Save workspace"
-          ] })
-        ] })
-      ] }),
+        saveActions
+      ] }) }),
       error && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "error", role: "alert", children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)(TriangleAlert, { size: 18 }),
         error,
@@ -17994,7 +18005,7 @@ function Page() {
           ] }),
           banner
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("footer", { children: [
+        !embed && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("footer", { children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "PH-L \xB7 Phoenix Legacy" }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Migration Command / Private workspace" })
         ] })
