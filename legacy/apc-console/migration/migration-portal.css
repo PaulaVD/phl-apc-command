@@ -67,8 +67,7 @@ body.phl-migration-page .portal-migration-subnav {
   border: 1px solid rgba(255, 128, 69, 0.12);
 }
 
-body.phl-migration-page .portal-migration-subnav button {
-  all: unset;
+body.phl-migration-page .portal-migration-subnav .migration-tab-btn {
   box-sizing: border-box;
   cursor: pointer;
   display: inline-flex;
@@ -76,8 +75,9 @@ body.phl-migration-page .portal-migration-subnav button {
   gap: 5px;
   min-height: 34px;
   padding: 0 10px;
-  border-radius: 9px;
-  border: 1px solid transparent;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
   color: var(--muted);
   font-family: var(--font, Rajdhani, system-ui, sans-serif);
   font-size: 0.7rem;
@@ -85,13 +85,14 @@ body.phl-migration-page .portal-migration-subnav button {
   letter-spacing: 0.1em;
   text-transform: uppercase;
   flex-shrink: 0;
+  transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease, box-shadow 0.16s ease, color 0.16s ease;
 }
 
-body.phl-migration-page .portal-migration-subnav button svg {
+body.phl-migration-page .portal-migration-subnav .migration-tab-btn svg {
   display: none;
 }
 
-body.phl-migration-page .portal-migration-subnav button small {
+body.phl-migration-page .portal-migration-subnav .migration-tab-btn small {
   padding: 0 5px;
   border-radius: 999px;
   background: rgba(255, 122, 70, 0.12);
@@ -100,18 +101,29 @@ body.phl-migration-page .portal-migration-subnav button small {
   line-height: 1.5;
 }
 
-body.phl-migration-page .portal-migration-subnav button:hover {
+body.phl-migration-page .portal-migration-subnav .migration-tab-btn:hover {
   color: var(--text);
-  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--line-2, rgba(255, 196, 128, 0.35));
+  transform: translateY(-1px);
 }
 
-body.phl-migration-page .portal-migration-subnav button.active {
+body.phl-migration-page .portal-migration-subnav .migration-tab-btn:active {
+  transform: translateY(0);
+}
+
+body.phl-migration-page .portal-migration-subnav .migration-tab-btn:focus-visible {
+  outline: 2px solid rgba(255, 189, 126, 0.55);
+  outline-offset: 2px;
+}
+
+body.phl-migration-page .portal-migration-subnav .migration-tab-btn.active {
   color: #2a1208;
-  border-color: rgba(255, 189, 126, 0.45);
+  border-color: rgba(255, 189, 126, 0.48);
   background: linear-gradient(180deg, #f8d297 0%, #ff9a57 58%, #da4e28 100%);
+  box-shadow: 0 8px 20px rgba(217, 78, 39, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.28);
 }
 
-body.phl-migration-page .portal-migration-subnav button.active small {
+body.phl-migration-page .portal-migration-subnav .migration-tab-btn.active small {
   background: rgba(0, 0, 0, 0.22);
   color: #fff;
 }
@@ -143,10 +155,19 @@ body.phl-migration-page .migration-save-btn {
   border-radius: 10px !important;
   font-size: 0.72rem !important;
   letter-spacing: 0.12em !important;
+  transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease !important;
+}
+
+body.phl-migration-page .migration-save-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+body.phl-migration-page .migration-save-btn:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 body.phl-migration-page .migration-save-btn.is-dirty {
-  box-shadow: 0 0 0 2px rgba(240, 186, 114, 0.35);
+  box-shadow: 0 0 0 2px rgba(240, 186, 114, 0.35), 0 8px 20px rgba(217, 78, 39, 0.22);
 }
 
 body.phl-migration-page .migration-clocks-compact {
@@ -293,5 +314,56 @@ body.phl-migration-page .hero {
 
   body.phl-migration-page .migration-command-save .save-status {
     display: none;
+  }
+}
+
+/* Workspace content — match APC console button feel */
+body.phl-migration-page #root .app button:not(.migration-tab-btn):not(.icon):not(:disabled),
+body.phl-migration-page #root .app .action-row,
+body.phl-migration-page #root .app .shortlist button,
+body.phl-migration-page #root .app .stages button,
+body.phl-migration-page #root .app .execution-list button {
+  transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease, box-shadow 0.16s ease, color 0.16s ease;
+}
+
+body.phl-migration-page #root .app button:not(.migration-tab-btn):not(.icon):not(.text-button):not(:disabled):hover,
+body.phl-migration-page #root .app .action-row:hover,
+body.phl-migration-page #root .app .shortlist button:hover,
+body.phl-migration-page #root .app .stages button:hover,
+body.phl-migration-page #root .app .execution-list button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(255, 196, 128, 0.35);
+}
+
+body.phl-migration-page #root .app button.primary,
+body.phl-migration-page #root .app .hero button {
+  background: linear-gradient(180deg, #f8d297 0%, #ff9a57 58%, #da4e28 100%) !important;
+  color: #250e07 !important;
+  border-color: rgba(255, 189, 126, 0.48) !important;
+  box-shadow: 0 12px 28px rgba(217, 78, 39, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+
+body.phl-migration-page #root .app button.primary:hover,
+body.phl-migration-page #root .app .hero button:hover {
+  border-color: rgba(255, 196, 128, 0.55) !important;
+}
+
+body.phl-migration-page #root .app .table-panel tbody tr {
+  transition: background 0.14s ease;
+}
+
+body.phl-migration-page #root .app .metric,
+body.phl-migration-page #root .app .panel,
+body.phl-migration-page #root .app .hero {
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.phl-migration-page .portal-migration-subnav .migration-tab-btn,
+  body.phl-migration-page .migration-save-btn,
+  body.phl-migration-page #root .app button,
+  body.phl-migration-page #root .app .action-row {
+    transition: none !important;
+    transform: none !important;
   }
 }

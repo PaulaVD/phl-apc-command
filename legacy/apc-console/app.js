@@ -353,6 +353,7 @@
           .catch(() => {});
       }
       if (isAdmin) startAdminRealtime({ claim: true });
+      initMigrationPortalPolish();
       return;
     }
 
@@ -4112,6 +4113,39 @@
     Object.entries(audioFiles).forEach(([name, src]) => {
       audio[name] = new Audio(src);
     });
+  }
+
+  function initMigrationPortalPolish() {
+    window.PHL_PLAY_SFX = (name) => playSfx(name);
+    document.addEventListener("click", onMigrationPortalClick, true);
+  }
+
+  function onMigrationPortalClick(event) {
+    if (!embedMigration) return;
+    const target = event.target.closest(
+      "button, .action-row, .shortlist button, .stages button, .execution-list button"
+    );
+    if (!target || target.disabled) return;
+    unlockAudio();
+    if (target.closest(".portal-migration-subnav")) {
+      playSfx("transition");
+      return;
+    }
+    if (target.closest(".migration-save-btn")) return;
+    if (target.closest(".topbar")) {
+      playSfx("click");
+      return;
+    }
+    if (!target.closest("#root")) return;
+    if (target.classList.contains("primary") || target.closest(".hero")) {
+      playSfx("click");
+      return;
+    }
+    if (target.closest(".drawer-footer .primary")) {
+      playSfx("success");
+      return;
+    }
+    playSfx("click");
   }
 
   function playSfx(name) {

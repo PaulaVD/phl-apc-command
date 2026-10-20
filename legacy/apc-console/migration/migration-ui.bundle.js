@@ -17255,8 +17255,10 @@ function Page() {
       setSavedAt(b.updatedAt);
       if (g === generation.current) setDirty(false);
       setToast("Workspace saved securely");
+      window.PHL_PLAY_SFX?.("success");
     } catch (e) {
       setError(e.message);
+      window.PHL_PLAY_SFX?.("error");
     } finally {
       saveLock.current = false;
       setSaving(false);
@@ -17387,7 +17389,7 @@ function Page() {
   ] });
   const embedHost = typeof window !== "undefined" && (Boolean(window.PHL_EMBED_MIGRATION) || /\/migration\/?$/i.test(window.location.pathname) || window.location.pathname.includes("/apc-console/migration"));
   const embed = embedHost;
-  const navButtons = nav.map(([name, Icon2]) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", { type: "button", className: tab === name ? "active" : "", onClick: () => {
+  const navButtons = nav.map(([name, Icon2]) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", { type: "button", className: "migration-tab-btn" + (tab === name ? " active" : ""), onClick: () => {
     setTab(name);
     setMobile(false);
   }, children: [
