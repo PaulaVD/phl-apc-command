@@ -17437,12 +17437,7 @@ function Page() {
     /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "main" + (embed ? " embed-main" : ""), children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("header", { className: embed ? "migration-command-bar" : "topbar", children: embed ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("nav", { className: "portal-migration-subnav", "aria-label": "Migration workspace", children: navButtons }),
-        saveActions,
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "migration-phase-chip", title: "Current migration phase", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "pulse" }),
-          " ",
-          data.settings.phase.toUpperCase()
-        ] })
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "migration-command-save", children: saveActions })
       ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "crumb", children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "icon mobile-toggle", type: "button", "aria-label": "Toggle menu", onClick: () => setMobile(!mobile), children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Menu, { size: 20 }) }),
