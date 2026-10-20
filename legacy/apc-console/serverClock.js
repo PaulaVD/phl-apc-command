@@ -281,33 +281,60 @@ function formatDeviceLocalClock(date = Date.now()) {
  * @param {Object} nodes
  */
 function mountServerClock(nodes) {
-  if (!nodes?.clockEl || !nodes?.offsetSelect || !nodes?.eventInput || !nodes?.resultEl) {
-    throw new TypeError("mountServerClock requires clock, offset select, event input, and result nodes.");
+  if (!nodes?.clockEl) {
+    throw new TypeError("mountServerClock requires a server clock element.");
   }
 
   const detected = detectLocalTimezone();
-  const selectedOffset = nearestPresetOffset(detected.offsetHours);
-  const select = nodes.offsetSelect;
-
-  const hasExactPreset = OFFSET_PRESETS.some(p => Math.abs(p.offset - selectedOffset) < 0.001);
-  const options = [{ offset: selectedOffset, label: detected.label }];
-  for (const preset of OFFSET_PRESETS) {
-    if (Math.abs(preset.offset - selectedOffset) < 0.001 && hasExactPreset) continue;
-    options.push(preset);
-  }
-
-  select.innerHTML = options.map((p, index) =>
-    `<option value="${p.offset}"${index === 0 ? " selected" : ""}>${p.label}</option>`
-  ).join("");
-  select.value = String(selectedOffset);
+  const hasConverter = Boolean(
+    nodes.offsetSelect && nodes.eventInput && nodes.resultEl
+  );
 
   if (nodes.localZoneLabelEl) nodes.localZoneLabelEl.textContent = detected.timeZone;
   if (nodes.localOffsetBadgeEl) nodes.localOffsetBadgeEl.textContent = formatOffsetLabel(detected.offsetHours);
   if (nodes.serverBadgeEl) nodes.serverBadgeEl.textContent = formatOffsetLabel(getServerUtcOffsetHours());
 
-  if (!nodes.eventInput.value) nodes.eventInput.value = "15:00";
-
   let timer = 0;
+  let refreshConversion = () => {};
+
+  if (hasConverter) {
+    const selectedOffset = nearestPresetOffset(detected.offsetHours);
+    const select = nodes.offsetSelect;
+    const hasExactPreset = OFFSET_PRESETS.some(p => Math.abs(p.offset - selectedOffset) < 0.001);
+    const options = [{ offset: selectedOffset, label: detected.label }];
+    for (const preset of OFFSET_PRESETS) {
+      if (Math.abs(preset.offset - selectedOffset) < 0.001 && hasExactPreset) continue;
+      options.push(preset);
+    }
+
+    select.innerHTML = options.map((p, index) =>
+      `<option value="${p.offset}"${index === 0 ? " selected" : ""}>${p.label}</option>`
+    ).join("");
+    select.value = String(selectedOffset);
+
+    if (!nodes.eventInput.value) nodes.eventInput.value = "15:00";
+
+    refreshConversion = () => {
+      const activeOffset = Number(select.value);
+      try {
+        const result = convertServerEvent(nodes.eventInput.value || "15:00", activeOffset);
+        nodes.resultEl.textContent = result.local;
+        if (nodes.resultMetaEl) {
+          const zoneNote = Math.abs(activeOffset - detected.offsetHours) < 0.01
+            ? detected.timeZone
+            : formatOffsetLabel(activeOffset);
+          nodes.resultMetaEl.textContent =
+            `${result.server} → ${result.local} · ${zoneNote}`;
+        }
+      } catch {
+        nodes.resultEl.textContent = "--:--";
+        if (nodes.resultMetaEl) nodes.resultMetaEl.textContent = "Enter event time as HH:MM (server).";
+      }
+    };
+
+    select.addEventListener("change", refreshConversion);
+    nodes.eventInput.addEventListener("input", refreshConversion);
+  }
 
   function tick() {
     const now = Date.now();
@@ -318,27 +345,6 @@ function mountServerClock(nodes) {
     }
     refreshConversion();
   }
-
-  function refreshConversion() {
-    const activeOffset = Number(select.value);
-    try {
-      const result = convertServerEvent(nodes.eventInput.value || "15:00", activeOffset);
-      nodes.resultEl.textContent = result.local;
-      if (nodes.resultMetaEl) {
-        const zoneNote = Math.abs(activeOffset - detected.offsetHours) < 0.01
-          ? detected.timeZone
-          : formatOffsetLabel(activeOffset);
-        nodes.resultMetaEl.textContent =
-          `${result.server} → ${result.local} · ${zoneNote}`;
-      }
-    } catch {
-      nodes.resultEl.textContent = "--:--";
-      if (nodes.resultMetaEl) nodes.resultMetaEl.textContent = "Enter event time as HH:MM (server).";
-    }
-  }
-
-  select.addEventListener("change", refreshConversion);
-  nodes.eventInput.addEventListener("input", refreshConversion);
 
   tick();
   timer = window.setInterval(tick, 1000);

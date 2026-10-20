@@ -845,7 +845,10 @@
 
     if (mount()) return;
 
-    fetch(`serverClock.js?v=34&t=${Date.now()}`)
+    const clockSrc = embedMigration
+      ? `../serverClock.js?v=36&t=${Date.now()}`
+      : `serverClock.js?v=36&t=${Date.now()}`;
+    fetch(clockSrc)
       .then(response => {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         return response.text();
