@@ -22,10 +22,20 @@ function migrationApiUrl() {
   return url.replace(/\/$/, "");
 }
 
+function leadershipSession(session: { id: string; code: string } | null) {
+  if (!session?.id) return false;
+  const cfg = (window as unknown as { PHL_CONFIG?: { admins?: { id: string; officerRank?: string }[] } }).PHL_CONFIG;
+  const account = cfg?.admins?.find(a => String(a.id).toLowerCase() === String(session.id).toLowerCase());
+  const rank = String(account?.officerRank || "").toUpperCase();
+  return rank === "R4" || rank === "R5";
+}
+
 const session = readAdminSession();
+const base = window.location.pathname.replace(/\/migration\/?.*$/, "/");
 if (!session) {
-  const base = window.location.pathname.replace(/\/migration\/?.*$/, "/");
-  window.location.replace(`${base}index.html?auth=migration`);
+  window.location.replace(`${base}index.html?signin=1`);
+} else if (!leadershipSession(session)) {
+  window.location.replace(`${base}index.html`);
 } else {
   const nativeFetch = window.fetch.bind(window);
   window.fetch = (input: RequestInfo | URL, init?: RequestInit) => {

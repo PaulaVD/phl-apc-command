@@ -3272,9 +3272,23 @@
       </div>`;
   }
 
+  function leadershipOfficerRank() {
+    if (!adminSession?.id) return "";
+    const account = getAdminAccounts().find(admin => admin.id === adminSession.id);
+    return String(account?.officerRank || "").toUpperCase();
+  }
+
+  function canAccessMigration() {
+    if (!isAdmin) return false;
+    const rank = leadershipOfficerRank();
+    return rank === "R4" || rank === "R5";
+  }
+
   function applyAccessMode() {
     document.body.classList.toggle("admin-mode", isAdmin);
     document.body.classList.toggle("member-mode", isMember && !isAdmin);
+    document.body.classList.toggle("leadership-mode", canAccessMigration());
+    if (el.migrationCmdBtn) el.migrationCmdBtn.hidden = !canAccessMigration();
     const who = adminSession?.name ? ` · ${adminSession.name}` : "";
     const mName = memberSession?.name ? ` · ${memberSession.name}` : "";
     let label = "Sign in";
@@ -3467,7 +3481,7 @@
   }
 
   function consumeMigrationRedirect() {
-    if (!isAdmin) return false;
+    if (!canAccessMigration()) return false;
     const pending = sessionStorage.getItem(MIGRATION_PENDING_KEY) === "1" || wantsMigrationAuthFromUrl();
     if (!pending) return false;
     sessionStorage.removeItem(MIGRATION_PENDING_KEY);
@@ -3479,8 +3493,12 @@
     if (!isAdmin) {
       sessionStorage.setItem(MIGRATION_PENDING_KEY, "1");
       openAuthModal({
-        lead: "Sign in with your PH-L access code. Migration opens for leadership accounts after unlock."
+        lead: "Sign in with your PH-L access code. Migration is available to R4/R5 leadership only."
       });
+      return;
+    }
+    if (!canAccessMigration()) {
+      toast("Migration is limited to R4/R5 leadership.", "error");
       return;
     }
     window.location.href = "migration/";
@@ -3509,9 +3527,12 @@
     window.requestAnimationFrame(() => jumpToAdminRoster({ silent: true }));
     toast(`Welcome, <strong>${escapeHtml(account.name)}</strong>.`, "success");
     playSfx("success");
-    if (sessionStorage.getItem(MIGRATION_PENDING_KEY) === "1" || wantsMigrationAuthFromUrl()) {
+    if (canAccessMigration() && (sessionStorage.getItem(MIGRATION_PENDING_KEY) === "1" || wantsMigrationAuthFromUrl())) {
       sessionStorage.removeItem(MIGRATION_PENDING_KEY);
       window.location.href = "migration/";
+    } else if (sessionStorage.getItem(MIGRATION_PENDING_KEY) === "1" || wantsMigrationAuthFromUrl()) {
+      sessionStorage.removeItem(MIGRATION_PENDING_KEY);
+      toast("Migration requires an R4/R5 leadership access code.", "error");
     }
   }
 

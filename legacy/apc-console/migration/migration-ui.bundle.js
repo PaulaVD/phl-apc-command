@@ -16723,23 +16723,23 @@ var ZodEffects = class extends ZodType {
     }
     if (effect.type === "transform") {
       if (ctx.common.async === false) {
-        const base = this._def.schema._parseSync({
+        const base2 = this._def.schema._parseSync({
           data: ctx.data,
           path: ctx.path,
           parent: ctx
         });
-        if (!isValid(base))
+        if (!isValid(base2))
           return INVALID;
-        const result = effect.transform(base.value, checkCtx);
+        const result = effect.transform(base2.value, checkCtx);
         if (result instanceof Promise) {
           throw new Error(`Asynchronous transform encountered during synchronous parse operation. Use .parseAsync instead.`);
         }
         return { status: status.value, value: result };
       } else {
-        return this._def.schema._parseAsync({ data: ctx.data, path: ctx.path, parent: ctx }).then((base) => {
-          if (!isValid(base))
+        return this._def.schema._parseAsync({ data: ctx.data, path: ctx.path, parent: ctx }).then((base2) => {
+          if (!isValid(base2))
             return INVALID;
-          return Promise.resolve(effect.transform(base.value, checkCtx)).then((result) => ({
+          return Promise.resolve(effect.transform(base2.value, checkCtx)).then((result) => ({
             status: status.value,
             value: result
           }));
@@ -18265,10 +18265,19 @@ function migrationApiUrl() {
   const url = cfg?.migrationApiUrl || "/api/migration-workspace";
   return url.replace(/\/$/, "");
 }
+function leadershipSession(session2) {
+  if (!session2?.id) return false;
+  const cfg = window.PHL_CONFIG;
+  const account = cfg?.admins?.find((a) => String(a.id).toLowerCase() === String(session2.id).toLowerCase());
+  const rank = String(account?.officerRank || "").toUpperCase();
+  return rank === "R4" || rank === "R5";
+}
 var session = readAdminSession();
+var base = window.location.pathname.replace(/\/migration\/?.*$/, "/");
 if (!session) {
-  const base = window.location.pathname.replace(/\/migration\/?.*$/, "/");
-  window.location.replace(`${base}index.html?auth=migration`);
+  window.location.replace(`${base}index.html?signin=1`);
+} else if (!leadershipSession(session)) {
+  window.location.replace(`${base}index.html`);
 } else {
   const nativeFetch = window.fetch.bind(window);
   window.fetch = (input, init) => {
