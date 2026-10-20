@@ -1293,7 +1293,7 @@ body:not(.admin-mode) .migration-entry-btn{
   opacity:.82;border-style:dashed
 }
 body.member-mode .migration-entry-btn{
-  opacity:1;border-color:rgba(115,240,182,.22);color:var(--success)
+  opacity:1;border-color:rgba(255,196,128,.35);color:var(--gold)
 }
 .roster-jump-btn{
   min-height:var(--tb-chip-h);padding:0 14px;border-radius:14px;
