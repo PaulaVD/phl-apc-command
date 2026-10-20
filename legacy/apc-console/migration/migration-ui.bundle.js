@@ -17382,7 +17382,7 @@ function Page() {
   ] });
   return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "app", children: [
     /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("aside", { className: mobile ? "sidebar visible" : "sidebar", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("a", { className: "brand", href: "../index.html", title: "Volver al portal PH-L", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("a", { className: "brand", href: "../index.html", title: "Back to PH-L alliance portal", children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "brand-icon", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Flame, { size: 25 }) }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
           "PH-L ",
