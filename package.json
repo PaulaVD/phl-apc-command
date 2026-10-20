@@ -1,13 +1,15 @@
 {
-  "name": "phl-apc-command",
+  "name": "phl-command-hub",
   "private": true,
-  "description": "PH-L Alliance APC Console — static site",
+  "description": "Phoenix Legacy — APC console (Netlify) + Migration Command (Vinext)",
+  "version": "2.0.0",
   "scripts": {
+    "start:apc": "python3 -m http.server 5500 --directory legacy/apc-console",
     "start": "python3 -m http.server 5500",
-    "deploy": "npx --yes netlify-cli deploy --dir=. --prod"
+    "deploy": "npx --yes netlify-cli deploy --dir=. --prod",
+    "migration:install": "npm run install:ci --prefix apps/migration-command",
+    "migration:dev": "npm run dev --prefix apps/migration-command"
   },
-  "version": "1.0.0",
-  "main": "app.js",
   "keywords": [],
   "author": "",
   "license": "ISC",

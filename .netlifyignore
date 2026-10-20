@@ -1,0 +1,6 @@
+# Migration Command source (Vinext / Cloudflare) — not part of static Netlify publish
+apps/migration-command/node_modules
+apps/migration-command/.wrangler
+apps/migration-command/dist
+apps/migration-command/.next
+apps/migration-command/tsconfig.tsbuildinfo

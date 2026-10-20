@@ -4,6 +4,9 @@
 
 **https://transcendent-kitsune-43421d.netlify.app/**
 
+- **Portal:** `/` (Command Hub)
+- **APC console:** `/legacy/apc-console/` (same app as before; `_redirects` keeps old `/assets/*` paths working)
+
 Netlify site id: `ea9f0eb9-e894-4d21-8665-08be77d8b6d3`
 
 ## Continuous deploy

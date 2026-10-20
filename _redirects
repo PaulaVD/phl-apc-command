@@ -1,0 +1,9 @@
+# Backward compatibility: old APC console lived at site root
+/assets/*              /legacy/apc-console/assets/:splat  200
+/styles.css            /legacy/apc-console/styles.css     200
+/app.js                /legacy/apc-console/app.js         200
+/config.js             /legacy/apc-console/config.js      200
+/serverClock.js        /legacy/apc-console/serverClock.js 200
+/rallyRoles.js         /legacy/apc-console/rallyRoles.js  200
+/rallyMatchmaking.js   /legacy/apc-console/rallyMatchmaking.js 200
+/legacy/apc-console/   /legacy/apc-console/index.html     200

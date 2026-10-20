@@ -1,0 +1,18 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+import ts from 'typescript';
+const js=ts.transpileModule(fs.readFileSync('lib/model.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText;
+fs.writeFileSync('tests/.model-test.mjs',js);
+const {dataSchema,cpTotal,gap,phase,score,blockers,checkLabels}=await import('./.model-test.mjs');
+const data=dataSchema.parse(JSON.parse(fs.readFileSync('lib/seed.json','utf8')));
+assert.equal(data.players.length,97);assert.equal(data.players.filter(p=>p.priority!==null).length,45);
+assert.equal(data.players.filter(p=>p.priority!==null&&cpTotal(p)!==null).length,45);
+assert.equal(data.players.find(p=>p.alias==='XENG, CHINESE GIRL').name,'麻成');
+const p=structuredClone(data.players[0]);assert.equal(cpTotal(p),182688547);assert.equal(gap(p),null);assert.equal(phase(p),'Pending');assert.ok(blockers(p,data).length>0);p.cp[0]=null;assert.equal(cpTotal(p),null);
+p.required=4;p.passes=7;assert.equal(gap(p),0);p.passes=2;assert.equal(gap(p),2);
+assert.equal(score(data.states[0]),null);assert.equal(score({...data.states[0],scores:{NAP:5,Governance:5,'Group fit':5,'PH-L autonomy':5,SvS:5}}),100);
+assert.equal(dataSchema.safeParse({...data,players:[{...p,required:-1}]}).success,false);
+assert.equal(dataSchema.safeParse({...data,players:[{...p,inviteSentAt:'bad'}]}).success,false);
+assert.equal(dataSchema.safeParse({...data,players:[p,p]}).success,false);
+const d=structuredClone(data),q=d.players[0];d.settings.ruleStatus='Verified';Object.assign(q,{intent:'Confirmed',hq:21,tier:'Elite',officialScore:100,required:1,passes:1,destination:d.states[0].id,inviteStatus:'Accepted',checks:Object.fromEntries(Object.keys(checkLabels).map(k=>[k,true]))});Object.assign(d.states[0],{access:'Yes',capacityConfirmed:true,phase2:3,elite:1});assert.equal(blockers(q,d).length,0);d.states[0].elite=0;assert.ok(blockers(q,d).includes('Elite capacity'));
+fs.unlinkSync('tests/.model-test.mjs');console.log('PASS: imported roster, aliases, null handling, pass calculations, scoring, validation, readiness and capacity checks.');
