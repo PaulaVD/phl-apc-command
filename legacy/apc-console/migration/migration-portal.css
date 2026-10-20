@@ -1,7 +1,7 @@
-/* Unified single-row Migration header (tabs live in the portal topbar) */
+/* Migration header — two clean rows (brand/util, then section tabs) */
 
 body.phl-migration-page {
-  --phl-portal-topbar: 108px;
+  --phl-portal-topbar: 118px;
   background: transparent;
 }
 
@@ -9,66 +9,66 @@ body.phl-migration-page .migration-unified-header {
   position: sticky;
   top: 0;
   z-index: 45;
-  padding: 8px clamp(10px, 1.2vw, 18px);
-  gap: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  padding: 10px clamp(10px, 1.2vw, 18px) 12px;
+  overflow: visible;
 }
 
-body.phl-migration-page .migration-topbar-primary {
-  display: grid;
-  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
-  grid-template-areas:
-    "brand util"
-    "toolbar toolbar";
+body.phl-migration-page .migration-topbar-row {
+  display: flex;
   align-items: center;
-  gap: 8px 12px;
-  width: 100%;
+  justify-content: space-between;
+  gap: 12px;
   min-width: 0;
-  padding: 0;
+  width: 100%;
 }
 
 body.phl-migration-page .migration-topbar-util {
-  grid-area: util;
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
   min-width: 0;
-  flex-wrap: nowrap;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
 }
 
-body.phl-migration-page .migration-topbar-primary .brand {
-  grid-area: brand;
+body.phl-migration-page .migration-brand {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: min(14rem, 42vw);
 }
 
-body.phl-migration-page .topbar-migration-toolbar {
-  grid-area: toolbar;
-  width: 100%;
-}
-
-body.phl-migration-page .migration-topbar-primary .brand {
-  flex: 0 0 auto;
-  max-width: 11rem;
-}
-
-body.phl-migration-page .migration-topbar-primary .brand-mark {
+body.phl-migration-page .migration-brand .brand-mark {
   width: 40px;
   height: 40px;
 }
 
-body.phl-migration-page .migration-topbar-primary .brand strong {
-  font-size: 1.05rem;
+body.phl-migration-page .migration-brand strong {
+  font-size: clamp(0.95rem, 0.85rem + 0.35vw, 1.15rem);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-body.phl-migration-page .migration-topbar-primary .brand small {
-  display: none;
+body.phl-migration-page .migration-brand small {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--gold);
+  opacity: 0.92;
 }
 
-body.phl-migration-page .topbar-migration-toolbar {
+body.phl-migration-page .topbar-migration-toolbar,
+body.phl-migration-page .migration-toolbar-inner {
   display: flex;
   align-items: center;
   gap: 10px;
-  flex: 1 1 auto;
+  width: 100%;
   min-width: 0;
+  min-height: 42px;
   padding: 0;
   border: 0;
   background: transparent;
@@ -77,16 +77,17 @@ body.phl-migration-page .topbar-migration-toolbar {
 body.phl-migration-page .portal-migration-subnav {
   display: flex;
   flex: 1 1 auto;
-  align-items: center;
-  gap: 2px;
+  align-items: stretch;
+  gap: 4px;
   min-width: 0;
   overflow-x: auto;
+  overflow-y: hidden;
   flex-wrap: nowrap;
   scrollbar-width: thin;
-  padding: 2px 4px;
+  padding: 4px 6px;
   border-radius: 12px;
-  background: rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(255, 128, 69, 0.12);
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(255, 128, 69, 0.16);
 }
 
 body.phl-migration-page .portal-migration-subnav .migration-tab-btn {
@@ -94,19 +95,24 @@ body.phl-migration-page .portal-migration-subnav .migration-tab-btn {
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  min-height: 34px;
-  padding: 0 10px;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  min-width: 4.5rem;
+  padding: 0 12px;
   border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
-  color: var(--muted);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02));
+  color: #e8d5c8;
   font-family: var(--font, Rajdhani, system-ui, sans-serif);
-  font-size: 0.7rem;
+  font-size: 0.78rem;
   font-weight: 800;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
+  line-height: 1.2;
+  white-space: nowrap;
   flex-shrink: 0;
+  -webkit-font-smoothing: antialiased;
   transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease, box-shadow 0.16s ease, color 0.16s ease;
 }
 
@@ -117,14 +123,15 @@ body.phl-migration-page .portal-migration-subnav .migration-tab-btn svg {
 body.phl-migration-page .portal-migration-subnav .migration-tab-btn small {
   padding: 0 5px;
   border-radius: 999px;
-  background: rgba(255, 122, 70, 0.12);
+  background: rgba(255, 122, 70, 0.18);
   color: var(--gold);
-  font-size: 0.58rem;
+  font-size: 0.62rem;
   line-height: 1.5;
+  font-weight: 800;
 }
 
 body.phl-migration-page .portal-migration-subnav .migration-tab-btn:hover {
-  color: var(--text);
+  color: #fff7ef;
   border-color: var(--line-2, rgba(255, 196, 128, 0.35));
   transform: translateY(-1px);
 }
@@ -171,7 +178,7 @@ body.phl-migration-page .migration-command-save .save-status.unsaved {
 }
 
 body.phl-migration-page .migration-save-btn {
-  min-height: 34px !important;
+  min-height: 36px !important;
   min-width: 4.25rem !important;
   padding: 0 12px !important;
   border-radius: 10px !important;
@@ -198,9 +205,14 @@ body.phl-migration-page .migration-clocks-compact {
 }
 
 body.phl-migration-page .migration-clocks-compact .time-block {
-  height: 40px;
-  padding: 0 8px;
-  gap: 6px;
+  height: 38px;
+  padding: 0 10px;
+  gap: 8px;
+  min-width: 0 !important;
+}
+
+body.phl-migration-page .migration-clocks-compact .time-block-server,
+body.phl-migration-page .migration-clocks-compact .time-block-local {
   min-width: 0 !important;
 }
 
@@ -223,6 +235,11 @@ body.phl-migration-page .migration-clocks-compact .time-block-badge {
   font-size: 0.52rem;
 }
 
+body.phl-migration-page .migration-clocks-compact .time-block-zone,
+body.phl-migration-page .migration-clocks-compact #serverClockBadge {
+  display: none !important;
+}
+
 body.phl-migration-page .migration-top-actions {
   flex: 0 0 auto;
   margin-left: 0;
@@ -231,30 +248,30 @@ body.phl-migration-page .migration-top-actions {
 }
 
 body.phl-migration-page .migration-top-actions .btn {
-  min-height: 36px;
-  padding: 0 10px;
-  font-size: 0.68rem;
+  min-height: 38px;
+  padding: 0 12px;
+  font-size: 0.72rem;
   letter-spacing: 0.06em;
 }
 
 body.phl-migration-page .migration-top-actions .icon-btn {
-  width: 36px;
-  height: 36px;
-  min-height: 36px;
+  width: 38px;
+  height: 38px;
+  min-height: 38px;
 }
 
 body.phl-migration-page .migration-signin-btn {
-  min-height: 36px;
-  padding: 0 10px;
-  font-size: 0.68rem;
+  min-height: 38px;
+  padding: 0 12px;
+  font-size: 0.72rem;
   letter-spacing: 0.08em;
-  max-width: 5.5rem;
+  max-width: none;
 }
 
 body.phl-migration-page.admin-mode .migration-clocks-compact .time-block {
   height: 36px;
-  padding: 0 7px;
-  gap: 5px;
+  padding: 0 8px;
+  gap: 6px;
 }
 
 body.phl-migration-page.admin-mode .migration-clocks-compact .time-block-kicker {
@@ -264,7 +281,7 @@ body.phl-migration-page.admin-mode .migration-clocks-compact .time-block-kicker 
 
 body.phl-migration-page.admin-mode .migration-clocks-compact #serverClockDisplay,
 body.phl-migration-page.admin-mode .migration-clocks-compact #localClockDisplay {
-  font-size: 0.92rem;
+  font-size: 0.95rem;
   min-width: 7ch;
   width: 7ch;
 }
@@ -276,7 +293,7 @@ body.phl-migration-page.admin-mode .migration-clocks-compact .time-block-badge {
 body.phl-migration-page.admin-mode .migration-top-actions .events-tab,
 body.phl-migration-page.admin-mode .migration-top-actions .roster-jump-btn {
   min-width: 0;
-  padding: 0 8px;
+  padding: 0 10px;
 }
 
 body.phl-migration-page.admin-mode .migration-command-save .save-status:not(.unsaved) {
@@ -284,7 +301,8 @@ body.phl-migration-page.admin-mode .migration-command-save .save-status:not(.uns
 }
 
 body.phl-migration-page.admin-mode .migration-signin-btn {
-  max-width: 4.25rem;
+  max-width: 5.5rem;
+  padding: 0 10px;
 }
 
 body.phl-migration-page .migration-workspace {
@@ -329,35 +347,20 @@ body.phl-migration-page .hero {
 
 @media (max-width: 900px) {
   body.phl-migration-page {
-    --phl-portal-topbar: 132px;
+    --phl-portal-topbar: 148px;
   }
 
-  body.phl-migration-page .migration-topbar-primary {
-    grid-template-columns: 1fr;
-    grid-template-areas:
-      "brand"
-      "util"
-      "toolbar";
+  body.phl-migration-page .migration-topbar-row {
+    flex-wrap: wrap;
   }
 
   body.phl-migration-page .migration-topbar-util {
-    justify-content: stretch;
-    flex-wrap: wrap;
+    width: 100%;
+    justify-content: space-between;
   }
 
   body.phl-migration-page .migration-clocks-compact {
     flex: 1 1 auto;
-    width: 100%;
-    justify-content: center;
-  }
-
-  body.phl-migration-page .migration-clocks-compact .time-block {
-    flex: 1;
-  }
-
-  body.phl-migration-page .migration-top-actions {
-    width: 100%;
-    justify-content: flex-end;
   }
 }
 
@@ -370,12 +373,22 @@ body.phl-migration-page .hero {
     position: static;
   }
 
-  body.phl-migration-page .migration-topbar-primary .brand strong {
-    font-size: 0.95rem;
+  body.phl-migration-page .migration-brand strong {
+    font-size: 0.92rem;
+  }
+
+  body.phl-migration-page .migration-brand small {
+    display: none;
   }
 
   body.phl-migration-page .migration-command-save .save-status {
     display: none;
+  }
+
+  body.phl-migration-page .portal-migration-subnav .migration-tab-btn {
+    min-width: 3.75rem;
+    padding: 0 8px;
+    font-size: 0.68rem;
   }
 }
 

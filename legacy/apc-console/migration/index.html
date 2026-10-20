@@ -12,8 +12,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Teko:wght@500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="../styles.css?v=162" />
   <link rel="stylesheet" href="migration.css?v=3" />
-  <link rel="stylesheet" href="migration-readability.css?v=1" />
-  <link rel="stylesheet" href="migration-portal.css?v=8" />
+  <link rel="stylesheet" href="migration-readability.css?v=2" />
+  <link rel="stylesheet" href="migration-portal.css?v=9" />
   <script src="../config.js?v=63"></script>
   <script>window.PHL_EMBED_MIGRATION = true;</script>
 </head>
@@ -39,12 +39,12 @@
   <div class="vignette" aria-hidden="true"></div>
 
   <header class="topbar migration-unified-header">
-    <div class="topbar-main migration-topbar-primary">
-      <a class="brand brand-home" href="/" title="Phoenix Legacy official alliance site">
+    <div class="migration-topbar-row">
+      <a class="brand brand-home migration-brand" href="../index.html" title="Back to APC Console">
         <div class="brand-mark"><img class="game-asset" src="../assets/phl-logo.png?v=2" alt="Phoenix Legacy logo" width="48" height="48" decoding="async"></div>
         <div class="brand-copy">
           <strong>Phoenix Legacy</strong>
-          <small>Migration workspace</small>
+          <small>Migration · HR Force</small>
         </div>
       </a>
 
@@ -53,23 +53,22 @@
           <div class="time-block time-block-server" title="Dark War server time (Asunción +1h)">
             <span class="time-block-kicker">Srv</span>
             <time id="serverClockDisplay" aria-live="polite">--:--:--</time>
-            <span class="time-block-badge" id="serverClockBadge">UTC-3</span>
           </div>
           <div class="time-block time-block-local" title="Your local time">
             <span class="time-block-kicker">Loc</span>
             <b id="localClockDisplay">--:--:--</b>
             <em class="time-block-badge" id="localOffsetBadge">auto</em>
-            <small class="time-block-zone" id="localZoneLabel">Detecting…</small>
+            <small class="time-block-zone" id="localZoneLabel" hidden>Detecting…</small>
           </div>
         </div>
 
         <div class="top-actions migration-top-actions">
           <button class="btn btn-ghost events-tab" id="eventsTabBtn" type="button" aria-expanded="false" aria-controls="eventsModal" aria-haspopup="dialog" title="Alliance events">
-            <span class="migration-action-short">Events</span>
+            Events
             <span class="events-tab-count" id="eventsTabCount" hidden>0</span>
           </button>
           <button class="btn btn-ghost admin-only roster-jump-btn" id="rosterJumpBtn" type="button" title="Back to APC console">
-            <span class="migration-action-short">Console</span>
+            Console
           </button>
           <button class="icon-btn active" id="bgAudioBtn" type="button" title="Toggle cinematic soundtrack" aria-label="Toggle cinematic soundtrack" aria-pressed="true">
             <svg class="bg-audio-icon-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3.23v17.54a1 1 0 0 1-1.64.77L7.56 17H4a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2h3.56l4.8-4.54A1 1 0 0 1 14 3.23Zm3.54 4.05a1 1 0 0 1 1.41 0 6.98 6.98 0 0 1 0 9.9 1 1 0 1 1-1.41-1.42 4.98 4.98 0 0 0 0-7.06 1 1 0 0 1 0-1.42Zm-2.83 2.83a1 1 0 0 1 1.41 0 2.98 2.98 0 0 1 0 4.22 1 1 0 1 1-1.41-1.42.98.98 0 0 0 0-1.38 1 1 0 0 1 0-1.42Z"/></svg>
@@ -81,9 +80,8 @@
           </button>
         </div>
       </div>
-
-      <div id="migrationToolbarMount" class="topbar-migration-toolbar" aria-label="Migration sections"></div>
     </div>
+    <div id="migrationToolbarMount" class="topbar-migration-toolbar" aria-label="Migration sections"></div>
   </header>
 
   <main class="shell migration-workspace">
@@ -179,6 +177,6 @@
     })();
   </script>
   <script src="../app.js?v=167" defer></script>
-  <script type="module" src="migration-ui.bundle.js?v=11"></script>
+  <script type="module" src="migration-ui.bundle.js?v=12"></script>
 </body>
 </html>

@@ -17410,7 +17410,7 @@ function Page() {
   ] });
   const saveHint = saving ? "Saving workspace\u2026" : dirty ? "Unsaved changes \u2014 save before leaving" : savedAt ? `Last saved ${niceDate(savedAt)}` : "Imported workspace snapshot";
   const saveStatusLabel = saving ? "Saving\u2026" : dirty ? "Unsaved" : savedAt ? "Saved" : "";
-  const portalToolbar = /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+  const portalToolbar = /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "migration-toolbar-inner", children: [
     /* @__PURE__ */ (0, import_jsx_runtime.jsx)("nav", { className: "portal-migration-subnav", children: navButtons }),
     /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "migration-command-save", children: [
       saveStatusLabel ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "save-status " + (dirty ? "unsaved" : ""), title: saveHint, children: [

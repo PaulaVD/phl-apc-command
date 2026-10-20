@@ -111,6 +111,11 @@ button {
   font-size: 1rem !important;
 }
 
+body.phl-migration-page .portal-migration-subnav .migration-tab-btn {
+  font-size: 0.78rem !important;
+  line-height: 1.2 !important;
+}
+
 .metric > strong {
   font-size: clamp(1.85rem, 3vw, 2.25rem) !important;
 }
