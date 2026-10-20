@@ -5,6 +5,7 @@ deploy-error.*
 
 .env
 .env.*
+private/
 .env.tiiny
 
 # Local Netlify folder
