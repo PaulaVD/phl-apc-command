@@ -5,6 +5,7 @@
   const STORAGE_KEY = "phl_apex_console_v7";
   const PREFS_KEY = "phl_prefs_v1";
   const ADMIN_SESSION_KEY = "phl_admin_session_v3";
+  const MIGRATION_PENDING_KEY = "phl_migration_redirect_v1";
   const LEGACY_ADMIN_SESSION_KEYS = ["phl_admin_session_v1", "phl_admin_session_v2"];
   const MEMBER_SESSION_KEY = "phl_member_session_v1";
   const OUTBOX_KEY = "phl_cloud_outbox_v1";
@@ -251,6 +252,7 @@
     eventsPopoverClose: document.getElementById("eventsPopoverClose"),
     eventsTabCount: document.getElementById("eventsTabCount"),
     rosterJumpBtn: document.getElementById("rosterJumpBtn"),
+    migrationCmdBtn: document.getElementById("migrationCmdBtn"),
     adminDashboard: document.getElementById("adminDashboard"),
     teScheduleList: document.getElementById("teScheduleList"),
     teScheduleEmpty: document.getElementById("teScheduleEmpty"),
@@ -352,6 +354,15 @@
     if (isAdmin) {
       startAdminRealtime({ claim: true });
     }
+    if (consumeMigrationRedirect()) {
+      window.location.href = "migration/";
+    } else if (wantsMigrationAuthFromUrl() && !isAdmin) {
+      sessionStorage.setItem(MIGRATION_PENDING_KEY, "1");
+      if (el.authModalLead) {
+        el.authModalLead.textContent = "Leadership access required for the private Migration Command workspace (R4/R5).";
+      }
+      openAuthModal();
+    }
   }
 
   function bindEvents() {
@@ -420,6 +431,7 @@
     });
     el.eventsPopoverClose?.addEventListener("click", () => setEventsPopoverOpen(false));
     el.rosterJumpBtn?.addEventListener("click", () => jumpToAdminRoster());
+    el.migrationCmdBtn?.addEventListener("click", () => openMigrationWorkspace());
     document.querySelectorAll("[data-admin-view]").forEach(btn => {
       btn.addEventListener("click", () => setAdminView(btn.dataset.adminView));
     });
@@ -3366,6 +3378,34 @@
     playSfx("error");
   }
 
+  function wantsMigrationAuthFromUrl() {
+    try {
+      return new URLSearchParams(window.location.search).get("auth") === "migration";
+    } catch {
+      return false;
+    }
+  }
+
+  function consumeMigrationRedirect() {
+    if (!isAdmin) return false;
+    const pending = sessionStorage.getItem(MIGRATION_PENDING_KEY) === "1" || wantsMigrationAuthFromUrl();
+    if (!pending) return false;
+    sessionStorage.removeItem(MIGRATION_PENDING_KEY);
+    return true;
+  }
+
+  function openMigrationWorkspace() {
+    if (!isAdmin) {
+      sessionStorage.setItem(MIGRATION_PENDING_KEY, "1");
+      if (el.authModalLead) {
+        el.authModalLead.textContent = "Leadership access required for the private Migration Command workspace (R4/R5).";
+      }
+      openAuthModal();
+      return;
+    }
+    window.location.href = "migration/";
+  }
+
   async function completeAdminLogin(account, code) {
     memberSession = null;
     isMember = false;
@@ -3389,6 +3429,10 @@
     window.requestAnimationFrame(() => jumpToAdminRoster({ silent: true }));
     toast(`Welcome, <strong>${escapeHtml(account.name)}</strong>.`, "success");
     playSfx("success");
+    if (sessionStorage.getItem(MIGRATION_PENDING_KEY) === "1" || wantsMigrationAuthFromUrl()) {
+      sessionStorage.removeItem(MIGRATION_PENDING_KEY);
+      window.location.href = "migration/";
+    }
   }
 
   async function completeMemberLogin(member, code) {
@@ -3582,7 +3626,8 @@
       .map(admin => ({
         id: String(admin.id || admin.name).toLowerCase(),
         name: String(admin.name),
-        hash: String(admin.hash).toLowerCase()
+        hash: String(admin.hash).toLowerCase(),
+        officerRank: String(admin.officerRank || "R4").toUpperCase()
       }));
   }
 

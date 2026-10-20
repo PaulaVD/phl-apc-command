@@ -13,3 +13,10 @@ deploy-error.*
 # Local screenshots / temp
 .tmp-shots/
 *.log
+
+# Migration Command (Vinext)
+apps/migration-command/node_modules/
+apps/migration-command/.wrangler/
+apps/migration-command/dist/
+apps/migration-command/.next/
+apps/migration-command/tsconfig.tsbuildinfo

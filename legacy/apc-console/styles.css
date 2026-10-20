@@ -1289,6 +1289,7 @@ button.row-val.field-tap.is-muted{color:var(--soft);font-weight:700}
   font-size:.78rem;letter-spacing:.1em
 }
 body.admin-mode .roster-jump-btn.admin-only{display:inline-flex!important}
+body.admin-mode #migrationCmdBtn.admin-only{display:inline-flex!important}
 .events-modal-card{
   width:min(380px,100%);
   max-height:min(78vh,560px);
