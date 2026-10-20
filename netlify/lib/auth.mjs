@@ -10,7 +10,7 @@ export const ADMIN_ACCOUNTS = [
   {
     id: "kittyklawzz",
     name: "KittyKlawzz",
-    hash: "c366e897148bb26d4d5b0900f0c0e57adf9f32008e2aaf28a6e1a5b751785f6c",
+    hash: "033f517b5f88a0e86063a99ca8e74b08aeda680825d936b67430b2b14950ecbd",
     officerRank: "R5"
   },
   {
