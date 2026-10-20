@@ -17406,14 +17406,16 @@ function Page() {
       saving ? "Saving" : "Save workspace"
     ] })
   ] });
+  const saveHint = saving ? "Saving workspace\u2026" : dirty ? "Unsaved changes \u2014 save before leaving" : savedAt ? `Last saved ${niceDate(savedAt)}` : "Imported workspace snapshot";
+  const saveStatusLabel = saving ? "Saving\u2026" : dirty ? "Unsaved" : savedAt ? "Saved" : "";
   const portalToolbar = /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
     /* @__PURE__ */ (0, import_jsx_runtime.jsx)("nav", { className: "portal-migration-subnav", children: navButtons }),
     /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "migration-command-save", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "save-status " + (dirty ? "unsaved" : ""), children: [
+      saveStatusLabel ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "save-status " + (dirty ? "unsaved" : ""), title: saveHint, children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "dot" }),
-        saving ? "Saving\u2026" : dirty ? "Unsaved" : savedAt ? "Saved" : "Snapshot"
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-primary migration-save-btn", type: "button", onClick: save, disabled: saving, children: saving ? "Saving\u2026" : "Save" })
+        saveStatusLabel
+      ] }) : null,
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-primary migration-save-btn" + (dirty ? " is-dirty" : ""), type: "button", onClick: save, disabled: saving, title: saveHint, children: saving ? "\u2026" : "Save" })
     ] })
   ] });
   return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "app" + (embed ? " embed" : ""), children: [

@@ -13,7 +13,7 @@
   <link rel="stylesheet" href="../styles.css?v=162" />
   <link rel="stylesheet" href="migration.css?v=3" />
   <link rel="stylesheet" href="migration-readability.css?v=1" />
-  <link rel="stylesheet" href="migration-portal.css?v=5" />
+  <link rel="stylesheet" href="migration-portal.css?v=6" />
   <script src="../config.js?v=62"></script>
   <script>window.PHL_EMBED_MIGRATION = true;</script>
 </head>
@@ -48,7 +48,9 @@
         </div>
       </a>
 
-      <div class="top-clocks" id="serverClockPanel" aria-label="Dark War server time">
+      <div id="migrationToolbarMount" class="topbar-migration-toolbar" aria-label="Migration sections"></div>
+
+      <div class="top-clocks migration-clocks-compact" id="serverClockPanel" aria-label="Dark War server time">
         <div class="time-block time-block-server" title="Dark War server time (Asunción +1h)">
           <span class="time-block-kicker">Server</span>
           <time id="serverClockDisplay" aria-live="polite">--:--:--</time>
@@ -80,7 +82,6 @@
         </button>
       </div>
     </div>
-    <div id="migrationToolbarMount" class="topbar-migration-toolbar" aria-label="Migration sections"></div>
   </header>
 
   <main class="shell migration-workspace">
@@ -157,6 +158,6 @@
 
   <script src="../serverClock.js?v=35"></script>
   <script src="../app.js?v=164" defer></script>
-  <script type="module" src="migration-ui.bundle.js?v=8"></script>
+  <script type="module" src="migration-ui.bundle.js?v=9"></script>
 </body>
 </html>

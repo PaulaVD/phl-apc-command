@@ -1,7 +1,7 @@
-/* Single unified header for Migration (portal chrome + workspace tabs) */
+/* Unified single-row Migration header (tabs live in the portal topbar) */
 
 body.phl-migration-page {
-  --phl-portal-topbar: 118px;
+  --phl-portal-topbar: 76px;
   background: transparent;
 }
 
@@ -9,81 +9,62 @@ body.phl-migration-page .migration-unified-header {
   position: sticky;
   top: 0;
   z-index: 45;
-  padding: 0;
+  padding: 8px clamp(10px, 1.2vw, 18px);
   gap: 0;
-  overflow: visible;
 }
 
 body.phl-migration-page .migration-topbar-primary {
-  display: grid;
-  grid-template-columns: minmax(0, auto) minmax(0, 1fr) minmax(0, auto);
-  grid-template-areas: "brand clocks actions";
+  display: flex;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 12px 16px;
-  padding: 10px clamp(12px, 1.4vw, 20px);
+  gap: 10px 12px;
   width: 100%;
-  overflow: visible;
+  min-width: 0;
+  padding: 0;
 }
 
 body.phl-migration-page .migration-topbar-primary .brand {
-  grid-area: brand;
+  flex: 0 0 auto;
+  max-width: 11rem;
+}
+
+body.phl-migration-page .migration-topbar-primary .brand-mark {
+  width: 40px;
+  height: 40px;
+}
+
+body.phl-migration-page .migration-topbar-primary .brand strong {
+  font-size: 1.05rem;
 }
 
 body.phl-migration-page .migration-topbar-primary .brand small {
-  color: var(--gold);
-  font-size: 0.72rem;
-  max-width: 14ch;
-}
-
-body.phl-migration-page .migration-topbar-primary .top-clocks {
-  grid-area: clocks;
-  justify-self: center;
-}
-
-body.phl-migration-page .migration-topbar-primary .top-actions {
-  grid-area: actions;
-  margin-left: 0;
-  justify-self: end;
-  gap: 8px;
-}
-
-body.phl-migration-page .migration-topbar-primary .top-actions .btn {
-  min-height: 44px;
-  padding: 0 12px;
-  font-size: 0.76rem;
-}
-
-body.phl-migration-page .migration-topbar-primary .icon-btn {
-  width: 44px;
-  height: 44px;
-}
-
-body.phl-migration-page .migration-topbar-primary .btn-signin {
-  max-width: 10rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: none;
 }
 
 body.phl-migration-page .topbar-migration-toolbar {
   display: flex;
   align-items: center;
-  gap: 12px;
-  min-height: 48px;
-  padding: 6px clamp(12px, 1.4vw, 20px) 10px;
-  border-top: 1px solid rgba(255, 128, 69, 0.16);
-  background: rgba(0, 0, 0, 0.22);
+  gap: 10px;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
 }
 
 body.phl-migration-page .portal-migration-subnav {
   display: flex;
   flex: 1 1 auto;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
   min-width: 0;
   overflow-x: auto;
   flex-wrap: nowrap;
   scrollbar-width: thin;
+  padding: 2px 4px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 128, 69, 0.12);
 }
 
 body.phl-migration-page .portal-migration-subnav button {
@@ -92,16 +73,16 @@ body.phl-migration-page .portal-migration-subnav button {
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  min-height: 36px;
-  padding: 0 12px;
-  border-radius: 10px;
+  gap: 5px;
+  min-height: 34px;
+  padding: 0 10px;
+  border-radius: 9px;
   border: 1px solid transparent;
   color: var(--muted);
   font-family: var(--font, Rajdhani, system-ui, sans-serif);
-  font-size: 0.74rem;
+  font-size: 0.7rem;
   font-weight: 800;
-  letter-spacing: 0.11em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   flex-shrink: 0;
 }
@@ -111,11 +92,12 @@ body.phl-migration-page .portal-migration-subnav button svg {
 }
 
 body.phl-migration-page .portal-migration-subnav button small {
-  padding: 1px 6px;
+  padding: 0 5px;
   border-radius: 999px;
-  background: rgba(255, 122, 70, 0.14);
+  background: rgba(255, 122, 70, 0.12);
   color: var(--gold);
-  font-size: 0.62rem;
+  font-size: 0.58rem;
+  line-height: 1.5;
 }
 
 body.phl-migration-page .portal-migration-subnav button:hover {
@@ -124,47 +106,108 @@ body.phl-migration-page .portal-migration-subnav button:hover {
 }
 
 body.phl-migration-page .portal-migration-subnav button.active {
-  color: var(--gold);
-  border-color: rgba(255, 196, 128, 0.4);
-  background: rgba(255, 122, 70, 0.12);
+  color: #2a1208;
+  border-color: rgba(255, 189, 126, 0.45);
+  background: linear-gradient(180deg, #f8d297 0%, #ff9a57 58%, #da4e28 100%);
+}
+
+body.phl-migration-page .portal-migration-subnav button.active small {
+  background: rgba(0, 0, 0, 0.22);
+  color: #fff;
 }
 
 body.phl-migration-page .migration-command-save {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex: 0 0 auto;
-  padding-left: 12px;
-  border-left: 1px solid rgba(255, 128, 69, 0.14);
 }
 
 body.phl-migration-page .migration-command-save .save-status {
-  font-size: 0.65rem;
-  font-weight: 700;
+  font-size: 0.62rem;
+  font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--muted);
   white-space: nowrap;
 }
 
-body.phl-migration-page .migration-command-save .save-status .dot {
-  width: 7px;
-  height: 7px;
-  margin-right: 4px;
+body.phl-migration-page .migration-command-save .save-status.unsaved {
+  color: var(--gold);
 }
 
 body.phl-migration-page .migration-save-btn {
-  min-height: 38px !important;
-  padding: 0 14px !important;
-  border-radius: 12px !important;
+  min-height: 34px !important;
+  min-width: 4.25rem !important;
+  padding: 0 12px !important;
+  border-radius: 10px !important;
   font-size: 0.72rem !important;
-  letter-spacing: 0.1em !important;
+  letter-spacing: 0.12em !important;
+}
+
+body.phl-migration-page .migration-save-btn.is-dirty {
+  box-shadow: 0 0 0 2px rgba(240, 186, 114, 0.35);
+}
+
+body.phl-migration-page .migration-clocks-compact {
+  flex: 0 0 auto;
+  gap: 6px;
+}
+
+body.phl-migration-page .migration-clocks-compact .time-block {
+  height: 40px;
+  padding: 0 8px;
+  gap: 6px;
+  min-width: 0 !important;
+}
+
+body.phl-migration-page .migration-clocks-compact .time-block-kicker {
+  font-size: 0.55rem;
+}
+
+body.phl-migration-page .migration-clocks-compact .time-block-server time,
+body.phl-migration-page .migration-clocks-compact .time-block-local b,
+body.phl-migration-page .migration-clocks-compact #serverClockDisplay,
+body.phl-migration-page .migration-clocks-compact #localClockDisplay {
+  font-size: 1.05rem;
+  min-width: 7.75ch;
+  width: 7.75ch;
+}
+
+body.phl-migration-page .migration-clocks-compact .time-block-badge {
+  min-width: 0;
+  padding: 0 6px;
+  font-size: 0.52rem;
+}
+
+body.phl-migration-page .migration-topbar-primary .top-actions {
+  flex: 0 0 auto;
+  margin-left: 0;
+  gap: 6px;
+}
+
+body.phl-migration-page .migration-topbar-primary .top-actions .btn {
+  min-height: 40px;
+  padding: 0 10px;
+  font-size: 0.72rem;
+}
+
+body.phl-migration-page .migration-topbar-primary .icon-btn {
+  width: 40px;
+  height: 40px;
+}
+
+body.phl-migration-page .migration-topbar-primary .btn-signin {
+  max-width: 9rem;
+  min-height: 40px;
+  padding: 0 10px;
+  font-size: 0.68rem;
 }
 
 body.phl-migration-page .migration-workspace {
-  width: min(1680px, calc(100% - 16px));
+  width: min(1680px, calc(100% - 12px));
   margin: 0 auto;
-  padding: 12px 0 24px;
+  padding: 10px 0 22px;
 }
 
 body.phl-migration-page .app {
@@ -182,8 +225,17 @@ body.phl-migration-page .app .main.embed-main {
   background: transparent !important;
 }
 
-body.phl-migration-page .app .migration-command-bar {
-  display: none !important;
+body.phl-migration-page .app.embed .page-heading {
+  margin-top: 0;
+  margin-bottom: 18px;
+}
+
+body.phl-migration-page .app.embed .page-heading .eyebrow {
+  display: none;
+}
+
+body.phl-migration-page .app.embed .page-heading h1 {
+  font-size: clamp(1.65rem, 1.2rem + 1.2vw, 2.15rem);
 }
 
 body.phl-migration-page .panel,
@@ -192,49 +244,54 @@ body.phl-migration-page .hero {
   background: linear-gradient(180deg, rgba(22, 9, 9, 0.92), rgba(29, 13, 12, 0.9)) !important;
 }
 
-@media (max-width: 960px) {
+@media (max-width: 1180px) {
   body.phl-migration-page {
-    --phl-portal-topbar: 152px;
+    --phl-portal-topbar: 124px;
   }
 
   body.phl-migration-page .migration-topbar-primary {
-    grid-template-columns: 1fr auto;
-    grid-template-areas:
-      "brand actions"
-      "clocks clocks";
+    flex-wrap: wrap;
   }
 
-  body.phl-migration-page .migration-topbar-primary .top-clocks {
-    width: 100%;
-    justify-self: stretch;
+  body.phl-migration-page .migration-topbar-primary .brand {
+    order: 1;
   }
 
-  body.phl-migration-page .migration-topbar-primary .top-clocks .time-block {
-    flex: 1;
-    min-width: 0;
+  body.phl-migration-page .migration-topbar-primary .top-actions {
+    order: 2;
+    margin-left: auto;
   }
 
   body.phl-migration-page .topbar-migration-toolbar {
-    flex-wrap: wrap;
-    gap: 8px;
+    order: 3;
+    flex: 1 0 100%;
   }
 
-  body.phl-migration-page .portal-migration-subnav {
-    width: 100%;
+  body.phl-migration-page .migration-clocks-compact {
+    order: 4;
+    flex: 1 0 100%;
+    justify-content: center;
   }
 
-  body.phl-migration-page .migration-command-save {
-    width: 100%;
-    justify-content: flex-end;
-    border-left: 0;
-    padding-left: 0;
-    padding-top: 4px;
-    border-top: 1px solid rgba(255, 128, 69, 0.1);
+  body.phl-migration-page .migration-clocks-compact .time-block {
+    flex: 1;
   }
 }
 
 @media (max-width: 680px) {
+  body.phl-migration-page {
+    --phl-portal-topbar: auto;
+  }
+
   body.phl-migration-page .migration-unified-header {
     position: static;
+  }
+
+  body.phl-migration-page .migration-topbar-primary .brand strong {
+    font-size: 0.95rem;
+  }
+
+  body.phl-migration-page .migration-command-save .save-status {
+    display: none;
   }
 }
