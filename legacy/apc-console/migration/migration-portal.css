@@ -13,22 +13,14 @@ body.phl-migration-page .migration-header-stack {
   border-bottom: 1px solid var(--line);
   background: rgba(10, 4, 4, 0.94);
   backdrop-filter: blur(16px);
-  overflow: hidden;
+  overflow: visible;
+  max-height: none;
+  height: auto;
 }
 
-body.phl-migration-page .migration-unified-header {
-  position: static;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0;
-  padding: 0;
-  margin: 0;
-  border: 0;
-  background: transparent;
-  overflow: visible;
-  height: auto !important;
-  min-height: 0 !important;
+body.phl-migration-page header.migration-chrome-bar {
+  display: block;
+  width: 100%;
 }
 
 body.phl-migration-page .migration-topbar-row {
