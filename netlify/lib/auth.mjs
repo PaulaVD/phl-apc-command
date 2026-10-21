@@ -16,7 +16,7 @@ export const ADMIN_ACCOUNTS = [
   {
     id: "fisherman5",
     name: "Fisherman5",
-    hash: "3330b62996b5f3a8925f3c0af1a79752ab10fb94b45ab46d69b958a9a15268e2",
+    hash: "670143be77813baeba0d430f98dbcd29c5adb699e5807f8f93f077080c993fc9",
     officerRank: "R4"
   },
   {
