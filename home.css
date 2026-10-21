@@ -1,22 +1,39 @@
-/* Phoenix Legacy official home — minimal layout on legacy/apc-console/styles.css */
+/* Phoenix Legacy welcome — centered hero in viewport */
 
-.home-shell {
+body.home-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+body.home-page .home-topbar {
+  flex: 0 0 auto;
+}
+
+body.home-page .home-shell {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: min(720px, calc(100% - 24px));
-  padding-bottom: 40px;
-  display: grid;
-  gap: 16px;
+  margin: 0 auto;
+  padding: 20px 0 32px;
+  box-sizing: border-box;
 }
 
 .home-hero {
+  width: 100%;
   text-align: center;
-  padding: 4px 16px 8px;
+  padding: 0;
+  margin: 0;
 }
 
 .home-hero .panel-head {
   display: grid;
   justify-items: center;
   gap: 10px;
-  padding: 28px 20px 0;
+  padding: 32px 24px 0;
 }
 
 .home-hero .panel-head h1 {
@@ -37,19 +54,11 @@
 }
 
 .home-lead {
-  max-width: 42ch;
+  max-width: 40ch;
   margin: 0 auto;
   font-size: var(--body-size);
   line-height: 1.55;
   color: var(--text);
-}
-
-.home-signin-note {
-  max-width: 46ch;
-  margin: 0 auto;
-  font-size: 0.9375rem;
-  line-height: 1.55;
-  color: var(--muted);
 }
 
 .home-hero-actions {
@@ -57,7 +66,7 @@
   flex-wrap: wrap;
   justify-content: center;
   gap: 12px;
-  padding: 22px 20px 28px;
+  padding: 24px 24px 8px;
 }
 
 a.btn {
@@ -65,10 +74,13 @@ a.btn {
 }
 
 .home-footer {
+  margin: 0;
+  padding: 16px 24px 28px;
   text-align: center;
-  color: var(--muted);
-  font-size: 0.9375rem;
-  padding: 8px;
+  color: var(--soft);
+  font-size: 0.8125rem;
+  letter-spacing: 0.06em;
+  border-top: 1px solid rgba(255, 128, 69, 0.12);
 }
 
 .home-topbar .top-actions {
@@ -76,12 +88,26 @@ a.btn {
 }
 
 @media (max-width: 900px) {
+  body.home-page .home-shell {
+    align-items: center;
+    padding-top: 12px;
+    padding-bottom: 24px;
+  }
+
   .home-topbar .topbar-main {
     flex-wrap: wrap;
   }
+
   .home-topbar .top-actions {
     width: 100%;
     margin-left: 0;
     justify-content: flex-end;
+  }
+}
+
+@media (max-height: 640px) {
+  body.home-page .home-shell {
+    align-items: flex-start;
+    padding-top: 8px;
   }
 }
