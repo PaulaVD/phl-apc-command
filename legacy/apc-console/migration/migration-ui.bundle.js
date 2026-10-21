@@ -17440,7 +17440,6 @@ function Page() {
       ] })
     ] }),
     /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "main" + (embed ? " embed-main" : ""), children: [
-      embed && sectionBar,
       !embed && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("header", { className: "topbar", children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "crumb", children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "icon mobile-toggle", type: "button", "aria-label": "Toggle menu", onClick: () => setMobile(!mobile), children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Menu, { size: 20 }) }),
@@ -17455,7 +17454,8 @@ function Page() {
         error,
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { onClick: () => setError(""), "aria-label": "Dismiss error", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(X, { size: 16 }) })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("main", { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("main", { className: embed ? "migration-page-main" : void 0, children: [
+        embed && sectionBar,
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "page-heading", children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "eyebrow", children: [

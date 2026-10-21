@@ -31,6 +31,14 @@ body.phl-migration-page .migration-portal-topbar #migrationCmdBtn.is-current {
 }
 
 body.phl-migration-page .app.embed .main.embed-main {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+}
+
+body.phl-migration-page .app.embed .main.embed-main > main.migration-page-main {
   width: min(1510px, calc(100% - 24px));
   max-width: 1510px;
   margin: 0 auto;
@@ -38,20 +46,11 @@ body.phl-migration-page .app.embed .main.embed-main {
   box-sizing: border-box;
 }
 
-body.phl-migration-page .app.embed .main.embed-main > main {
-  max-width: none;
-  margin: 0;
-  padding: 0;
-}
-
 body.phl-migration-page .app.embed .migration-section-bar {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
+  display: block;
   width: 100%;
   margin: 0 0 18px;
   padding: 0;
-  min-height: 0;
   overflow: visible;
 }
 
@@ -241,9 +240,9 @@ body.phl-migration-page.admin-mode .migration-command-save .save-status:not(.uns
 }
 
 body.phl-migration-page .migration-workspace {
-  width: min(1680px, calc(100% - 12px));
+  width: min(1680px, calc(100% - 24px));
   margin: 0 auto;
-  padding: 10px 0 22px;
+  padding: 16px 0 54px;
 }
 
 body.phl-migration-page .app {
@@ -254,8 +253,7 @@ body.phl-migration-page .app .sidebar {
   display: none !important;
 }
 
-body.phl-migration-page .app .main,
-body.phl-migration-page .app .main.embed-main {
+body.phl-migration-page .app .main:not(.embed-main) {
   margin-left: 0 !important;
   width: 100%;
   background: transparent !important;
