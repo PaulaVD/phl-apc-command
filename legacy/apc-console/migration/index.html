@@ -11,9 +11,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Teko:wght@500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="../styles.css?v=162" />
-  <link rel="stylesheet" href="migration.css?v=3" />
+  <link rel="stylesheet" href="migration.css?v=4" />
   <link rel="stylesheet" href="migration-readability.css?v=2" />
-  <link rel="stylesheet" href="migration-portal.css?v=9" />
+  <link rel="stylesheet" href="migration-portal.css?v=10" />
   <script src="../config.js?v=63"></script>
   <script>window.PHL_EMBED_MIGRATION = true;</script>
 </head>
@@ -38,6 +38,7 @@
   <div class="noise" aria-hidden="true"></div>
   <div class="vignette" aria-hidden="true"></div>
 
+  <div class="migration-header-stack">
   <header class="topbar migration-unified-header">
     <div class="migration-topbar-row">
       <a class="brand brand-home migration-brand" href="../index.html" title="Back to APC Console">
@@ -57,7 +58,7 @@
           <div class="time-block time-block-local" title="Your local time">
             <span class="time-block-kicker">Loc</span>
             <b id="localClockDisplay">--:--:--</b>
-            <em class="time-block-badge" id="localOffsetBadge">auto</em>
+            <em class="time-block-badge" id="localOffsetBadge" hidden>auto</em>
             <small class="time-block-zone" id="localZoneLabel" hidden>Detecting…</small>
           </div>
         </div>
@@ -67,9 +68,7 @@
             Events
             <span class="events-tab-count" id="eventsTabCount" hidden>0</span>
           </button>
-          <button class="btn btn-ghost admin-only roster-jump-btn" id="rosterJumpBtn" type="button" title="Back to APC console">
-            Console
-          </button>
+          <a class="btn btn-ghost migration-back-console" href="../index.html" title="Back to APC Console">Console</a>
           <button class="icon-btn active" id="bgAudioBtn" type="button" title="Toggle cinematic soundtrack" aria-label="Toggle cinematic soundtrack" aria-pressed="true">
             <svg class="bg-audio-icon-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3.23v17.54a1 1 0 0 1-1.64.77L7.56 17H4a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2h3.56l4.8-4.54A1 1 0 0 1 14 3.23Zm3.54 4.05a1 1 0 0 1 1.41 0 6.98 6.98 0 0 1 0 9.9 1 1 0 1 1-1.41-1.42 4.98 4.98 0 0 0 0-7.06 1 1 0 0 1 0-1.42Zm-2.83 2.83a1 1 0 0 1 1.41 0 2.98 2.98 0 0 1 0 4.22 1 1 0 1 1-1.41-1.42.98.98 0 0 0 0-1.38 1 1 0 0 1 0-1.42Z"/></svg>
             <svg class="bg-audio-icon-off" viewBox="0 0 24 24" aria-hidden="true" hidden><path d="M4.27 3 3 4.27 7.73 9H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h3.56l4.8 4.54A1 1 0 0 0 14 20.77v-6.5l4.93 4.93 1.27-1.27L4.27 3ZM14 3.23a1 1 0 0 0-1.64-.77l-2.1 2 3.74 3.74V3.23Z"/></svg>
@@ -81,8 +80,9 @@
         </div>
       </div>
     </div>
-    <div id="migrationToolbarMount" class="topbar-migration-toolbar" aria-label="Migration sections"></div>
   </header>
+  <div id="migrationToolbarMount" class="topbar-migration-toolbar" aria-label="Migration sections"></div>
+  </div>
 
   <main class="shell migration-workspace">
     <div id="root"></div>
