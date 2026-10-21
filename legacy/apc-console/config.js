@@ -10,7 +10,7 @@ window.PHL_CONFIG = {
   allianceId: "phl",
   admins: [
     { id: "kittyklawzz", name: "KittyKlawzz", hash: "033f517b5f88a0e86063a99ca8e74b08aeda680825d936b67430b2b14950ecbd", officerRank: "R5" },
-    { id: "fisherman5", name: "Fisherman5", hash: "3330b62996b5f3a8925f3c0af1a79752ab10fb94b45ab46d69b958a9a15268e2", officerRank: "R4" },
+    { id: "fisherman5", name: "Fisherman5", hash: "670143be77813baeba0d430f98dbcd29c5adb699e5807f8f93f077080c993fc9", officerRank: "R4" },
     { id: "hellbel", name: "HellBel", hash: "ac2db96b45fb85c95b30f1b532f958e7d70b1919712334fb03488bbcb6984aa8", officerRank: "R4" },
     { id: "foxie", name: "Fôxie", hash: "4161421009e6cc7023295c26ba409ff5ca49f78a3f3d875d79357fbcd55fa7c8", officerRank: "R4" },
     { id: "sweetniha", name: "sweet niha", hash: "2e181a410a58043d2839e68dd0a8dfd19e6c6c85c5cdd0a280617125998ee9ff", officerRank: "R4" },
