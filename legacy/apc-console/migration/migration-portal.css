@@ -30,24 +30,38 @@ body.phl-migration-page .migration-portal-topbar #migrationCmdBtn.is-current {
   background: rgba(255, 122, 70, 0.12);
 }
 
+body.phl-migration-page .app.embed .main.embed-main {
+  width: min(1510px, calc(100% - 24px));
+  max-width: 1510px;
+  margin: 0 auto;
+  padding: 20px 0 0;
+  box-sizing: border-box;
+}
+
+body.phl-migration-page .app.embed .main.embed-main > main {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+
 body.phl-migration-page .app.embed .migration-section-bar {
   display: flex;
   align-items: center;
-  gap: 12px;
+  justify-content: flex-start;
   width: 100%;
-  margin: 0 0 16px;
+  margin: 0 0 18px;
   padding: 0;
-  min-height: 44px;
-  max-height: none;
+  min-height: 0;
   overflow: visible;
 }
 
 body.phl-migration-page .portal-migration-subnav {
-  display: flex;
-  flex: 1 1 auto;
+  display: inline-flex;
+  flex: 0 1 auto;
   align-items: center;
   gap: 4px;
-  min-width: 0;
+  width: auto;
+  max-width: 100%;
   max-height: none;
   overflow-x: auto;
   overflow-y: hidden;

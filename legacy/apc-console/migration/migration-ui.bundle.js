@@ -17404,17 +17404,8 @@ function Page() {
     ] })
   ] });
   const saveHint = saving ? "Saving workspace\u2026" : dirty ? "Unsaved changes \u2014 save before leaving" : savedAt ? `Last saved ${niceDate(savedAt)}` : "Imported workspace snapshot";
-  const saveStatusLabel = saving ? "Saving\u2026" : dirty ? "Unsaved" : savedAt ? "Saved" : "";
-  const sectionBar = /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "migration-section-bar", role: "navigation", "aria-label": "Migration sections", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("nav", { className: "portal-migration-subnav", children: navButtons }),
-    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "migration-command-save", children: [
-      saveStatusLabel ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "save-status " + (dirty ? "unsaved" : ""), title: saveHint, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "dot" }),
-        saveStatusLabel
-      ] }) : null,
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-primary migration-save-btn" + (dirty ? " is-dirty" : ""), type: "button", onClick: save, disabled: saving, title: saveHint, children: saving ? "\u2026" : "Save" })
-    ] })
-  ] });
+  const sectionBar = /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "migration-section-bar", role: "navigation", "aria-label": "Migration sections", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("nav", { className: "portal-migration-subnav", children: navButtons }) });
+  const embedSaveAction = embed && (dirty || saving) ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "btn btn-primary migration-save-btn" + (dirty ? " is-dirty" : ""), type: "button", onClick: save, disabled: saving, title: saveHint, children: saving ? "Saving\u2026" : "Save changes" }) : null;
   return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "app" + (embed ? " embed" : ""), children: [
     !embed && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("aside", { className: mobile ? "sidebar visible" : "sidebar", children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("a", { className: "brand", href: "../index.html", title: "Back to PH-L alliance portal", children: [
@@ -17474,26 +17465,29 @@ function Page() {
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h1", { children: tab === "Overview" ? "One alliance. One next chapter." : tab === "Roster" ? "Know your people." : tab === "Diplomacy" ? "Find the right home." : tab === "Deployment" ? "Plan every move." : tab === "Tasks" ? "Keep the operation moving." : "Your operation, your rules." }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { children: tab === "Overview" ? "A clear view of your migration, from first contact to the final jump." : tab === "Roster" ? "All members in one place. Priority is not a commitment to migrate." : tab === "Diplomacy" ? "Compare destinations, track conversations and verify the conditions." : tab === "Deployment" ? "Model capacity, monitor invitations and check individual readiness." : tab === "Tasks" ? "A shared plan starts with a clear owner and a next action." : "Manage event assumptions, dates and data backups." })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "heading-actions", children: tab === "Roster" ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", { onClick: exportCSV, children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Download, { size: 16 }),
-              "Export CSV"
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", { className: "primary", onClick: () => setPlayer(newPlayer()), children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "heading-actions", children: [
+            embedSaveAction,
+            tab === "Roster" ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", { onClick: exportCSV, children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Download, { size: 16 }),
+                "Export CSV"
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", { className: "primary", onClick: () => setPlayer(newPlayer()), children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Plus, { size: 16 }),
+                "Add player"
+              ] })
+            ] }) : tab === "Diplomacy" ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", { className: "primary", onClick: addState, children: [
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Plus, { size: 16 }),
-              "Add player"
+              "Add state"
+            ] }) : tab === "Tasks" ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", { className: "primary", onClick: () => setTaskForm(true), children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Plus, { size: 16 }),
+              "New task"
+            ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Tag, { tone: "teal", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "dot" }),
+              data.settings.phase.toUpperCase(),
+              " PHASE"
             ] })
-          ] }) : tab === "Diplomacy" ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", { className: "primary", onClick: addState, children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Plus, { size: 16 }),
-            "Add state"
-          ] }) : tab === "Tasks" ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", { className: "primary", onClick: () => setTaskForm(true), children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Plus, { size: 16 }),
-            "New task"
-          ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Tag, { tone: "teal", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "dot" }),
-            data.settings.phase.toUpperCase(),
-            " PHASE"
-          ] }) })
+          ] })
         ] }),
         tab === "Overview" && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { className: "hero", children: [
