@@ -335,6 +335,44 @@ body.phl-migration-page #root .app .hero {
   transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
+/* Dossiers (player / state) — centered modal, not right drawer */
+body.phl-migration-page #root .overlay {
+  justify-content: center;
+  align-items: center;
+  padding: max(16px, env(safe-area-inset-top, 0px)) 16px max(16px, env(safe-area-inset-bottom, 0px));
+  box-sizing: border-box;
+}
+
+body.phl-migration-page #root .overlay .drawer {
+  width: min(720px, calc(100vw - 32px));
+  max-width: 720px;
+  height: auto;
+  max-height: min(90dvh, 920px);
+  margin: 0;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 128, 69, 0.22);
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.55);
+  overflow: hidden;
+}
+
+body.phl-migration-page #root .overlay .drawer .drawer-body {
+  max-height: calc(min(90dvh, 920px) - 140px);
+}
+
+@media (max-width: 680px) {
+  body.phl-migration-page #root .overlay {
+    padding: 12px;
+    align-items: flex-end;
+  }
+
+  body.phl-migration-page #root .overlay .drawer {
+    width: 100%;
+    max-width: none;
+    max-height: 92dvh;
+    border-radius: 14px 14px 0 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   body.phl-migration-page .portal-migration-subnav .migration-tab-btn,
   body.phl-migration-page .migration-save-btn,
