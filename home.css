@@ -1,29 +1,35 @@
-/* Phoenix Legacy welcome — single centered card, no duplicate chrome */
+/* Phoenix Legacy welcome — card centered in viewport */
 
 body.home-page {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-rows: auto 1fr;
   min-height: 100vh;
   min-height: 100dvh;
+  margin: 0;
+  overflow-x: hidden;
 }
 
 body.home-page .home-topbar {
-  flex: 0 0 auto;
+  width: 100%;
+}
+
+body.home-page .home-topbar .topbar-main {
+  width: min(1680px, calc(100% - 24px));
+  margin: 0 auto;
 }
 
 body.home-page .home-shell {
-  flex: 1 1 auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: min(520px, calc(100% - 32px));
-  margin: 0 auto;
-  padding: 16px 0 max(28px, env(safe-area-inset-bottom, 0px));
+  display: grid;
+  place-items: center;
+  width: 100%;
+  margin: 0;
+  padding: 20px 16px max(32px, env(safe-area-inset-bottom, 0px));
   box-sizing: border-box;
 }
 
 .home-hero {
-  width: 100%;
+  width: min(520px, 100%);
+  margin: 0 auto;
   text-align: center;
   padding: 36px 28px 32px;
   border-radius: var(--radius, 28px);
@@ -31,6 +37,7 @@ body.home-page .home-shell {
   background: linear-gradient(180deg, rgba(22, 9, 9, 0.92), rgba(29, 13, 12, 0.9));
   box-shadow: var(--shadow);
   backdrop-filter: blur(12px);
+  box-sizing: border-box;
 }
 
 .home-eyebrow {
@@ -40,10 +47,11 @@ body.home-page .home-shell {
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--gold);
+  text-align: center;
 }
 
 .home-title {
-  margin: 0 0 14px;
+  margin: 0 0 8px;
   font-family: var(--font-display);
   font-size: clamp(1.65rem, 4.5vw, 2.25rem);
   font-weight: 600;
@@ -51,22 +59,21 @@ body.home-page .home-shell {
   line-height: 1.15;
   color: var(--text);
   text-transform: none;
-}
-
-.home-lead {
-  max-width: 34ch;
-  margin: 0 auto 8px;
-  font-size: 1.0625rem;
-  line-height: 1.55;
-  color: var(--muted);
+  text-align: center;
 }
 
 .home-hero-actions {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
+  align-items: center;
   gap: 12px;
   margin-top: 28px;
+}
+
+.home-hero-actions .btn {
+  min-width: 9.5rem;
+  justify-content: center;
 }
 
 a.btn {
@@ -78,11 +85,6 @@ a.btn {
 }
 
 @media (max-width: 900px) {
-  body.home-page .home-shell {
-    width: min(520px, calc(100% - 24px));
-    padding-top: 8px;
-  }
-
   .home-topbar .topbar-main {
     flex-wrap: wrap;
   }
@@ -98,9 +100,9 @@ a.btn {
   }
 }
 
-@media (max-height: 700px) {
+@media (max-height: 640px) {
   body.home-page .home-shell {
-    align-items: flex-start;
+    place-items: start center;
     padding-top: 12px;
   }
 }
