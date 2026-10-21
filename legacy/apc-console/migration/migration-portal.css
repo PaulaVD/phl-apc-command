@@ -1,84 +1,45 @@
-/* Migration header — stack: brand/util row + section tabs (see migration.css topbar override) */
+/* Migration — same APC topbar (1 row); section tabs live in the workspace, not in the header */
 
 body.phl-migration-page {
-  --phl-portal-topbar: 124px;
   background: transparent;
 }
 
-body.phl-migration-page .migration-header-stack {
-  position: sticky;
-  top: 0;
-  z-index: 45;
-  padding: 10px clamp(10px, 1.2vw, 18px) 12px;
-  border-bottom: 1px solid var(--line);
-  background: rgba(10, 4, 4, 0.94);
-  backdrop-filter: blur(16px);
-  overflow: visible;
-  max-height: none;
-  height: auto;
+body.phl-migration-page > header.migration-portal-topbar {
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow: visible !important;
 }
 
-body.phl-migration-page header.migration-chrome-bar {
-  display: block;
-  width: 100%;
-}
-
-body.phl-migration-page .migration-topbar-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  min-width: 0;
-  width: 100%;
-}
-
-body.phl-migration-page .migration-topbar-util {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-  min-width: 0;
-  flex: 1 1 auto;
+body.phl-migration-page .migration-portal-topbar .topbar-main {
   flex-wrap: wrap;
 }
 
-body.phl-migration-page .migration-brand {
-  flex: 0 1 auto;
-  min-width: 0;
-  max-width: min(14rem, 42vw);
+body.phl-migration-page .migration-clocks-compact .time-block-badge,
+body.phl-migration-page .migration-clocks-compact .time-block-zone {
+  display: none !important;
 }
 
-body.phl-migration-page .migration-brand .brand-mark {
-  width: 40px;
-  height: 40px;
+body.phl-migration-page .migration-portal-topbar .top-actions a.btn {
+  text-decoration: none;
 }
 
-body.phl-migration-page .migration-brand strong {
-  font-size: clamp(0.95rem, 0.85rem + 0.35vw, 1.15rem);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-body.phl-migration-page .migration-brand small {
-  display: block;
-  font-size: 0.72rem;
+body.phl-migration-page .migration-portal-topbar #migrationCmdBtn.is-current {
+  border-color: rgba(255, 189, 126, 0.45);
   color: var(--gold);
-  opacity: 0.92;
+  background: rgba(255, 122, 70, 0.12);
 }
 
-body.phl-migration-page .topbar-migration-toolbar,
-body.phl-migration-page .migration-toolbar-inner {
+body.phl-migration-page .app.embed .migration-section-bar {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   width: 100%;
-  min-width: 0;
-  min-height: 44px;
-  margin-top: 10px;
+  margin: 0 0 16px;
   padding: 0;
-  border: 0;
-  background: transparent;
+  min-height: 44px;
+  max-height: none;
+  overflow: visible;
 }
 
 body.phl-migration-page .portal-migration-subnav {
@@ -261,69 +222,8 @@ body.phl-migration-page a.migration-back-console {
   align-items: center;
 }
 
-body.phl-migration-page .migration-top-actions {
-  flex: 0 0 auto;
-  margin-left: 0;
-  gap: 6px;
-  flex-wrap: nowrap;
-}
-
-body.phl-migration-page .migration-top-actions .btn {
-  min-height: 38px;
-  padding: 0 12px;
-  font-size: 0.72rem;
-  letter-spacing: 0.06em;
-}
-
-body.phl-migration-page .migration-top-actions .icon-btn {
-  width: 38px;
-  height: 38px;
-  min-height: 38px;
-}
-
-body.phl-migration-page .migration-signin-btn {
-  min-height: 38px;
-  padding: 0 12px;
-  font-size: 0.72rem;
-  letter-spacing: 0.08em;
-  max-width: none;
-}
-
-body.phl-migration-page.admin-mode .migration-clocks-compact .time-block {
-  height: 36px;
-  padding: 0 8px;
-  gap: 6px;
-}
-
-body.phl-migration-page.admin-mode .migration-clocks-compact .time-block-kicker {
-  font-size: 0.5rem;
-  letter-spacing: 0.08em;
-}
-
-body.phl-migration-page.admin-mode .migration-clocks-compact #serverClockDisplay,
-body.phl-migration-page.admin-mode .migration-clocks-compact #localClockDisplay {
-  font-size: 0.95rem;
-  min-width: 7ch;
-  width: 7ch;
-}
-
-body.phl-migration-page.admin-mode .migration-clocks-compact .time-block-badge {
-  display: none;
-}
-
-body.phl-migration-page.admin-mode .migration-top-actions .events-tab,
-body.phl-migration-page.admin-mode .migration-top-actions .roster-jump-btn {
-  min-width: 0;
-  padding: 0 10px;
-}
-
 body.phl-migration-page.admin-mode .migration-command-save .save-status:not(.unsaved) {
   display: none;
-}
-
-body.phl-migration-page.admin-mode .migration-signin-btn {
-  max-width: 5.5rem;
-  padding: 0 10px;
 }
 
 body.phl-migration-page .migration-workspace {
@@ -366,42 +266,7 @@ body.phl-migration-page .hero {
   background: linear-gradient(180deg, rgba(22, 9, 9, 0.92), rgba(29, 13, 12, 0.9)) !important;
 }
 
-@media (max-width: 900px) {
-  body.phl-migration-page {
-    --phl-portal-topbar: 148px;
-  }
-
-  body.phl-migration-page .migration-topbar-row {
-    flex-wrap: wrap;
-  }
-
-  body.phl-migration-page .migration-topbar-util {
-    width: 100%;
-    justify-content: space-between;
-  }
-
-  body.phl-migration-page .migration-clocks-compact {
-    flex: 1 1 auto;
-  }
-}
-
 @media (max-width: 680px) {
-  body.phl-migration-page {
-    --phl-portal-topbar: auto;
-  }
-
-  body.phl-migration-page .migration-header-stack {
-    position: static;
-  }
-
-  body.phl-migration-page .migration-brand strong {
-    font-size: 0.92rem;
-  }
-
-  body.phl-migration-page .migration-brand small {
-    display: none;
-  }
-
   body.phl-migration-page .migration-command-save .save-status {
     display: none;
   }
@@ -410,6 +275,10 @@ body.phl-migration-page .hero {
     min-width: 3.75rem;
     padding: 0 8px;
     font-size: 0.68rem;
+  }
+
+  body.phl-migration-page .app.embed .migration-section-bar {
+    flex-wrap: wrap;
   }
 }
 

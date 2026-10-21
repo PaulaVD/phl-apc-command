@@ -27,17 +27,13 @@ button:hover{background:rgba(255,122,70,.1);border-color:rgba(255,196,128,.35)}
 th{background:#140808;color:#cab4a7}
 
 /* React `.topbar` (in-app) must not crush the portal `<header class="topbar">` chrome */
-body.phl-migration-page header.migration-chrome-bar {
+body.phl-migration-page > header.migration-portal-topbar {
   height: auto !important;
   min-height: 0 !important;
+  max-height: none !important;
+  overflow: visible !important;
   flex-direction: column !important;
   align-items: stretch !important;
-  justify-content: flex-start !important;
-  overflow: visible !important;
-  background: transparent !important;
-  border: 0 !important;
-  padding: 0 !important;
-  margin: 0 !important;
 }
 
 body.phl-migration-page .app .main .topbar {

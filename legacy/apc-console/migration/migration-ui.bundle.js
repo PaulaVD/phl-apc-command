@@ -12759,7 +12759,6 @@ var import_client = __toESM(require_client(), 1);
 
 // app/page.tsx
 var import_react4 = __toESM(require_react(), 1);
-var import_react_dom = __toESM(require_react_dom(), 1);
 
 // node_modules/.pnpm/lucide-react@1.31.0_react@19.2.6/node_modules/lucide-react/dist/esm/createLucideIcon.mjs
 var import_react3 = __toESM(require_react(), 1);
@@ -17197,11 +17196,7 @@ function download(name, content, type = "application/json") {
 function Page() {
   const [data, setData] = (0, import_react4.useState)(null), [tab, setTab] = (0, import_react4.useState)("Overview"), [revision, setRevision] = (0, import_react4.useState)(0), [dirty, setDirty] = (0, import_react4.useState)(false), [saving, setSaving] = (0, import_react4.useState)(false), [error, setError] = (0, import_react4.useState)(""), [toast, setToast] = (0, import_react4.useState)(""), [savedAt, setSavedAt] = (0, import_react4.useState)(""), [query, setQuery] = (0, import_react4.useState)(""), [filter, setFilter] = (0, import_react4.useState)("All members"), [sort, setSort] = (0, import_react4.useState)("Priority"), [player, setPlayer] = (0, import_react4.useState)(null), [state, setState] = (0, import_react4.useState)(null), [taskForm, setTaskForm] = (0, import_react4.useState)(false), [mobile, setMobile] = (0, import_react4.useState)(false), [scenario, setScenario] = (0, import_react4.useState)(54), [scope, setScope] = (0, import_react4.useState)("Priority"), [clock, setClock] = (0, import_react4.useState)(Date.now());
   const [batchDestination, setBatchDestination] = (0, import_react4.useState)("");
-  const [toolbarMount, setToolbarMount] = (0, import_react4.useState)(null);
   const importRef = (0, import_react4.useRef)(null), saveLock = (0, import_react4.useRef)(false), generation = (0, import_react4.useRef)(0);
-  (0, import_react4.useEffect)(() => {
-    setToolbarMount(document.getElementById("migrationToolbarMount"));
-  }, []);
   (0, import_react4.useEffect)(() => {
     fetch("/api/workspace").then(async (r) => {
       const b = await r.json();
@@ -17410,7 +17405,7 @@ function Page() {
   ] });
   const saveHint = saving ? "Saving workspace\u2026" : dirty ? "Unsaved changes \u2014 save before leaving" : savedAt ? `Last saved ${niceDate(savedAt)}` : "Imported workspace snapshot";
   const saveStatusLabel = saving ? "Saving\u2026" : dirty ? "Unsaved" : savedAt ? "Saved" : "";
-  const portalToolbar = /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "migration-toolbar-inner", children: [
+  const sectionBar = /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "migration-section-bar", role: "navigation", "aria-label": "Migration sections", children: [
     /* @__PURE__ */ (0, import_jsx_runtime.jsx)("nav", { className: "portal-migration-subnav", children: navButtons }),
     /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "migration-command-save", children: [
       saveStatusLabel ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "save-status " + (dirty ? "unsaved" : ""), title: saveHint, children: [
@@ -17421,7 +17416,6 @@ function Page() {
     ] })
   ] });
   return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "app" + (embed ? " embed" : ""), children: [
-    embed && toolbarMount && (0, import_react_dom.createPortal)(portalToolbar, toolbarMount),
     !embed && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("aside", { className: mobile ? "sidebar visible" : "sidebar", children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("a", { className: "brand", href: "../index.html", title: "Back to PH-L alliance portal", children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "brand-icon", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Flame, { size: 25 }) }),
@@ -17455,6 +17449,7 @@ function Page() {
       ] })
     ] }),
     /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "main" + (embed ? " embed-main" : ""), children: [
+      embed && sectionBar,
       !embed && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("header", { className: "topbar", children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "crumb", children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "icon mobile-toggle", type: "button", "aria-label": "Toggle menu", onClick: () => setMobile(!mobile), children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Menu, { size: 20 }) }),
